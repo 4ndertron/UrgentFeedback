@@ -1,0 +1,6 @@
+SELECT DISTINCT
+    C.ORIGIN
+FROM
+    RPT.T_CASE AS C
+WHERE
+    RECORD_TYPE = 'Solar - Customer Escalation'
