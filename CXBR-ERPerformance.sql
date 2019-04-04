@@ -89,6 +89,12 @@ WITH T1 AS (
         END                                                                                        AS PRIORITY_RESPONSE_SLA
          , CASE
                WHEN
+                   C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 7
+                   THEN
+                   1
+        END                                                                                        AS CLOSED_7_DAY_SLA
+         , CASE
+               WHEN
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15
                    THEN
                    1
@@ -167,6 +173,7 @@ WITH T1 AS (
          , SUM(LAST_30_DAY_COVERAGE_TALLY)         AS AVERAGE_30_DAY_COVERAGE
          , MAX(RESPONSE_SLA)                       AS RESPONSE_SLA
          , MAX(PRIORITY_RESPONSE_SLA)              AS PRIORITY_RESPONSE_SLA
+         , MAX(CLOSED_7_DAY_SLA)                   AS CLOSED_7_DAY_SLA
          , MAX(CLOSED_15_DAY_SLA)                  AS CLOSED_15_DAY_SLA
          , MAX(CLOSED_30_DAY_SLA)                  AS CLOSED_30_DAY_SLA
          , MIN(HOURLY_RESPONSE_TAT)                AS HOURLY_RESPONSE_TAT
@@ -248,7 +255,18 @@ WITH T1 AS (
     WHERE DAY_CLOSED >= DATEADD('D', -30, CURRENT_DATE())
 )
 
+,CLOSED_7_DAYS AS (
+    SELECT
+        ROUND(SUM(CLOSED_7_DAY_SLA)/COUNT(*),3) AS CLOSED_7_DAYS
+    FROM
+        T3
+    WHERE
+        DAY_CREATED >= DATEADD('D',-30,CURRENT_DATE())
+)
+
+
 SELECT *
 FROM AVERAGE_CLOSED,
      AGENT_WIP,
-     CLOSED_AGE
+     CLOSED_AGE,
+     CLOSED_7_DAYS
