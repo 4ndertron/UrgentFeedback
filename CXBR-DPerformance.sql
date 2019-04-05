@@ -6,7 +6,7 @@ WITH CASE_TABLE AS (
          , ANY_VALUE(LDD.AGE)                                                                            AS AGE_FOR_CASE
          , ANY_VALUE(C.SUBJECT)                                                                          AS SUBJECT1
          , ANY_VALUE(CAD.SYSTEM_SIZE)                                                                    AS SYSTEM_SIZE
-         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2)                                               AS SYSTEM_VALUE
+         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 7, 2)                                               AS SYSTEM_VALUE
          , ANY_VALUE(C.STATUS)                                                                           AS STATUS2
          , ANY_VALUE(C.CREATED_DATE)                                                                     AS CREATED_DATE1
          , ANY_VALUE(C.CLOSED_DATE)                                                                      AS CLOSED_DATE1
@@ -360,8 +360,14 @@ WITH CASE_TABLE AS (
     WHERE CLOSED_DATE IS NULL
 )
 
+   , SAVED AS (
+    SELECT SUM(SYSTEM_VALUE) AS SAVED
+    FROM SOLUTIONS_WORKBOOK
+    WHERE STATUS1 = 'Closed - Saved'
+      AND CLOSED_DATE BETWEEN DATEADD('MM', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND DATE_TRUNC('MM', CURRENT_DATE())
+)
+
 SELECT *
 FROM CLOSED_CASES,
-     GAP
-
-
+     GAP,
+     SAVED
