@@ -89,10 +89,10 @@ WITH T1 AS (
         END                                                                                        AS PRIORITY_RESPONSE_SLA
          , CASE
                WHEN
-                   C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 7
+                   C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 10
                    THEN
                    1
-        END                                                                                        AS CLOSED_7_DAY_SLA
+        END                                                                                        AS CLOSED_10_DAY_SLA
          , CASE
                WHEN
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15
@@ -173,7 +173,7 @@ WITH T1 AS (
          , SUM(LAST_30_DAY_COVERAGE_TALLY)         AS AVERAGE_30_DAY_COVERAGE
          , MAX(RESPONSE_SLA)                       AS RESPONSE_SLA
          , MAX(PRIORITY_RESPONSE_SLA)              AS PRIORITY_RESPONSE_SLA
-         , MAX(CLOSED_7_DAY_SLA)                   AS CLOSED_7_DAY_SLA
+         , MAX(CLOSED_10_DAY_SLA)                  AS CLOSED_10_DAY_SLA
          , MAX(CLOSED_15_DAY_SLA)                  AS CLOSED_15_DAY_SLA
          , MAX(CLOSED_30_DAY_SLA)                  AS CLOSED_30_DAY_SLA
          , MIN(HOURLY_RESPONSE_TAT)                AS HOURLY_RESPONSE_TAT
@@ -237,14 +237,14 @@ WITH T1 AS (
 )
 
    , AVERAGE_CLOSED AS (
-    SELECT ROUND(AVG(PRIORITY_CLOSED), 0) AS AVERAGE_CLOSED
+    SELECT AVG(NET) AS AVERAGE_NET
     FROM T6
     WHERE MONTH_1 >= DATEADD('MM', -3, DATE_TRUNC('MM', CURRENT_DATE()))
-      AND MONTH_1 < DATE_TRUNC('MM', CURRENT_DATE())
+      AND MONTH_1 <= LAST_DAY(DATEADD('MM', -1, CURRENT_DATE()))
 )
 
    , AGENT_WIP AS (
-    SELECT ROUND(ALL_WIP / 12, 0) AS AVERAGE_AGENT_WIP
+    SELECT ROUND(ALL_WIP / 11, 0) AS AVERAGE_AGENT_WIP
     FROM T5
     WHERE DT = CURRENT_DATE()
 )
@@ -255,18 +255,14 @@ WITH T1 AS (
     WHERE DAY_CLOSED >= DATEADD('D', -30, CURRENT_DATE())
 )
 
-,CLOSED_7_DAYS AS (
-    SELECT
-        ROUND(SUM(CLOSED_7_DAY_SLA)/COUNT(*),3) AS CLOSED_7_DAYS
-    FROM
-        T3
-    WHERE
-        DAY_CREATED >= DATEADD('D',-30,CURRENT_DATE())
+   , CLOSED_10_DAYS AS (
+    SELECT ROUND(SUM(CLOSED_10_DAY_SLA) / COUNT(*), 3) AS CLOSED_10_DAYS
+    FROM T3
+    WHERE DAY_CREATED >= DATEADD('D', -30, CURRENT_DATE())
 )
-
 
 SELECT *
 FROM AVERAGE_CLOSED,
      AGENT_WIP,
      CLOSED_AGE,
-     CLOSED_7_DAYS
+     CLOSED_10_DAYS

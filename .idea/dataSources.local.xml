@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal">
+    <data-source name="Snowflake -" uuid="cd19c897-ac78-480b-b63a-d2a8729f8660">
+      <database-info product="Snowflake" version="3.18.4 (driver change version: 3.6.9)" jdbc-version="1.0" driver-name="Snowflake" driver-version="driver change version: 3.6.9" dbms="SNOWFLAKE" exact-version="3.18.4" exact-driver-version="3.6">
+        <extra-name-characters>$</extra-name-characters>
+        <identifier-quote-string>&quot;</identifier-quote-string>
+      </database-info>
+      <case-sensitivity plain-identifiers="upper" quoted-identifiers="exact" />
+      <secret-storage>master_key</secret-storage>
+      <user-name>robert.anderson@vivintsolar.com</user-name>
+      <introspection-schemas>@:@|VSLR:*</introspection-schemas>
+    </data-source>
+  </component>
+</project>
