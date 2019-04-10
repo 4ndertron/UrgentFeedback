@@ -1,0 +1,89 @@
+WITH AGENTS AS (
+    SELECT HR.FULL_NAME
+         , MIN(HR.CREATED_DATE) AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)  AS TEAM_END_DATE
+    FROM HR.T_EMPLOYEE_ALL AS HR
+    WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
+    GROUP BY HR.FULL_NAME
+    ORDER BY TEAM_START_DATE DESC
+)
+
+   , PAYMENTS AS (
+    SELECT PMT.CREATED_BY
+         , PMT.CREATED_DATE
+         , PMT.NAME
+         , C.CASE_NUMBER
+         , P.PROJECT_NUMBER
+         , P.PROJECT_ID
+         , PMT.RECORD_TYPE
+         , PMT.PAYMENT_TYPE
+         , PMT.PAYMENT_AMOUNT
+         , PMT.APPROVAL_DATE
+    FROM RPT.T_PAYMENT AS PMT
+             LEFT OUTER JOIN
+         AGENTS AS A
+         ON PMT.CREATED_BY = A.FULL_NAME
+             LEFT OUTER JOIN
+         RPT.T_PROJECT AS P
+         ON P.PROJECT_ID = PMT.PROJECT_ID
+             LEFT OUTER JOIN
+         RPT.T_CASE AS C
+         ON C.CASE_ID = PMT.CASE_ID
+    WHERE PMT.CREATED_DATE >= A.TEAM_START_DATE
+      AND PMT.CREATED_DATE <= A.TEAM_END_DATE
+      AND A.FULL_NAME IS NOT NULL
+      AND PMT.RECORD_TYPE = 'Customer Compensation'
+      AND PMT.APPROVAL_DATE IS NOT NULL
+)
+
+   , CANCELLED AS (
+    SELECT P.PROJECT_NUMBER
+         , ANY_VALUE(P.PROJECT_ID)        AS PROJECT_ID
+         , ANY_VALUE(CAD.SYSTEM_SIZE)     AS THIS_SIZE
+         , ROUND(THIS_SIZE * 1000 * 7, 2) AS SYSTEM_VALUE
+    FROM RPT.T_PROJECT AS P
+             LEFT OUTER JOIN
+         RPT.T_SYSTEM_DETAILS_SNAP AS CAD
+         ON CAD.PROJECT_ID = P.PROJECT_ID
+    WHERE P.PROJECT_STATUS = 'Cancelled'
+      AND P.INSTALLATION_COMPLETE IS NOT NULL
+    GROUP BY P.PROJECT_NUMBER
+    ORDER BY P.PROJECT_NUMBER
+)
+
+   , ER_CASES AS (
+    SELECT C.CASE_NUMBER
+         , C.CREATED_DATE
+         , C.OWNER
+         , C.PROJECT_ID
+         , C.ORIGIN
+    FROM RPT.T_CASE AS C
+    WHERE RECORD_TYPE = 'Solar - Customer Escalation'
+      AND EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+      AND SUBJECT NOT ILIKE '[NPS]%'
+      AND SUBJECT NOT ILIKE '%VIP%'
+      AND ORIGIN != 'NPS'
+      AND STATUS != 'In Dispute'
+      AND CREATED_DATE BETWEEN DATEADD('MM', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND DATE_TRUNC('MM', CURRENT_DATE())
+)
+
+   , MERGE AS (
+    SELECT E.CASE_NUMBER
+         , ANY_VALUE(E.OWNER)                                                                       AS OWNER
+         , ANY_VALUE(E.ORIGIN)                                                                      AS ORIGIN
+         , NVL(SUM(CASE WHEN P.CREATED_DATE >= E.CREATED_DATE THEN P.PAYMENT_AMOUNT ELSE 0 END), 0) AS COMPENSATION
+         , NVL(SUM(C.SYSTEM_VALUE), 0)                                                              AS CANCELLATION_COSTS
+         , COMPENSATION + CANCELLATION_COSTS                                                        AS ESCALATION_COST
+    FROM ER_CASES AS E
+             LEFT OUTER JOIN
+         PAYMENTS AS P
+         ON P.PROJECT_ID = E.PROJECT_ID
+             LEFT OUTER JOIN
+         CANCELLED AS C
+         ON C.PROJECT_ID = E.PROJECT_ID
+    GROUP BY E.CASE_NUMBER
+)
+
+SELECT *
+FROM MERGE
+

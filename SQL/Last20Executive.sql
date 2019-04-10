@@ -1,0 +1,8 @@
+WITH T1 AS (
+    SELECT
+
+    FROM WHERE
+)
+
+SELECT *
+FROM T1

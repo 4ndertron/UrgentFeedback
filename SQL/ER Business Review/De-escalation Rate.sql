@@ -1,0 +1,9 @@
+SELECT *
+FROM RPT.T_CASE AS C
+         INNER JOIN
+     RPT.T_PROJECT AS P
+     ON
+         C.PROJECT_ID = P.PROJECT_ID
+WHERE C.CLOSED_DATE >= '2019-01-01'
+  AND C.RECORD_TYPE = 'Solar - Customer Escalation'
+  AND C.STATUS LIKE 'Close'
