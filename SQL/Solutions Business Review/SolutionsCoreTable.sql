@@ -172,14 +172,14 @@ WITH CASE_TABLE AS (
      ),
 
      LD_FULL_HISTORY AS (
-         SELECT LDF.BILLING_ACCOUNT                                          AS BILLING_ACCOUNT_H
-              , NVL(LDH.COLLECTION_CODE, 'NULL')                             AS COLLECTION_CODE1
-              , IFF(LDH.COLLECTION_CODE LIKE '%BK%', 'BK', COLLECTION_CODE1) AS LD_CODE
+         SELECT LDF.BILLING_ACCOUNT                                                                           AS BILLING_ACCOUNT_H
+              , NVL(LDH.COLLECTION_CODE, 'NULL')                                                              AS COLLECTION_CODE1
+              , IFF(LDH.COLLECTION_CODE LIKE '%BK%', 'BK', COLLECTION_CODE1)                                  AS LD_CODE
               , NVL(LDH.COLLECTION_DATE,
                     NVL(LAG(LDH.AS_OF_DATE) OVER(PARTITION BY LDF.BILLING_ACCOUNT ORDER BY LDH.COLLECTION_DATE),
-                        LDH.AS_OF_DATE))                                     AS CODE_WIP_START1
+                        LDH.AS_OF_DATE))                                                                      AS CODE_WIP_START1
               , LEAD(LDH.COLLECTION_DATE) OVER(PARTITION BY LDF.BILLING_ACCOUNT
-                     ORDER BY LDH.COLLECTION_DATE)                           AS CODE_WIP_END1
+                     ORDER BY LDH.COLLECTION_DATE)                                                            AS CODE_WIP_END1
          FROM LD_HISTORY_FLAG AS LDF
                   LEFT JOIN
               LD.T_DAILY_DATA_EXTRACT_HIST AS LDH
