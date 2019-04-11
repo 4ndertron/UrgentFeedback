@@ -61,6 +61,7 @@ WITH AGENTS AS (
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
+               WHEN C.ORIGIN IN ('Credit Dispute') OR C.SUBJECT ILIKE '%CRED%' THEN 'Credit Dispute'
                ELSE 'Internal'
         END                                                                                        AS PRIORITY_BUCKET
          , CASE
