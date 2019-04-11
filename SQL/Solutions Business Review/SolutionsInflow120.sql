@@ -237,6 +237,14 @@ WITH CASE_TABLE AS (
                         THEN 'CORP-CX'
                     ELSE LD.LD_CODE
              END                                                                      AS CORP_BUCKET
+              , CASE
+                    WHEN C.STATUS1 = 'New' THEN 'Needs Audit & Assigned'
+                    WHEN C.STATUS1 = 'Escalated' THEN 'Legal/Lawsuit'
+                    WHEN C.STATUS1 = 'In Progress' THEN 'Third-Party/Letters'
+                    WHEN C.STATUS1 = 'Pending Customer Action' THEN 'Working to Cure'
+                    WHEN C.STATUS1 = 'Pending Corporate Action' THEN 'Cancellation Approval'
+                    ELSE C.STATUS1
+             END                                                                      AS STATUS_NAME
               , NVL(DEFAULT_BUCKET1, CORP_BUCKET)                                     AS MASTER_BUCKET
               , NVL(CODE_WIP_START, CREATED_DATE)                                     AS WIP_START
               , NVL(CODE_WIP_END, CLOSED_DATE)                                        AS WIP_END
@@ -259,6 +267,7 @@ WITH CASE_TABLE AS (
               , CLOSED_DATE
               , WIP_END
               , CASE_NUMBER
+              , STATUS_NAME
               , AVERAGE_GAP
               , COVERAGE
               , LAST_30_DAY_GAP

@@ -61,6 +61,7 @@ WITH AGENTS AS (
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
+               WHEN C.ORIGIN IN ('Credit Dispute') OR C.SUBJECT ILIKE '%CRED%' THEN 'Credit Dispute'
                ELSE 'Internal'
         END                                                                                        AS PRIORITY_BUCKET
          , CASE
@@ -293,13 +294,16 @@ WITH AGENTS AS (
                         T3.PRIORITY_BUCKET = 'Legal/BBB' THEN 1 END)            AS P2_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END)        AS P3_WIP
+                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END)  AS P3_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Social Media' THEN 1 END)         AS P4_WIP
+                        T3.PRIORITY_BUCKET = 'Social Media' THEN 1 END)   AS P4_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)             AS P5_WIP
+                        T3.PRIORITY_BUCKET = 'Credit Dispute' THEN 1 END) AS P5_WIP
+         , SUM(CASE
+                   WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
+                        T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)       AS P6_WIP
     FROM MERGE AS T3
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()
@@ -309,12 +313,13 @@ WITH AGENTS AS (
 )
 
 SELECT DT
+     , P1_WIP AS EXECUTIVE
+     , P2_WIP AS LEGAL
+     , P3_WIP AS REVIEW
+     , P4_WIP AS SOCIAL
+     , P5_WIP AS CREDIT
+     , P6_WIP AS INTERNAL
      , ALL_WIP
-     , P1_WIP AS EXECUTIVE_WIP
-     , P2_WIP AS LEGAL_WIP
-     , P3_WIP AS REVIEW_WIP
-     , P4_WIP AS SOCIAL_WIP
-     , P5_WIP AS INTERNAL_WIP
 FROM T4
 WHERE T4.DT = CURRENT_DATE
    OR T4.DT = LAST_DAY(T4.DT)

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <script>
+        // Prevent forms from submitting.
+        function preventFormSubmit() {
+            var forms = document.querySelectorAll('form');
+            for (var i = 0; i < forms.length; i++) {
+                forms[i].addEventListener('submit', function (event) {
+                    event.preventDefault();
+                });
+            }
+        }
+
+        window.addEventListener('load', preventFormSubmit);
+
+        function handleFormSubmit(e) {
+            google.script.run.processForm(e);
+        }
+    </script>
+</head>
+<body>
+<form id="myForm" onsubmit="handleFormSubmit(this)">
+    <div>Case Number</div>
+    <input name="CN" required type="text"/><br>
+    <hr>
+    <div>Select all of the root cause tags that apply.</div>
+    <br>
+    <input name='RC' type='checkbox' value='Account Center'/> Account Center<br>
+    <input name='RC' type='checkbox' value='Auto-pay'/> Auto-pay<br>
+    <input name='RC' type='checkbox' value='Battery/Storage'/> Battery/Storage<br>
+    <input name='RC' type='checkbox' value='Billed by VSLR & Utility'/> Billed by VSLR & Utility<br>
+    <input name='RC' type='checkbox' value='Billed on estimate'/> Billed on estimate<br>
+    <input name='RC' type='checkbox' value='Billed on solar production'/> Billed on solar production<br>
+    <input name='RC' type='checkbox' value='Billing system'/> Billing system<br>
+    <input name='RC' type='checkbox' value='Buyout'/> Buyout<br>
+    <input name='RC' type='checkbox' value='Contract cancellation policy'/> Contract cancellation policy<br>
+    <input name='RC' type='checkbox' value='Contract duration'/> Contract duration<br>
+    <input name='RC' type='checkbox' value='Contract Misrepresentation'/> Contract Misrepresentation<br>
+    <input name='RC' type='checkbox' value='Credits owed/Compensation'/> Credits owed/Compensation<br>
+    <input name='RC' type='checkbox' value='Customer resolution & follow up'/> Customer resolution & follow up<br>
+    <input name='RC' type='checkbox' value='Deviation from approved CAD'/> Deviation from approved CAD<br>
+    <input name='RC' type='checkbox' value='Equipment Malfunction'/> Equipment Malfunction<br>
+    <input name='RC' type='checkbox' value='Field service resolution'/> Field service resolution<br>
+    <input name='RC' type='checkbox' value='Hardship/Forclosure/Bankruptcy/Deceased'/>
+    Hardship/Forclosure/Bankruptcy/Deceased<br>
+    <input name='RC' type='checkbox' value='High True up'/> High True up<br>
+    <input name='RC' type='checkbox' value='Interconnection'/> Interconnection<br>
+    <input name='RC' type='checkbox' value='Missed appointments'/> Missed appointments<br>
+    <input name='RC' type='checkbox' value='Panel cleaning/maintenance'/> Panel cleaning/maintenance<br>
+    <input name='RC' type='checkbox' value='Permit/Inspection'/> Permit/Inspection<br>
+    <input name='RC' type='checkbox' value='Production/Usage imbalance'/> Production/Usage imbalance<br>
+    <input name='RC' type='checkbox' value='Property damage'/> Property damage<br>
+    <input name='RC' type='checkbox' value='Referral bonus'/> Referral bonus<br>
+    <input name='RC' type='checkbox' value='Removal & Reinstall'/> Removal & Reinstall<br>
+    <input name='RC' type='checkbox' value='Sales incentive'/> Sales incentive<br>
+    <input name='RC' type='checkbox' value='Snow/Animal guards'/> Snow/Animal guards<br>
+    <input name='RC' type='checkbox' value='System damage'/> System damage<br>
+    <input name='RC' type='checkbox' value='System design error'/> System design error<br>
+    <input name='RC' type='checkbox' value='System production'/> System production<br>
+    <input name='RC' type='checkbox' value='Systems billed separately'/> Systems billed separately<br>
+    <input name='RC' type='checkbox' value='Tax credits'/> Tax credits<br>
+    <input name='RC' type='checkbox' value='Technician availability'/> Technician availability<br>
+    <input name='RC' type='checkbox' value='Time to PTO'/> Time to PTO<br>
+    <input name='RC' type='checkbox' value='Transfer/Finance/Relocation'/> Transfer/Finance/Relocation<br>
+    <input name='RC' type='checkbox' value='Unmet savings Expectations'/> Unmet savings Expectations<br>
+    <input name='RC' type='checkbox' value='Utility rate discount'/> Utility rate discount<br>
+    <input name='RC' type='checkbox' value='VSLR Coverage Area'/> VSLR Coverage Area<br>
+    <br><br><input type="submit" value="Submit Tag(s)"/>
+</form>
+<br>
+<div id="output"></div>
+</body>
+</html>

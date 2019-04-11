@@ -162,7 +162,7 @@ WITH AGENTS AS (
       AND SUBJECT NOT ILIKE '[NPS]%'
       AND SUBJECT NOT ILIKE '%VIP%'
       AND ORIGIN != 'NPS'
-      AND STATUS != 'In Dispute'
+--       AND STATUS != 'In Dispute'
 )
 
    , T2 AS (

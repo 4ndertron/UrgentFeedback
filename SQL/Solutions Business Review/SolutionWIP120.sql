@@ -227,15 +227,24 @@ WITH CASE_TABLE AS (
               , CASE
                     WHEN CASE_NUMBER IS NULL AND LD_CODE = 'CORP' THEN 'CORP-No Case'
                     WHEN C.RECORD_TYPE1 = 'Solar - Customer Default' AND LD.LD_CODE = 'CORP' THEN 'CORP-Default'
-                    WHEN C.RECORD_TYPE1 IN ('Solar - Customer Escalation', 'Solar - Cancellation Request') AND
-                         LD.LD_CODE = 'CORP' THEN 'CORP-Escalation'
+                    WHEN ((C.RECORD_TYPE1 = 'Solar - Customer Escalation' AND C.ERA IS NOT NULL) OR
+                          C.RECORD_TYPE1 = 'Solar - Cancellation Request') AND LD.LD_CODE = 'CORP' THEN 'CORP-ER'
                     WHEN C.RECORD_TYPE1 = 'Solar Damage Resolutions' AND LD.LD_CODE = 'CORP' THEN 'CORP-Damage'
                     WHEN C.RECORD_TYPE1 = 'Solar - Panel Removal' AND LD.LD_CODE = 'CORP'
                         THEN 'CORP-Removal & Reinstall'
-                    WHEN C.RECORD_TYPE1 IN ('Solar - Service', 'Solar - Troubleshooting', 'Solar - Transfer') AND
-                         LD.LD_CODE = 'CORP' THEN 'CORP-CX'
+                    WHEN (C.RECORD_TYPE1 IN ('Solar - Service', 'Solar - Troubleshooting') OR
+                          (C.RECORD_TYPE1 = 'Solar - Customer Escalation' AND C.ERA IS NULL)) AND LD.LD_CODE = 'CORP'
+                        THEN 'CORP-CX'
                     ELSE LD.LD_CODE
              END                                                                      AS CORP_BUCKET
+              , CASE
+                    WHEN C.STATUS1 = 'New' THEN 'Needs Audit & Assigned'
+                    WHEN C.STATUS1 = 'Escalated' THEN 'Legal/Lawsuit'
+                    WHEN C.STATUS1 = 'In Progress' THEN 'Third-Party/Letters'
+                    WHEN C.STATUS1 = 'Pending Customer Action' THEN 'Working to Cure'
+                    WHEN C.STATUS1 = 'Pending Corporate Action' THEN 'Cancellation Approval'
+                    ELSE C.STATUS1
+             END                                                                      AS STATUS_NAME
               , NVL(DEFAULT_BUCKET1, CORP_BUCKET)                                     AS MASTER_BUCKET
               , NVL(CODE_WIP_START, CREATED_DATE)                                     AS WIP_START
               , NVL(CODE_WIP_END, CLOSED_DATE)                                        AS WIP_END
@@ -258,6 +267,7 @@ WITH CASE_TABLE AS (
               , CLOSED_DATE
               , WIP_END
               , CASE_NUMBER
+              , STATUS_NAME
               , AVERAGE_GAP
               , COVERAGE
               , LAST_30_DAY_GAP
@@ -277,7 +287,7 @@ WITH CASE_TABLE AS (
          SELECT D.DT
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1)
-                            THEN 1 END)                                                AS ALL_WIP
+                            THEN 1 END)                                    AS ALL_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
@@ -305,27 +315,27 @@ WITH CASE_TABLE AS (
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'BK'
-                            THEN 1 END)                                                AS BK_WIP
+                            THEN 1 END)                    AS BK_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'FORE'
-                            THEN 1 END)                                                AS FORE_WIP
+                            THEN 1 END)                                    AS FORE_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
-                             SW.MASTER_BUCKET = 'CORP-Escalation' THEN 1 END)          AS CORP_Escalation_WIP
+                             SW.MASTER_BUCKET = 'CORP-ER' THEN 1 END)      AS CORP_ER_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
-                             SW.MASTER_BUCKET = 'CORP-Default' THEN 1 END)             AS CORP_DEFAULT_WIP
+                             SW.MASTER_BUCKET = 'CORP-Default' THEN 1 END) AS CORP_Default_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
-                             SW.MASTER_BUCKET = 'CORP-Damage' THEN 1 END)              AS CORP_Damage_WIP
+                             SW.MASTER_BUCKET = 'CORP-Damage' THEN 1 END)  AS CORP_Damage_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
-                             SW.MASTER_BUCKET = 'CORP-CX' THEN 1 END)                  AS CORP_CX_WIP
+                             SW.MASTER_BUCKET = 'CORP-CX' THEN 1 END)      AS CORP_CX_WIP
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
@@ -333,7 +343,7 @@ WITH CASE_TABLE AS (
               , SUM(CASE
                         WHEN TO_DATE(WIP_START) <= D.DT AND
                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
-                             SW.MASTER_BUCKET = 'CORP-No Case' THEN 1 END)             AS CORP_NO_CASE_WIP
+                             SW.MASTER_BUCKET = 'CORP-No Case' THEN 1 END) AS CORP_NO_CASE_WIP
          FROM SOLUTIONS_WORKBOOK AS SW
             , RPT.T_DATES AS D
          WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
@@ -342,22 +352,22 @@ WITH CASE_TABLE AS (
          ORDER BY D.DT
      )
 
-SELECT DT                  as DT_120
-     , ALL_WIP             as ALL_WIP_120
-     , Pending_Legal_WIP   as Pending_Legal_WIP_120
-     , D1_WIP              as D1_WIP_120
-     , D2_WIP              as D2_WIP_120
-     , D4_WIP              as D4_WIP_120
-     , D5_WIP              as D5_WIP_120
-     , MBW_WIP             as MBW_WIP_120
-     , BK_WIP              as BK_WIP_120
-     , FORE_WIP            as FORE_WIP_120
-     , CORP_Escalation_WIP as CORP_Escalation_WIP_120
-     , CORP_DEFAULT_WIP    as CORP_DEFAULT_WIP_120
-     , CORP_Damage_WIP     as CORP_Damage_WIP_120
-     , CORP_CX_WIP         as CORP_CX_WIP_120
-     , CORP_No_Case_WIP    as CORP_No_Case_WIP_120
-     , CORP_RR_WIP         as CORP_RR_WIP_120
+SELECT DT                AS DT_120
+     , ALL_WIP           AS ALL_WIP_120
+     , Pending_Legal_WIP AS Pending_Legal_WIP_120
+     , D1_WIP            AS D1_WIP_120
+     , D2_WIP            AS D2_WIP_120
+     , D4_WIP            AS D4_WIP_120
+     , D5_WIP            AS D5_WIP_120
+     , MBW_WIP           AS MBW_WIP_120
+     , BK_WIP            AS BK_WIP_120
+     , FORE_WIP          AS FORE_WIP_120
+     , CORP_ER_WIP       AS CORP_ER_WIP_120
+     , CORP_DEFAULT_WIP  AS CORP_DEFAULT_WIP_120
+     , CORP_Damage_WIP   AS CORP_Damage_WIP_120
+     , CORP_CX_WIP       AS CORP_CX_WIP_120
+     , CORP_No_Case_WIP  AS CORP_No_Case_WIP_120
+     , CORP_RR_WIP       AS CORP_RR_WIP_120
 FROM DAILY_WIP AS DW
 WHERE DW.DT = CURRENT_DATE()
    OR DW.DT = LAST_DAY(DW.DT)
