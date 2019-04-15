@@ -12,13 +12,11 @@ WITH T1 AS (
     WHERE C.RECORD_TYPE = 'Solar - Customer Default'
       AND C.PRIMARY_REASON IN ('Customer Deceased', 'Foreclosure')
       AND C.CREATED_DATE >= '2018-10-01'
-      AND CREATED_DATE < '2019-01-01'
       AND C.STATUS ILIKE '%CLOSE%'
       AND C.STATUS NOT ILIKE '%VOID%'
+--     AND CAD.IS_PRIMARY_CAD ILIKE 'Y'
 )
 
-SELECT SUM(CASE WHEN STATUS = 'Closed - Saved' THEN 1 ELSE 0 END) AS SAVED_VALUE
-     , SUM(CASE WHEN STATUS = 'Closed' THEN 1 ELSE 0 END)         AS LOST_VALUE
-     , SAVED_VALUE - LOST_VALUE                                   AS NET
+SELECT *
 FROM T1
 ORDER BY T1.CREATED_DATE
