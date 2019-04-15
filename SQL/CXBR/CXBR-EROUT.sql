@@ -280,26 +280,25 @@ WITH AGENTS AS (
     GROUP BY T3.CREATED_DATE
 )
 
-
-SELECT DATE_TRUNC('MM', D.DT)                                                                                    AS MONTH_1
+SELECT DATE_TRUNC('MM', D.DT)    AS MONTH_1
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
-                     THEN 1 END)                                                                                 AS EXECUTIVE_INFLOW
+                     THEN 1 END) AS EXECUTIVE_INFLOW
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Legal/BBB'
-                     THEN 1 END)                                                                                 AS LEGAL_BBB_INFLOW
+                     THEN 1 END) AS LEGAL_BBB_INFLOW
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Online Review'
-                     THEN 1 END)                                                                                 AS REVIEW_INFLOW
+                     THEN 1 END) AS REVIEW_INFLOW
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Social Media'
-                     THEN 1 END)                                                                                 AS SOCIAL_INFLOW
+                     THEN 1 END) AS SOCIAL_INFLOW
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Credit Dispute'
-                     THEN 1 END)                                                                                 AS CREDIT_INFLOW
+                     THEN 1 END) AS CREDIT_INFLOW
      , COUNT(CASE
                  WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Internal'
-                     THEN 1 END)                                                                                 AS INTERNAL_INFLOW
+                     THEN 1 END) AS INTERNAL_INFLOW
 FROM RPT.T_dates AS D
    , MERGE AS C
 WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
