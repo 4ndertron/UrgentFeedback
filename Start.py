@@ -1,5 +1,7 @@
 print('Let the games, begin!')
 
+# TODO: Update the root cause case list for the risk administration team.
+
 # TODO: Update the social media goal... I can't
 
 # TODO: Turn the ERT Financial impact table into a stacked trending graph...
