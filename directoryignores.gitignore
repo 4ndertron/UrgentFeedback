@@ -1,2 +1,8 @@
 #remove the persistent ".idea" directory from the project listing
 .idea
+
+#If the .idea directory is still in a different local directory, run this command:
+git rm --cached .idea/\*
+
+#Maybe test the following command because I don't know if it will work better or not...:
+git rm --cached .idea/
