@@ -21,22 +21,57 @@ WITH ATTRITIONED AS (
     FROM HR.T_EMPLOYEE
     WHERE MGR_ID_3 = 209122 -- Chuck Browne
       AND TERMINATED
-      AND TERMINATION_DATE >= '2019-01-01'
+      AND TERMINATION_DATE >= '2017-08-01'
     ORDER BY TERMINATION_DATE ASC
 )
+
+   , ALL_EMPLOYEES AS (
+    SELECT EMPLOYEE_ID
+         , ANY_VALUE(FULL_NAME)            AS FULL_NAME
+         , ANY_VALUE(SUPERVISOR_NAME_1)    AS SUPERVISOR_NAME_1
+         , ANY_VALUE(SUPERVISORY_ORG)      AS SUPERVISORY_ORG
+         , MIN(HR.CREATED_DATE)            AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)             AS TEAM_END_DATE
+         , ANY_VALUE(HIRE_DATE)            AS HIRE_DATE
+         , ANY_VALUE(TERMINATION_DATE)     AS TERMINATION_DATE
+         , ANY_VALUE(TERMINATION_CATEGORY) AS TERMINATION_CATEGORY
+         , ANY_VALUE(TERMINATION_REASON)   AS TERMINATION_REASON
+    FROM HR.T_EMPLOYEE_ALL AS HR
+    WHERE MGR_ID_3 = 209122 -- Chuck Browne
+    GROUP BY HR.EMPLOYEE_ID
+    ORDER BY TEAM_START_DATE DESC
+)
+
+-- objectives table
 /*
--- TODO: Figure out what YOY means
-    Compare Attrition from Aug '17 - Mar '18 against Aug '18 - Mar '19
+-- TODO: Build an agent "ION" graph.
+-- TODO: Build an active volume line graph based on number of employees.
 -- TODO: Figure out the formula for Attrition (how it's calculated)
     Average Number of Employees = (Active Volume on Start Date + Active Volume on End Date) / 2
     Attrition Rate = (Number of Attrition / Average Number of Employees) * 100
--- TODO: Build an agent "inflow" graph based on hire date.
--- TODO: Build an active volume line graph based on number of employees.
+-- TODO: Figure out what YOY means
+    Compare Attrition from Aug '17 - Mar '18 against Aug '18 - Mar '19
 -- TODO: Get the number of terms that an agent had after they left.
 -- TODO: Identify the difference between Transfer and termination.
 -- TODO: Distinguish between voluntary and involuntary termination.
 -- TODO: Get the average tenure of agents terminated in a given month
  */
 
+   , ION_TABLE AS (
+    SELECT DATE_TRUNC('MM', D.DT)                                         AS MONTH_1
+         , E.SUPERVISORY_ORG
+         , COUNT(CASE WHEN TO_DATE(E.HIRE_DATE) = D.DT THEN 1 END)        AS PRIORITY_CREATED
+         , COUNT(CASE WHEN TO_DATE(E.TERMINATION_DATE) = D.DT THEN 1 END) AS PRIORITY_CLOSED
+         , PRIORITY_CREATED - PRIORITY_CLOSED                             AS NET
+    FROM RPT.T_dates AS D
+       , ALL_EMPLOYEES AS E
+    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+      AND E.SUPERVISORY_ORG IS NOT NULL
+    GROUP BY MONTH_1
+           , E.SUPERVISORY_ORG
+    ORDER BY E.SUPERVISORY_ORG
+           , MONTH_1
+)
+
 SELECT *
-FROM ATTRITIONED
+FROM ION_TABLE
