@@ -1,10 +1,7 @@
 print('Let the games, begin!')
 
-# TODO: Update the root cause case list for the risk administration team.
+# TODO: In the CXBR, split the 768 billing review backlog into the inverter providers...
+#  That doesn't make sense, or add any value.
 
-# TODO: Update the social media goal... I can't
-
-# TODO: Turn the ERT Financial impact table into a stacked trending graph...
-
-# TODO: Make a daily csv report that gets sent to the appropriate managers and supervisors
-#  for the urgent feedback from filings.
+# TODO: For the urgent feedback request, Make a daily csv report that gets sent to the appropriate managers and
+#  supervisors for the urgent feedback from filings.
