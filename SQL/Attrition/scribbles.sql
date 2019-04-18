@@ -1,50 +1,33 @@
-/*
- The purpose of this file is to help identify when an employee is moved in or out of the director's org to help
- calculate attrition rate.
- */
-WITH CX_ORGS AS (
-    SELECT DISTINCT SUPERVISORY_ORG
-    FROM HR.T_EMPLOYEE_ALL
-    WHERE MGR_ID_3 = 209122
-)
-
-   , ENTIRE_TABLE AS (
-    SELECT HR.EMPLOYEE_ID
-         , HR.SUPERVISORY_ORG
-         , ANY_VALUE(HR.FULL_NAME)                                                 AS FULL_NAME
-         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                                         AS SUPERVISOR_NAME_1
+WITH ENTIRE_HISTORY AS (
+    SELECT WH.BADGE_ID
+         , ANY_VALUE(WH.FIRST_NAME) || ' ' || ANY_VALUE(WH.LAST_NAME)      AS FULL_NAME
+         , MIN(WH.WEEK_START)                                              AS START_WEEK
+         , MAX(WH.WEEK_END)                                                AS END_WEEK
+         , ANY_VALUE(WH.TEAM)                                              AS TEAM
+         , WH.ORG
+         , ANY_VALUE(WH.COST_CENTER)                                       AS COST_CODE
+         , ROW_NUMBER() OVER(PARTITION BY WH.BADGE_ID ORDER BY START_WEEK) AS RN
          , CASE
-               WHEN ANY_VALUE(HR.SUPERVISORY_ORG) IN
-                    ('Incentive Processing', 'New England, Grit & Movement MA, CT, NH, RI, VT, NY, NJ, PA',
-                     'Customer Success II', 'Business Analytics', 'Meter Readers (East)', 'Workforce Management',
-                     'PMO/BA', 'Operations Support', 'PIO Ops', 'Permit Specialists (SOL-CA-26 Palo Alto)', 'Inbound',
-                     'E-mail Administration', 'Billing', 'Customer Relations', 'Incentives Processing',
-                     'Sales Concierge', 'Transfers', 'Central Scheduling', 'Training', 'RECs & Rebates', 'Solutions',
-                     'Customer Solutions', 'Call & Workflow Quality Control', 'Executive Resolutions',
-                     'Customer Success', 'Click Support', 'Customer Experience', 'Scheduling', 'Customer Service',
-                     'Customer Success I', 'Customer Support', 'Project Specialists',
-                     'Operations Support Project Management', 'SREC Incentives', 'Default Managers',
-                     'Customer Success 1', 'WFM') THEN 1
-               ELSE 0 END                                                          AS DIRECTOR_KPI
-         , MIN(HR.CREATED_DATE)                                                    AS TEAM_START_DATE
-         , MAX(HR.EXPIRY_DATE)                                                     AS TEAM_END_DATE
-         , ANY_VALUE(HR.HIRE_DATE)                                                 AS HIRE_DATE
-         , ANY_VALUE(HR.TERMINATION_DATE)                                          AS TERMINATION_DATE
-         , DATEDIFF('MM', ANY_VALUE(HR.HIRE_DATE), ANY_VALUE(HR.TERMINATION_DATE)) AS DAY_TENURE
-         , ANY_VALUE(HR.TERMINATION_CATEGORY)                                      AS TERMINATION_CATEGORY
-         , ANY_VALUE(HR.TERMINATION_REASON)                                        AS TERMINATION_REASON
-    FROM HR.T_EMPLOYEE_ALL AS HR
---              INNER JOIN CX_ORGS AS ORG
---                         ON HR.SUPERVISORY_ORG = ORG.SUPERVISORY_ORG
---     WHERE HR.SUPERVISORY_ORG IS NOT NULL
-    GROUP BY HR.EMPLOYEE_ID
-           , HR.SUPERVISORY_ORG
-    ORDER BY TEAM_START_DATE DESC
+               WHEN ANY_VALUE(WH.TEAM) IN
+                    ('Business Analytics', 'Call & Workflow Quality Control', 'Central Scheduling', 'Click Support',
+                     'Customer Experience', 'Customer Relations', 'Customer Service', 'Customer Solutions',
+                     'Customer Success', 'Customer Success 1', 'Customer Success I', 'Customer Success II',
+                     'Customer Support', 'Default Managers', 'Executive Resolutions', 'Inbound', 'PIO Ops', 'PMO/BA',
+                     'Project Specialists', 'Sales Concierge', 'Scheduling', 'Solutions', 'Training', 'Transfers',
+                     'WFM', 'Workforce Management', 'E-mail Administration')
+                   AND COST_CODE LIKE ('%Customer Experience%', '%Solar Performance Corp%') THEN TRUE
+               ELSE FALSE END                                              AS DIRECTOR_ORG
+         , LEAD(DIRECTOR_ORG, 1, DIRECTOR_ORG) OVER(PARTITION BY WH.BADGE_ID
+                ORDER BY START_WEEK)                                       AS NEXT_DIRECTOR
+         , CASE
+               WHEN RN = 1 AND DIRECTOR_ORG THEN TRUE
+               WHEN DIRECTOR_ORG = NEXT_DIRECTOR THEN FALSE
+               ELSE TRUE END                                               AS TRANSFER_FLAG
+    FROM D_POST_INSTALL.T_WORKDAY_HISTORY AS WH
+    GROUP BY WH.BADGE_ID
+           , WH.ORG
+    ORDER BY WH.BADGE_ID
+           , START_WEEK
 )
-
-
-SELECT COUNT(*), SUM(DIRECTOR_KPI)
-FROM ENTIRE_TABLE
-
--- SELECT *
--- FROM CX_ORGS
+SELECT *
+FROM ENTIRE_HISTORY

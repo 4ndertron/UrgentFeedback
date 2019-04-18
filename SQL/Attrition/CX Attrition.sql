@@ -1,31 +1,55 @@
--- Research
--- ========
--- Where TERMINATED is true, TERMINATION_DATE, TERMINATION_CATEGORY, and TERMINATION_REASON are always filled
--- TERMINATION_COMPLETE_DATE can be filled when TERMINATED is false and null when TERMINATED is true
---     Only 3.7% of the time. Generally, TERMINATION_COMPLETE_DATE matches nullness of TERMINATION_DATE
--- Dates can be different though...
---     Looks like logic on TERMINATION_COMPLETED_DATE transcends the first row it applied to (it can be retroactively applied)
---         That is, it each EMPLOYEE_ID on HR.T_EMPLOYEE_ALL has only one distinct TERMINATION_COMPLETE_DATE
---     **Probably best to trust TERMINATION_DATE only**
---         Reached out to Jed's team via email to get distinction
-
--- Get termination dates and reasons for our org, YTD
-WITH ALL_EMPLOYEES AS (
-    SELECT EMPLOYEE_ID
-         , ANY_VALUE(FULL_NAME)                                              AS FULL_NAME
-         , ANY_VALUE(SUPERVISOR_NAME_1)                                      AS SUPERVISOR_NAME_1
-         , ANY_VALUE(SUPERVISORY_ORG)                                        AS SUPERVISORY_ORG
-         , MIN(HR.CREATED_DATE)                                              AS TEAM_START_DATE
-         , MAX(HR.EXPIRY_DATE)                                               AS TEAM_END_DATE
-         , ANY_VALUE(HIRE_DATE)                                              AS HIRE_DATE
-         , ANY_VALUE(TERMINATION_DATE)                                       AS TERMINATION_DATE
-         , DATEDIFF('MM', ANY_VALUE(HIRE_DATE), ANY_VALUE(TERMINATION_DATE)) AS DAY_TENURE
-         , ANY_VALUE(TERMINATION_CATEGORY)                                   AS TERMINATION_CATEGORY
-         , ANY_VALUE(TERMINATION_REASON)                                     AS TERMINATION_REASON
+WITH ENTIRE_HISTORY AS (
+    SELECT HR.EMPLOYEE_ID
+         , HR.SUPERVISORY_ORG
+         , ANY_VALUE(HR.FULL_NAME)                                                 AS FULL_NAME
+         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                                         AS SUPERVISOR_NAME_1
+         , MIN(HR.CREATED_DATE)                                                    AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)                                                     AS TEAM_EXPIRY_DATE
+         , ANY_VALUE(HR.HIRE_DATE)                                                 AS HIRE_DATE
+         , ANY_VALUE(HR.TERMINATION_DATE)                                          AS TERMINATION_DATE
+         , DATEDIFF('MM', ANY_VALUE(HR.HIRE_DATE),
+                    NVL(ANY_VALUE(HR.TERMINATION_DATE), CURRENT_DATE()))           AS MONTH_TENURE
+         , ANY_VALUE(HR.TERMINATION_CATEGORY)                                      AS TERMINATION_CATEGORY
+         , ANY_VALUE(HR.TERMINATION_REASON)                                        AS TERMINATION_REASON
+         , ROW_NUMBER() OVER(PARTITION BY HR.EMPLOYEE_ID ORDER BY TEAM_START_DATE) AS RN
+         , CASE
+               WHEN ANY_VALUE(HR.SUPERVISORY_ORG) IN
+                    ('Business Analytics', 'Call & Workflow Quality Control', 'Central Scheduling', 'Click Support',
+                     'Customer Experience', 'Customer Relations', 'Customer Service', 'Customer Solutions',
+                     'Customer Success', 'Customer Success 1', 'Customer Success I', 'Customer Success II',
+                     'Customer Support', 'Default Managers', 'Executive Resolutions', 'Inbound', 'PIO Ops', 'PMO/BA',
+                     'Project Specialists', 'Scheduling', 'Solutions', 'Training', 'Transfers',
+                     'WFM', 'Workforce Management', 'E-mail Administration') THEN TRUE
+               ELSE FALSE END                                                      AS DIRECTOR_ORG
+         , LEAD(DIRECTOR_ORG, 1, DIRECTOR_ORG) OVER(PARTITION BY HR.EMPLOYEE_ID
+                ORDER BY TEAM_START_DATE)                                          AS NEXT_DIRECTOR
+         , CASE
+               WHEN RN = 1 AND DIRECTOR_ORG THEN TRUE
+               WHEN DIRECTOR_ORG = NEXT_DIRECTOR THEN FALSE
+               ELSE TRUE END                                                       AS TRANSFER_FLAG
     FROM HR.T_EMPLOYEE_ALL AS HR
-    WHERE MGR_ID_3 = 209122
     GROUP BY HR.EMPLOYEE_ID
-    ORDER BY TEAM_START_DATE DESC
+           , HR.SUPERVISORY_ORG
+    ORDER BY HR.EMPLOYEE_ID
+           , TEAM_START_DATE
+)
+
+   , TRANSFER_HISTORY AS (
+    SELECT *
+    FROM ENTIRE_HISTORY
+    WHERE TRANSFER_FLAG
+)
+
+   , CORE_TABLE AS (
+    SELECT EMPLOYEE_ID
+         , FULL_NAME
+         , SUPERVISOR_NAME_1
+         , SUPERVISORY_ORG
+         , TEAM_START_DATE
+         , NVL(TERMINATION_DATE, TEAM_EXPIRY_DATE) AS TEAM_END_DATE
+         , MONTH_TENURE
+         , TERMINATION_CATEGORY
+    FROM TRANSFER_HISTORY AS T
 )
 
 -- objectives table
@@ -45,13 +69,13 @@ WITH ALL_EMPLOYEES AS (
 
    , ION_TABLE AS (
     SELECT LAST_DAY(D.DT)                                                 AS MONTH_1
-         , COUNT(CASE WHEN TO_DATE(E.HIRE_DATE) = D.DT THEN 1 END)        AS E_INFLOW
-         , COUNT(CASE WHEN TO_DATE(E.TERMINATION_DATE) = D.DT THEN 1 END) AS E_OUTFLOW
+         , COUNT(CASE WHEN TO_DATE(CT.TEAM_START_DATE) = D.DT THEN 1 END) AS E_INFLOW
+         , COUNT(CASE WHEN TO_DATE(CT.TEAM_END_DATE) = D.DT THEN 1 END)   AS E_OUTFLOW
          , E_INFLOW - E_OUTFLOW                                           AS NET
     FROM RPT.T_dates AS D
-       , ALL_EMPLOYEES AS E
+       , CORE_TABLE AS CT
     WHERE D.DT BETWEEN '2017-08-01' AND CURRENT_DATE()
-      AND E.SUPERVISORY_ORG IS NOT NULL
+      AND CT.SUPERVISORY_ORG IS NOT NULL
     GROUP BY MONTH_1
     ORDER BY MONTH_1
 )
@@ -59,14 +83,14 @@ WITH ALL_EMPLOYEES AS (
    , WIP_TABLE AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN E.HIRE_DATE <= D.DT AND
-                          (E.TERMINATION_DATE >= D.DT OR E.TERMINATION_DATE IS NULL)
+                     WHEN CT.TEAM_START_DATE <= D.DT AND
+                          (CT.TEAM_END_DATE >= D.DT OR CT.TEAM_END_DATE >= CURRENT_DATE())
                          THEN 1 END)                                                  AS WIP
          , ROUND(AVG(WIP) OVER(PARTITION BY DATE_TRUNC('MM', D.DT) ORDER BY D.DT), 2) AS MONTH_AVG
     FROM RPT.T_dates AS D
-       , ALL_EMPLOYEES AS E
+       , CORE_TABLE AS CT
     WHERE D.DT BETWEEN '2017-08-01' AND CURRENT_DATE()
-      AND E.SUPERVISORY_ORG IS NOT NULL
+      AND CT.SUPERVISORY_ORG IS NOT NULL
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -87,6 +111,5 @@ WITH ALL_EMPLOYEES AS (
 )
 
 SELECT *
-FROM MONTH_MERGE
-ORDER BY DT
+FROM ENTIRE_HISTORY
 ;
