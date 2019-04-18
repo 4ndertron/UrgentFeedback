@@ -15,7 +15,7 @@ WITH ENTIRE_HISTORY AS (
          , CASE
                WHEN MAX(HR.EXPIRY_DATE) >= CURRENT_DATE() AND ANY_VALUE(HR.TERMINATION_DATE) IS NOT NULL
                    THEN ANY_VALUE(HR.TERMINATION_DATE)
-               ELSE MAX(HR.EXPIRY_DATE) END                                        AS TEAM_EXPIRY_DATE
+               ELSE MAX(HR.EXPIRY_DATE) END                                        AS TEAM_END_DATE
          , ROW_NUMBER() OVER(PARTITION BY HR.EMPLOYEE_ID ORDER BY TEAM_START_DATE) AS RN
          , CASE
                WHEN ANY_VALUE(HR.SUPERVISORY_ORG) IN
@@ -34,7 +34,7 @@ WITH ENTIRE_HISTORY AS (
 -- --                WHEN DIRECTOR_ORG AND TERMINATION_DATE IS NOT NULL THEN TRUE
 --                ELSE TRUE END                                                       AS TRANSFER_OUT
          , CASE
-               WHEN ANY_VALUE(TERMINATION_DATE) >= TEAM_EXPIRY_DATE AND NOT NEXT_DIRECTOR THEN TRUE
+               WHEN ANY_VALUE(TERMINATION_DATE) >= TEAM_END_DATE AND NOT NEXT_DIRECTOR THEN TRUE
                WHEN DIRECTOR_ORG != NEXT_DIRECTOR THEN TRUE
                ELSE FALSE END                                                      AS TRANSFER
     FROM HR.T_EMPLOYEE_ALL AS HR
