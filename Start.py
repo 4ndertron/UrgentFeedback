@@ -1,7 +1,5 @@
 print('Let the games, begin!')
 
-#TODO: Add ECL Dashboard to project list.
-
 # TODO: Change the Attrition report to a YoY format in MSTG.
 
 # TODO: Update the RMBR Agent Metrics with the notes uploaded to the drive.
