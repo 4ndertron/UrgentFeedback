@@ -1,0 +1,33 @@
+WITH ESCALATION_CASES AS (
+    SELECT CASE_NUMBER
+         , C.CREATED_DATE
+         , C.ACCOUNT_ID
+         , C.RECORD_TYPE
+         , C.STATUS
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
+--	AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+),
+
+     ESC_CASES AS (
+         SELECT CASE_NUMBER
+              , C.CREATED_DATE
+              , C.ACCOUNT_ID
+              , C.RECORD_TYPE
+              , C.STATUS
+              , C.SUBJECT
+         FROM RPT.T_CASE AS C
+         WHERE C.RECORD_TYPE = 'Solar - Electrical Service Change'
+     )
+
+SELECT E.*
+     , ESC.CASE_NUMBER                                                       AS ESC_CASE_NUMBER
+     , TO_DATE(ESC.CREATED_DATE)                                             AS ESC_CREATED_DATE
+     , CASE WHEN ESC_CREATED_DATE >= TO_DATE(E.CREATED_DATE) - 30 THEN 1 END AS OVERLAP_TALLY_30_DAYS
+     , CASE WHEN ESC_CREATED_DATE >= TO_DATE(E.CREATED_DATE) - 90 THEN 1 END AS OVERLAP_TALLY_90_DAYS
+FROM ESCALATION_CASES AS E
+         LEFT JOIN
+     ESC_CASES AS ESC
+     ON E.ACCOUNT_ID = ESC.ACCOUNT_ID
+WHERE OVERLAP_TALLY_30_DAYS IS NOT NULL
+ORDER BY E.ACCOUNT_ID

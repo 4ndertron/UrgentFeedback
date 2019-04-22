@@ -1,0 +1,5 @@
+SELECT
+
+FROM RPT.T_PROJECT AS P
+         LEFT JOIN
+	
