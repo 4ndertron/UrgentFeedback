@@ -56,6 +56,7 @@ WITH ENTIRE_HISTORY AS (
       AND TEAM_END_DATE1 >= TEAM_START_DATE
     GROUP BY EMPLOYEE_ID, DIRECTOR_ORG
 )
+
    , ION_TABLE AS (
     SELECT LAST_DAY(D.DT)                                                                  AS MONTH_1
          , COUNT(CASE WHEN TO_DATE(CT.TEAM_START_DATE) = D.DT THEN 1 END)                  AS E_INFLOW
