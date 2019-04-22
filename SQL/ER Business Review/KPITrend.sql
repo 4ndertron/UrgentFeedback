@@ -300,7 +300,7 @@ WITH AGENTS AS (
 )
 
    , ION_TABLE AS (
-    SELECT LAST_DAY(D.DT)                                                           AS MONTH_1
+    SELECT IFF(LAST_DAY(D.DT) >= CURRENT_DATE, CURRENT_DATE, LAST_DAY(D.DT))        AS MONTH_1
          , COUNT(CASE WHEN TO_DATE(C.CREATED_DATE) = D.DT THEN 1 END)               AS CASES_CREATED
          , COUNT(CASE WHEN TO_DATE(C.CLOSED_DATE) = D.DT THEN 1 END)                AS CASES_CLOSED
          , CASES_CREATED - CASES_CLOSED                                             AS NET
@@ -315,11 +315,11 @@ WITH AGENTS AS (
 )
 
    , MONTH_MERGE AS (
-    SELECT WT.DT
-         , WT.ALL_WIP
-         , WT.AVG_COVERAGE
-         , IT.CASES_CLOSED
-         , IT.AVERAGE_CLOSED_AGE
+    SELECT WT.DT                 AS KPI_DT
+         , WT.ALL_WIP            AS KPI_ALL_WIP
+         , WT.AVG_COVERAGE       AS KPI_AVG_COVERAGE
+         , IT.CASES_CLOSED       AS KPI_CASES_CLOSED
+         , IT.AVERAGE_CLOSED_AGE AS KPI_AVERAGE_CLOSED_AGE
     FROM WIP_TABLE AS WT
              INNER JOIN
          ION_TABLE AS IT
@@ -330,4 +330,4 @@ WITH AGENTS AS (
 
 SELECT *
 FROM MONTH_MERGE
-ORDER BY DT
+ORDER BY KPI_DT
