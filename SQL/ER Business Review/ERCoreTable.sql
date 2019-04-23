@@ -1,11 +1,31 @@
 WITH AGENTS AS (
     SELECT HR.FULL_NAME
-         , MIN(HR.CREATED_DATE) AS TEAM_START_DATE
-         , MAX(HR.EXPIRY_DATE)  AS TEAM_END_DATE
+         , ANY_VALUE(HR.FIRST_NAME) AS FIRST_NAME
+         , ANY_VALUE(HR.LAST_NAME)  AS LAST_NAME
+         , MIN(HR.CREATED_DATE)     AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)      AS TEAM_END_DATE
+         , ANY_VALUE(HR.TERMINATED) AS TERMINATED
     FROM HR.T_EMPLOYEE_ALL AS HR
     WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
     GROUP BY HR.FULL_NAME
     ORDER BY TEAM_START_DATE DESC
+)
+
+   , QA AS (
+    SELECT HR.FULL_NAME
+         , ANY_VALUE(HR.FIRST_NAME || ' ') AS AGENT
+         , ANY_VALUE(HR.LAST_NAME)         AS AGENT_LAST
+         , ANY_VALUE(HR.TEAM_START_DATE)   AS TEAM_START_DATE
+         , ANY_VALUE(HR.TEAM_END_DATE)     AS TEAM_END_DATE
+         , AVG(QA.QSCORE)                  AS AVG_QA_SCORE
+    FROM AGENTS AS HR
+             LEFT OUTER JOIN
+         D_POST_INSTALL.T_NE_AGENT_QSCORE AS QA
+         ON QA.AGENT_FIRST_NAME = HR.FIRST_NAME || ' '
+    WHERE QA.EVALUATION_DATE >= DATEADD('D', -30, CURRENT_DATE())
+      AND HR.TERMINATED = FALSE
+    GROUP BY HR.FULL_NAME
+    ORDER BY AVG_QA_SCORE DESC
 )
 
    , PAYMENTS AS (
@@ -55,104 +75,74 @@ WITH AGENTS AS (
     SELECT C.CASE_NUMBER
          , C.ORIGIN
          , C.STATUS
-         , C.PROJECT_ID                                                                            AS PID
+         , C.PROJECT_ID                                                         AS PID
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
                ELSE 'Internal'
-        END                                                                                        AS PRIORITY_BUCKET
+        END                                                                     AS PRIORITY_BUCKET
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
                ELSE 'Internal'
-        END                                                                                        AS PRIORITY_TABLE
+        END                                                                     AS PRIORITY_TABLE
          , C.OWNER
          , C.OWNER_ID
          , C.CREATED_DATE
-         , DATE_TRUNC('D', C.CREATED_DATE)                                                         AS DAY_CREATED
-         , DATE_TRUNC('W', C.CREATED_DATE)                                                         AS WEEK_CREATED
-         , DATE_TRUNC('month', C.CREATED_DATE)                                                     AS MONTH_CREATED
+         , DATE_TRUNC('D', C.CREATED_DATE)                                      AS DAY_CREATED
+         , DATE_TRUNC('W', C.CREATED_DATE)                                      AS WEEK_CREATED
+         , DATE_TRUNC('month', C.CREATED_DATE)                                  AS MONTH_CREATED
          , C.CLOSED_DATE
-         , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
-         , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
-         , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
-         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                                    AS ERA
-         , DATE_TRUNC('D', ERA)                                                                    AS ER_ACCEPTED_DAY
-         , DATE_TRUNC('W', ERA)                                                                    AS ER_ACCEPTED_WEEK
-         , DATE_TRUNC('month', ERA)                                                                AS ER_ACCEPTED_MONTH
+         , DATE_TRUNC('D', C.CLOSED_DATE)                                       AS DAY_CLOSED
+         , DATE_TRUNC('W', C.CLOSED_DATE)                                       AS WEEK_CLOSED
+         , DATE_TRUNC('month', C.CLOSED_DATE)                                   AS MONTH_CLOSED
+         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                 AS ERA
+         , DATE_TRUNC('D', ERA)                                                 AS ER_ACCEPTED_DAY
+         , DATE_TRUNC('W', ERA)                                                 AS ER_ACCEPTED_WEEK
+         , DATE_TRUNC('month', ERA)                                             AS ER_ACCEPTED_MONTH
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
                              ORDER BY CC.CREATEDATE),
-                        CURRENT_TIMESTAMP())) / (24 * 60 * 60)
-                                                                                                   AS GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                    AS COVERAGE
-         , IFF(
-            CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
-            DATEDIFF(S,
-                     CC.CREATEDATE,
-                     NVL(LEAD(CC.CREATEDATE) OVER(
-                              PARTITION BY C.CASE_NUMBER
-                              ORDER BY CC.CREATEDATE
-                             ),
-                         CURRENT_TIMESTAMP())) / (24 * 60 * 60),
-            NULL
-        )
-                                                                                                   AS LAST_30_DAY_GAP
+                        CURRENT_TIMESTAMP())) / (24 * 60 * 60)                  AS GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
-               1,
-               NULL)
-                                                                                                   AS LAST_30_DAY_COVERAGE_TALLY
+               DATEDIFF(S,
+                        CC.CREATEDATE,
+                        NVL(LEAD(CC.CREATEDATE) OVER(
+                                 PARTITION BY C.CASE_NUMBER
+                                 ORDER BY CC.CREATEDATE
+                                ),
+                            CURRENT_TIMESTAMP())) / (24 * 60 * 60),
+               NULL)                                                            AS LAST_30_DAY_GAP
+         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE) AS COVERAGE
+         , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
+               ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               NULL)                                                            AS LAST_30_DAY_COVERAGE
          , CC.CREATEDBYID
          , CASE
-               WHEN
-                       c.CREATED_DATE IS NOT NULL
-                       AND
-                       c.CLOSED_DATE IS NULL
-                   THEN
-                   1
-        END                                                                                        AS WIP_kpi
+               WHEN c.CREATED_DATE IS NOT NULL
+                   AND c.CLOSED_DATE IS NULL
+                   AND C.STATUS != 'In Dispute' THEN 1 END                      AS WIP_kpi
          , CASE
-               WHEN
-                   CREATEDBYID = OWNER_ID
-                   THEN
+               WHEN CREATEDBYID = OWNER_ID THEN
                            DATEDIFF(S, C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
                        - (DATEDIFF(WK, C.CREATED_DATE, CC.CREATEDATE) * 2)
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sun' THEN 24 ELSE 0 END)
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sat' THEN 24 ELSE 0 END)
-               ELSE
-                       DATEDIFF('S', C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
-        END                                                                                        AS HOURLY_RESPONSE_TAT
-         , DATEDIFF('s', C.CREATED_DATE, NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60) AS CASE_AGE
-         , CASE
-               WHEN
-                   HOURLY_RESPONSE_TAT <= 24
-                   THEN
-                   1
-        END                                                                                        AS RESPONSE_SLA
-         , CASE
-               WHEN
-                   HOURLY_RESPONSE_TAT <= 2
-                   THEN
-                   1
-        END                                                                                        AS PRIORITY_RESPONSE_SLA
-         , CASE
-               WHEN
-                   C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15
-                   THEN
-                   1
-        END                                                                                        AS CLOSED_15_DAY_SLA
-         , CASE
-               WHEN
-                   C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30
-                   THEN
-                   1
-        END                                                                                        AS CLOSED_30_DAY_SLA
+               ELSE DATEDIFF('S', C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
+        END                                                                     AS HOURLY_RESPONSE_TAT
+         , DATEDIFF('s'
+               , C.CREATED_DATE
+               , NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60)      AS CASE_AGE
+         , CASE WHEN HOURLY_RESPONSE_TAT <= 24 THEN 1 END                       AS RESPONSE_SLA
+         , CASE WHEN HOURLY_RESPONSE_TAT <= 2 THEN 1 END                        AS PRIORITY_RESPONSE_SLA
+         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15 THEN 1 END    AS CLOSED_15_DAY_SLA
+         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30 THEN 1 END    AS CLOSED_30_DAY_SLA
     FROM RPT.T_CASE AS C
              LEFT OUTER JOIN
          RPT.V_SF_CASECOMMENT AS CC
@@ -211,64 +201,74 @@ WITH AGENTS AS (
          , ANY_VALUE(WEEK_CLOSED)                  AS WEEK_CLOSED
          , ANY_VALUE(MONTH_CLOSED)                 AS MONTH_CLOSED
          , ANY_VALUE(ERA)                          AS EXECUTIVE_RESOLUTIONS_ACCEPTED
-         , ANY_VALUE(ER_ACCEPTED_DAY)              AS ER_ACCEPTED_DAY
-         , ANY_VALUE(ER_ACCEPTED_WEEK)             AS ER_ACCEPTED_WEEK
-         , ANY_VALUE(ER_ACCEPTED_MONTH)            AS ER_ACCEPTED_MONTH
-         , ANY_VALUE(CASE_AGE)                     AS CASE_AGE
-         , ANY_VALUE(PRIORITY_CASE_BUCKET)         AS PRIORITY_CASE_BUCKET
-         , MAX(WIP_KPI)                            AS WIP_KPI
-         , AVG(GAP)                                AS CASE_AVERAGE_GAP
-         , MAX(COVERAGE)                           AS CASE_COVERAGE
-         , AVG(LAST_30_DAY_GAP)                    AS AVERAGE_30_DAY_GAP
-         , SUM(LAST_30_DAY_COVERAGE_TALLY)         AS AVERAGE_30_DAY_COVERAGE
-         , MAX(RESPONSE_SLA)                       AS RESPONSE_SLA
-         , MAX(PRIORITY_RESPONSE_SLA)              AS PRIORITY_RESPONSE_SLA
-         , MAX(CLOSED_15_DAY_SLA)                  AS CLOSED_15_DAY_SLA
-         , MAX(CLOSED_30_DAY_SLA)                  AS CLOSED_30_DAY_SLA
-         , MIN(HOURLY_RESPONSE_TAT)                AS HOURLY_RESPONSE_TAT
+         , ANY_VALUE(ER_ACCEPTED_DAY)      AS ER_ACCEPTED_DAY
+         , ANY_VALUE(ER_ACCEPTED_WEEK)     AS ER_ACCEPTED_WEEK
+         , ANY_VALUE(ER_ACCEPTED_MONTH)    AS ER_ACCEPTED_MONTH
+         , ANY_VALUE(CASE_AGE)             AS CASE_AGE
+         , ANY_VALUE(PRIORITY_CASE_BUCKET) AS PRIORITY_CASE_BUCKET
+         , MAX(WIP_KPI)                    AS WIP_KPI
+         , AVG(GAP)                        AS CASE_AVERAGE_GAP
+         , AVG(LAST_30_DAY_GAP)            AS AVERAGE_30_DAY_GAP
+         , MAX(COVERAGE)                   AS CASE_COVERAGE
+         , MAX(LAST_30_DAY_COVERAGE)       AS LAST_30_DAY_COVERAGE
+         , MAX(RESPONSE_SLA)               AS RESPONSE_SLA
+         , MAX(PRIORITY_RESPONSE_SLA)      AS PRIORITY_RESPONSE_SLA
+         , MAX(CLOSED_15_DAY_SLA)          AS CLOSED_15_DAY_SLA
+         , MAX(CLOSED_30_DAY_SLA)          AS CLOSED_30_DAY_SLA
+         , MIN(HOURLY_RESPONSE_TAT)        AS HOURLY_RESPONSE_TAT
     FROM T2
     GROUP BY CREATED_DATE
 )
 
+   , COVERAGE_30 AS (
+    SELECT CASE_NUMBER
+         , CREATEDATE
+         , ROW_NUMBER() OVER(PARTITION BY CASE_NUMBER ORDER BY CREATEDATE) AS LAST_30_DAY_COVERAGE
+    FROM T1
+    WHERE CREATEDATE >= DATEADD('D', -30, CURRENT_DATE())
+)
+
    , MERGE AS (
     SELECT T3.CREATED_DATE
-         , ANY_VALUE(T3.CASE_NUMBER)                                                                 AS CASE_NUMBER
-         , ANY_VALUE(T3.PROJECT_ID)                                                                  AS PROJECT_ID
-         , ANY_VALUE(T3.CASE_STATUS)                                                                 AS CASE_STATUS
-         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER)                                                AS SOLAR_BILLING_ACCOUNT_NUMBER
-         , ANY_VALUE(T3.SYSTEM_SIZE)                                                                 AS SYSTEM_SIZE
-         , ANY_VALUE(T3.SYSTEM_VALUE)                                                                AS SYSTEM_VALUE
-         , ANY_VALUE(T3.SERVICE_STATE)                                                               AS SERVICE_STATE
-         , ANY_VALUE(T3.OWNER)                                                                       AS OWNER
-         , ANY_VALUE(T3.ORIGIN)                                                                      AS ORIGIN
-         , ANY_VALUE(T3.PRIORITY_BUCKET)                                                             AS PRIORITY_BUCKET
-         , ANY_VALUE(T3.PRIORITY_TABLE)                                                              AS PRIORITY_TABLE
-         , ANY_VALUE(T3.DAY_CREATED)                                                                 AS DAY_CREATED
-         , ANY_VALUE(T3.WEEK_CREATED)                                                                AS WEEK_CREATED
-         , ANY_VALUE(T3.MONTH_CREATED)                                                               AS MONTH_CREATED
-         , ANY_VALUE(T3.CLOSED_DATE)                                                                 AS CLOSED_DATE
-         , ANY_VALUE(T3.DAY_CLOSED)                                                                  AS DAY_CLOSED
-         , ANY_VALUE(T3.WEEK_CLOSED)                                                                 AS WEEK_CLOSED
-         , ANY_VALUE(T3.MONTH_CLOSED)                                                                AS MONTH_CLOSED
-         , ANY_VALUE(T3.EXECUTIVE_RESOLUTIONS_ACCEPTED)                                              AS EXECUTIVE_RESOLUTIONS_ACCEPTED
-         , ANY_VALUE(T3.ER_ACCEPTED_DAY)                                                             AS ER_ACCEPTED_DAY
-         , ANY_VALUE(T3.ER_ACCEPTED_WEEK)                                                            AS ER_ACCEPTED_WEEK
-         , ANY_VALUE(T3.ER_ACCEPTED_MONTH)                                                           AS ER_ACCEPTED_MONTH
-         , ANY_VALUE(T3.CASE_AGE)                                                                    AS CASE_AGE
-         , ANY_VALUE(T3.PRIORITY_CASE_BUCKET)                                                        AS PRIORITY_CASE_BUCKET
-         , ANY_VALUE(T3.WIP_KPI)                                                                     AS WIP_KPI
-         , ANY_VALUE(T3.CASE_AVERAGE_GAP)                                                            AS CASE_AVERAGE_GAP
-         , ANY_VALUE(T3.CASE_COVERAGE)                                                               AS CASE_COVERAGE
-         , ANY_VALUE(T3.AVERAGE_30_DAY_GAP)                                                          AS AVERAGE_30_DAY_GAP
-         , ANY_VALUE(T3.AVERAGE_30_DAY_COVERAGE)                                                     AS AVERAGE_30_DAY_COVERAGE
-         , ANY_VALUE(T3.RESPONSE_SLA)                                                                AS RESPONSE_SLA
-         , ANY_VALUE(T3.PRIORITY_RESPONSE_SLA)                                                       AS PRIORITY_RESPONSE_SLA
-         , ANY_VALUE(T3.CLOSED_15_DAY_SLA)                                                           AS CLOSED_15_DAY_SLA
-         , ANY_VALUE(T3.CLOSED_30_DAY_SLA)                                                           AS CLOSED_30_DAY_SLA
-         , ANY_VALUE(T3.HOURLY_RESPONSE_TAT)                                                         AS HOURLY_RESPONSE_TAT
-         , NVL(SUM(CASE WHEN P.CREATED_DATE >= T3.CREATED_DATE THEN P.PAYMENT_AMOUNT ELSE 0 END), 0) AS COMPENSATION
-         , NVL(SUM(C.SYSTEM_VALUE), 0)                                                               AS CANCELLATION_COSTS
-         , COMPENSATION + CANCELLATION_COSTS                                                         AS ESCALATION_COST
+         , ANY_VALUE(T3.CASE_NUMBER)                    AS CASE_NUMBER
+         , ANY_VALUE(T3.PROJECT_ID)                     AS PROJECT_ID
+         , ANY_VALUE(T3.CASE_STATUS)                    AS CASE_STATUS
+         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER)   AS SOLAR_BILLING_ACCOUNT_NUMBER
+         , ANY_VALUE(T3.SYSTEM_SIZE)                    AS SYSTEM_SIZE
+         , ANY_VALUE(T3.SYSTEM_VALUE)                   AS SYSTEM_VALUE
+         , ANY_VALUE(T3.SERVICE_STATE)                  AS SERVICE_STATE
+         , ANY_VALUE(T3.OWNER)                          AS OWNER
+         , ANY_VALUE(T3.ORIGIN)                         AS ORIGIN
+         , ANY_VALUE(T3.PRIORITY_BUCKET)                AS PRIORITY_BUCKET
+         , ANY_VALUE(T3.PRIORITY_TABLE)                 AS PRIORITY_TABLE
+         , ANY_VALUE(T3.DAY_CREATED)                    AS DAY_CREATED
+         , ANY_VALUE(T3.WEEK_CREATED)                   AS WEEK_CREATED
+         , ANY_VALUE(T3.MONTH_CREATED)                  AS MONTH_CREATED
+         , ANY_VALUE(T3.CLOSED_DATE)                    AS CLOSED_DATE
+         , ANY_VALUE(T3.DAY_CLOSED)                     AS DAY_CLOSED
+         , ANY_VALUE(T3.WEEK_CLOSED)                    AS WEEK_CLOSED
+         , ANY_VALUE(T3.MONTH_CLOSED)                   AS MONTH_CLOSED
+         , ANY_VALUE(T3.EXECUTIVE_RESOLUTIONS_ACCEPTED) AS EXECUTIVE_RESOLUTIONS_ACCEPTED
+         , ANY_VALUE(T3.ER_ACCEPTED_DAY)                AS ER_ACCEPTED_DAY
+         , ANY_VALUE(T3.ER_ACCEPTED_WEEK)               AS ER_ACCEPTED_WEEK
+         , ANY_VALUE(T3.ER_ACCEPTED_MONTH)              AS ER_ACCEPTED_MONTH
+         , ANY_VALUE(T3.CASE_AGE)                       AS CASE_AGE
+         , ANY_VALUE(T3.PRIORITY_CASE_BUCKET)           AS PRIORITY_CASE_BUCKET
+         , ANY_VALUE(T3.WIP_KPI)                        AS WIP_KPI
+         , ANY_VALUE(T3.CASE_AVERAGE_GAP)               AS CASE_AVERAGE_GAP
+         , ANY_VALUE(T3.AVERAGE_30_DAY_GAP)             AS AVERAGE_30_DAY_GAP
+         , ANY_VALUE(T3.CASE_COVERAGE)                  AS CASE_COVERAGE
+         , MAX(C3.LAST_30_DAY_COVERAGE)                 AS LAST_30_DAY_COVERAGE
+         , ANY_VALUE(T3.RESPONSE_SLA)                   AS RESPONSE_SLA
+         , ANY_VALUE(T3.PRIORITY_RESPONSE_SLA)          AS PRIORITY_RESPONSE_SLA
+         , ANY_VALUE(T3.CLOSED_15_DAY_SLA)              AS CLOSED_15_DAY_SLA
+         , ANY_VALUE(T3.CLOSED_30_DAY_SLA)              AS CLOSED_30_DAY_SLA
+         , ANY_VALUE(T3.HOURLY_RESPONSE_TAT)            AS HOURLY_RESPONSE_TAT
+         , NVL(SUM(CASE
+                       WHEN P.CREATED_DATE >= T3.CREATED_DATE THEN P.PAYMENT_AMOUNT
+                       ELSE 0 END), 0)                  AS COMPENSATION
+         , NVL(SUM(C.SYSTEM_VALUE), 0)                  AS CANCELLATION_COSTS
+         , COMPENSATION + CANCELLATION_COSTS            AS ESCALATION_COST
     FROM T3
              LEFT OUTER JOIN
          PAYMENTS AS P
@@ -276,6 +276,9 @@ WITH AGENTS AS (
              LEFT OUTER JOIN
          CANCELLED AS C
          ON C.PROJECT_ID = T3.PROJECT_ID
+             LEFT OUTER JOIN
+         COVERAGE_30 AS C3
+         ON C3.CASE_NUMBER = T3.CASE_NUMBER
     GROUP BY T3.CREATED_DATE
 )
 
