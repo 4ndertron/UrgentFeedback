@@ -57,22 +57,6 @@ WITH ENTIRE_HISTORY AS (
     GROUP BY EMPLOYEE_ID, DIRECTOR_ORG
 )
 
--- objectives TABLE
-/*
--- X TODO: Build an agent "ION" graph.
--- X TODO: Build an active volume line graph based ON number of employees.
--- X TODO: Figure out the formula for Attrition (how it's calculated)
-        Average Number of Employees = (Active Volume ON Start Date + Active Volume ON End Date) / 2
-        Attrition Rate = (Number of Attrition / Average Number of Employees) * 100
--- X TODO: Figure out what YOY means (Year over Year)
-        Compare Attrition FROM Aug '17 - Mar '18 against Aug '18 - Mar '19
--- TODO: Get the number of terms that an agent had after they left.
-    I'll just do the month tenure to start. I'm not sure what term they mean.
--- X TODO: Identify the difference between Transfer and termination.
--- X TODO: Distinguish between voluntary and involuntary termination.
--- TODO: Get the average tenure of agents terminated IN a given month
- */
-
    , ION_TABLE AS (
     SELECT LAST_DAY(D.DT)                                                                  AS MONTH_1
          , COUNT(CASE WHEN TO_DATE(CT.TEAM_START_DATE) = D.DT THEN 1 END)                  AS E_INFLOW
