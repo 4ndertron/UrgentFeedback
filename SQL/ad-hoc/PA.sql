@@ -1,23 +1,23 @@
 WITH INFORMATION AS (
     -- Objectives Table
     /*
-     -- TODO: Informational Fields:
-            Service Number
-            Customer Name
-            City
-            Install Date
-            PTO Date
-            Sales Manager
-            Transaction Date
+     TODO: Informational Fields:
+        Service Number
+        Customer Name
+        City
+        Install Date
+        PTO Date
+        Sales Manager
+        Transaction Date
      */
 
     SELECT P.SERVICE_NAME
-         , CN.FULL_NAME
-         , P.SERVICE_CITY
-         , P.INSTALLATION_COMPLETE
-         , PTO_AWARDED
-         , O.SALES_REP_NAME || ' (' || O.SALES_REP_EMP_ID || ')' AS SALES_MANAGER
-         , CT.TRANSACTION_DATE
+         , ANY_VALUE(CN.FULL_NAME)            AS FULL_NAME
+         , ANY_VALUE(P.SERVICE_CITY)          AS SERVICE_CITY
+         , ANY_VALUE(P.INSTALLATION_COMPLETE) AS INSTALLATION_COMPLETE
+         , ANY_VALUE(P.PTO_AWARDED)           AS PTO_AWARDED
+         , ANY_VALUE(O.SALES_REP_NAME)        AS SALES_REP_NAME
+         , ANY_VALUE(CT.TRANSACTION_DATE)     AS TRANSACTION_DATE
     FROM RPT.T_PROJECT AS P
              LEFT OUTER JOIN
          RPT.T_CONTRACT AS CT
@@ -28,34 +28,46 @@ WITH INFORMATION AS (
              LEFT OUTER JOIN
          RPT.T_OPPORTUNITY AS O
          ON O.OPPORTUNITY_ID = P.OPPORTUNITY_ID
+             LEFT OUTER JOIN
+         RPT.T_CASE AS C
+         ON C.PROJECT_ID = P.PROJECT_ID
     WHERE P.INSTALLATION_COMPLETE IS NOT NULL
       AND P.SERVICE_STATE = 'PA'
       AND P.PROJECT_STATUS NOT LIKE '%Canc%'
---       AND C.RECORD_TYPE = 'Solar - Customer Escalation'
---       AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+    GROUP BY P.SERVICE_NAME
+    ORDER BY P.SERVICE_NAME
 )
    , CASES AS (
 -- Objectives Table
 /*
--- TODO: Fields needed:
-        Executive Resolutions Boolean
-        Executive Resolutions Description
-        BBB Complaint Boolean
-        BBB Description
-        Escalation Boolean
-        Escalation Description
-        Service Boolean
-        Service Description
-        Troubleshooting Boolean
-        Troubleshooting Description
-        Damage Boolean
-        Damage Description
-        Damage Primary Reason
+TODO: Fields needed:
+    Executive Resolutions Boolean
+    Executive Resolutions Description
+    BBB Complaint Boolean
+    BBB Description
+    Escalation Boolean
+    Escalation Description
+    Service Boolean
+    Service Description
+    Troubleshooting Boolean
+    Troubleshooting Description
+    Damage Boolean
+    Damage Description
+    Damage Primary Reason
  */
 
-    SELECT *
+    SELECT P.PROJECT_ID
+         , C.CASE_NUMBER
+         , C.ORIGIN
+         , C.RECORD_TYPE
+         , C.PRIMARY_REASON
     FROM RPT.T_CASE AS C
+             LEFT OUTER JOIN
+         RPT.T_PROJECT AS P
+         ON P.PROJECT_ID = C.PROJECT_ID
+
 )
 
 SELECT *
 FROM INFORMATION
+ORDER BY SERVICE_NAME
