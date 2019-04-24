@@ -95,10 +95,16 @@ TODO: Fields needed:
                WHEN C.RECORD_TYPE = 'Solar - Service'
                    THEN C.DESCRIPTION END                                                           AS SERVICE_DESC
          , CASE
-               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting'
+               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND C.SOLAR_QUEUE = 'SPC'
+                   THEN TRUE END                                                                    AS SPC_BOOL
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND C.SOLAR_QUEUE = 'SPC'
+                   THEN C.DESCRIPTION END                                                           AS SPC_DESC
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND C.SOLAR_QUEUE != 'SPC'
                    THEN TRUE END                                                                    AS TS_BOOL
          , CASE
-               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting'
+               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND C.SOLAR_QUEUE != 'SPC'
                    THEN C.DESCRIPTION END                                                           AS TS_DESC
          , CASE
                WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
@@ -126,6 +132,8 @@ TODO: Fields needed:
          , MAX(SERVICE_DESC)    AS SERVICE_DESC
          , MAX(TS_BOOL)         AS TS_BOOL
          , MAX(TS_DESC)         AS TS_DESC
+         , MAX(SPC_BOOL)        AS SPC_BOOL
+         , MAX(SPC_DESC)        AS SPC_DESC
          , MAX(DAMAGE_BOOL)     AS DAMAGE_BOOL
          , MAX(DAMAGE_DESC)     AS DAMAGE_DESC
          , MAX(DAMAGE_TYPE)     AS DAMAGE_TYPE
@@ -152,6 +160,8 @@ SELECT I.FULL_NAME
      , CC.SERVICE_DESC
      , CC.TS_BOOL
      , CC.TS_DESC
+     , CC.SPC_BOOL
+     , CC.SPC_DESC
      , CC.DAMAGE_BOOL
      , CC.DAMAGE_DESC
      , CC.DAMAGE_TYPE

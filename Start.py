@@ -4,7 +4,13 @@ print('Let the games, begin!')
 
 # TODO: Utilize the automator as an open project.
 #   Project ideas:
-#       Import BBB portal information into the warehouse.
-#       Mailmerge filings releases. (technically a project that's on deck.)
+#       BBB API
+#       Smartsheet API
 
 # TODO: Initiative for paired programming. Think of the project and then coordinate a time to screenshare.
+
+# TODO: Add Default cases to the PA ad-hoc
+
+# TODO: Avg Agent case count
+
+# TODO: Overhaul Priority Case Report

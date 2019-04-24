@@ -35,6 +35,7 @@ WITH ENTIRE_HISTORY AS (
            , TEAM_START_DATE DESC
 )
 
+
    , CORE_TABLE AS (
     SELECT EMPLOYEE_ID
          , ANY_VALUE(COST_CENTER)                   AS COST_CENTER

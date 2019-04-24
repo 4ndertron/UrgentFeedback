@@ -6,6 +6,7 @@ WITH ALL_ER AS (
          , MIN(HR.CREATED_DATE)                AS TEAM_START_DATE
          , MAX(HR.EXPIRY_DATE)                 AS TEAM_END_DATE
          , ANY_VALUE(HR.TERMINATED)            AS TERMINATED
+         , ANY_VALUE(HR.SF_REP_ID)             AS SF_ID
     FROM HR.T_EMPLOYEE_ALL AS HR
     WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
     GROUP BY HR.FULL_NAME
@@ -197,6 +198,7 @@ WITH ALL_ER AS (
          , ANY_VALUE(SYSTEM_VALUE)                 AS SYSTEM_VALUE
          , ANY_VALUE(SERVICE_STATE)                AS SERVICE_STATE
          , ANY_VALUE(OWNER)                        AS OWNER
+         , ANY_VALUE(OWNER_ID)                     AS OWNER_ID
          , ANY_VALUE(ORIGIN)                       AS ORIGIN
          , ANY_VALUE(PRIORITY_BUCKET)              AS PRIORITY_BUCKET
          , ANY_VALUE(PRIORITY_TABLE)               AS PRIORITY_TABLE
@@ -238,20 +240,21 @@ WITH ALL_ER AS (
    , MERGE AS (
     SELECT T3.CREATED_DATE
          , ANY_VALUE(T3.CASE_NUMBER)                    AS CASE_NUMBER
-         , ANY_VALUE(T3.PROJECT_ID)                     AS PROJECT_ID
-         , ANY_VALUE(T3.CASE_STATUS)                    AS CASE_STATUS
-         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER)   AS SOLAR_BILLING_ACCOUNT_NUMBER
-         , ANY_VALUE(T3.SYSTEM_SIZE)                    AS SYSTEM_SIZE
-         , ANY_VALUE(T3.SYSTEM_VALUE)                   AS SYSTEM_VALUE
-         , ANY_VALUE(T3.SERVICE_STATE)                  AS SERVICE_STATE
-         , ANY_VALUE(T3.OWNER)                          AS OWNER
-         , ANY_VALUE(T3.ORIGIN)                         AS ORIGIN
-         , ANY_VALUE(T3.PRIORITY_BUCKET)                AS PRIORITY_BUCKET
-         , ANY_VALUE(T3.PRIORITY_TABLE)                 AS PRIORITY_TABLE
-         , ANY_VALUE(T3.DAY_CREATED)                    AS DAY_CREATED
-         , ANY_VALUE(T3.WEEK_CREATED)                   AS WEEK_CREATED
-         , ANY_VALUE(T3.MONTH_CREATED)                  AS MONTH_CREATED
-         , ANY_VALUE(T3.CLOSED_DATE)                    AS CLOSED_DATE
+         , ANY_VALUE(T3.PROJECT_ID)                   AS PROJECT_ID
+         , ANY_VALUE(T3.CASE_STATUS)                  AS CASE_STATUS
+         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER) AS SOLAR_BILLING_ACCOUNT_NUMBER
+         , ANY_VALUE(T3.SYSTEM_SIZE)                  AS SYSTEM_SIZE
+         , ANY_VALUE(T3.SYSTEM_VALUE)                 AS SYSTEM_VALUE
+         , ANY_VALUE(T3.SERVICE_STATE)                AS SERVICE_STATE
+         , ANY_VALUE(T3.OWNER)                        AS OWNER
+         , ANY_VALUE(T3.OWNER_ID)                     AS OWNER_ID
+         , ANY_VALUE(T3.ORIGIN)                       AS ORIGIN
+         , ANY_VALUE(T3.PRIORITY_BUCKET)              AS PRIORITY_BUCKET
+         , ANY_VALUE(T3.PRIORITY_TABLE)               AS PRIORITY_TABLE
+         , ANY_VALUE(T3.DAY_CREATED)                  AS DAY_CREATED
+         , ANY_VALUE(T3.WEEK_CREATED)                 AS WEEK_CREATED
+         , ANY_VALUE(T3.MONTH_CREATED)                AS MONTH_CREATED
+         , ANY_VALUE(T3.CLOSED_DATE)                  AS CLOSED_DATE
          , ANY_VALUE(T3.DAY_CLOSED)                     AS DAY_CLOSED
          , ANY_VALUE(T3.WEEK_CLOSED)                    AS WEEK_CLOSED
          , ANY_VALUE(T3.MONTH_CLOSED)                   AS MONTH_CLOSED
@@ -298,15 +301,48 @@ WITH ALL_ER AS (
     WHERE SUPERVISOR IS NOT NULL
 )
 
-   , AGENT_KPI_TABLE AS (
-    SELECT OWNER
-         , SUM(WIP_KPI)                                                                 AS ACTIVE_CASES
-         , ROUND(AVG(CASE WHEN WIP_KPI > 0 THEN CASE_AGE END), 2)                       AS AVG_OPEN_CASE_AGE
-         , ROUND(AVG(CASE WHEN WIP_KPI > 0 THEN LAST_30_DAY_COVERAGE END), 2)           AS OPEN_LAST_30_DAY_COVERAGE
-         , COUNT(CASE WHEN CLOSED_DATE >= DATEADD('D', -30, CURRENT_DATE()) THEN 1 END) AS LAST_30_DAY_CLOSED_CASES
-         -- Add QA score when the new phone system is uploaded to the warehouse.
+   , AGENT_IDS AS (
+    SELECT DISTINCT OWNER_ID
+                  , OWNER
     FROM ACTIVE_AGENT_CASES
+)
+
+   , CASE_COMMENTS AS (
+    SELECT *
+    FROM RPT.V_SF_CASECOMMENT AS CC
+             LEFT OUTER JOIN
+         AGENT_IDS AS IDS
+         ON IDS.OWNER_ID = CC.CREATEDBYID
+)
+
+   , ACTIVE_AGENT_COMMENTS AS (
+    SELECT *
+    FROM CASE_COMMENTS
+    WHERE OWNER IS NOT NULL
+)
+
+   , AGENT_COMMENTS_KPI AS (
+    SELECT OWNER
+         , COUNT(CASE WHEN CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()) THEN 1 END) AS TOTAL_COMMENTS
+         , ROUND(TOTAL_COMMENTS / 22, 2)                                               AS AVG_DAILY_COMMENTS
+    FROM ACTIVE_AGENT_COMMENTS
     GROUP BY OWNER
+    ORDER BY OWNER
+)
+
+   , AGENT_KPI_TABLE AS (
+    SELECT AC.OWNER
+         , SUM(AC.WIP_KPI)                                                                 AS ACTIVE_CASES
+         , ROUND(AVG(CASE WHEN AC.WIP_KPI > 0 THEN AC.CASE_AGE END), 2)                    AS AVG_OPEN_CASE_AGE
+         , ROUND(AVG(CASE WHEN AC.WIP_KPI > 0 THEN AC.LAST_30_DAY_COVERAGE END), 2)        AS OPEN_LAST_30_DAY_COVERAGE
+         , COUNT(CASE WHEN AC.CLOSED_DATE >= DATEADD('D', -30, CURRENT_DATE()) THEN 1 END) AS LAST_30_DAY_CLOSED_CASES
+         , ANY_VALUE(CC.AVG_DAILY_COMMENTS)                                                AS AVG_DAILY_COMMENTS
+         -- Add QA score when the new phone system is uploaded to the warehouse.
+    FROM ACTIVE_AGENT_CASES AC
+             LEFT OUTER JOIN
+         AGENT_COMMENTS_KPI AS CC
+         ON CC.OWNER = AC.OWNER
+    GROUP BY AC.OWNER
     ORDER BY ACTIVE_CASES DESC
 )
 
