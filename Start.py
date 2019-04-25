@@ -9,8 +9,4 @@ print('Let the games, begin!')
 
 # TODO: Initiative for paired programming. Think of the project and then coordinate a time to screenshare.
 
-# TODO: Add Default cases to the PA ad-hoc
-
-# TODO: Avg Agent case count
-
 # TODO: Overhaul Priority Case Report

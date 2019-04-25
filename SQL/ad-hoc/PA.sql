@@ -107,6 +107,12 @@ TODO: Fields needed:
                WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND C.SOLAR_QUEUE != 'SPC'
                    THEN C.DESCRIPTION END                                                           AS TS_DESC
          , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Customer Default' AND C.SUBJECT NOT ILIKE '%D3%'
+                   THEN TRUE END                                                                    AS DEFAULT_BOOL
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Customer Default' AND C.SUBJECT NOT ILIKE '%D3%'
+                   THEN C.DESCRIPTION END                                                           AS DEFAULT_DESC
+         , CASE
                WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
                    THEN TRUE END                                                                    AS DAMAGE_BOOL
          , CASE
@@ -117,7 +123,8 @@ TODO: Fields needed:
                    THEN C.DAMAGE_TYPE END                                                           AS DAMAGE_TYPE
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE IN
-          ('Solar - Troubleshooting', 'Solar - Customer Escalation', 'Solar Damage Resolutions', 'Solar - Service')
+          ('Solar - Troubleshooting', 'Solar - Customer Escalation', 'Solar Damage Resolutions', 'Solar - Service',
+           'Solar - Customer Default')
 )
 
    , CASE_CLEANUP AS (
@@ -134,6 +141,8 @@ TODO: Fields needed:
          , MAX(TS_DESC)         AS TS_DESC
          , MAX(SPC_BOOL)        AS SPC_BOOL
          , MAX(SPC_DESC)        AS SPC_DESC
+         , MAX(DEFAULT_BOOL)    AS DEFAULT_BOOL
+         , MAX(DEFAULT_DESC)    AS DEFAULT_DESC
          , MAX(DAMAGE_BOOL)     AS DAMAGE_BOOL
          , MAX(DAMAGE_DESC)     AS DAMAGE_DESC
          , MAX(DAMAGE_TYPE)     AS DAMAGE_TYPE
@@ -162,6 +171,8 @@ SELECT I.FULL_NAME
      , CC.TS_DESC
      , CC.SPC_BOOL
      , CC.SPC_DESC
+     , CC.DEFAULT_BOOL
+     , CC.DEFAULT_DESC
      , CC.DAMAGE_BOOL
      , CC.DAMAGE_DESC
      , CC.DAMAGE_TYPE
