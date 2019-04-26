@@ -39,6 +39,7 @@ WITH INFORMATION AS (
     GROUP BY P.SERVICE_NAME
     ORDER BY P.SERVICE_NAME
 )
+
    , CASES AS (
 -- Objectives Table
 /*
@@ -70,6 +71,8 @@ TODO: Fields needed:
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
                    THEN C.DESCRIPTION END                                                           AS ER_DESC
+         -- TODO: NPS, and split that into their own column and page into the PA
+         -- TODO: QX1 activities... use RPT.T_TASK
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
@@ -84,6 +87,7 @@ TODO: Fields needed:
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
                    THEN TRUE END                                                                    AS ESCALATION_BOOL
+
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
@@ -131,7 +135,7 @@ TODO: Fields needed:
     SELECT PROJECT_ID
          , MAX(ER_BOOL)         AS ER_BOOL
          , MAX(ER_DESC)         AS ER_DESC
---          , MAX(BBB_BOOL)        AS BBB_BOOL
+         , MAX(BBB_BOOL)        AS BBB_BOOL
          , MAX(BBB_DESC)        AS BBB_DESC
          , MAX(ESCALATION_BOOL) AS ESCALATION_BOOL
          , MAX(ESCALATION_DESC) AS ESCALATION_DESC
@@ -152,32 +156,37 @@ TODO: Fields needed:
     ORDER BY PROJECT_ID
 )
 
-SELECT I.FULL_NAME
-     , I.SERVICE_NAME
-     , I.SERVICE_2
-     , I.SERVICE_CITY
-     , I.INSTALLATION_COMPLETE
-     , I.PTO_AWARDED
-     , I.SALES_REP_NAME
-     , I.TRANSACTION_DATE
-     , CC.ER_BOOL
-     , CC.ER_DESC
-     , CC.BBB_DESC
-     , CC.ESCALATION_BOOL
-     , CC.ESCALATION_DESC
-     , CC.SERVICE_BOOL
-     , CC.SERVICE_DESC
-     , CC.TS_BOOL
-     , CC.TS_DESC
-     , CC.SPC_BOOL
-     , CC.SPC_DESC
-     , CC.DEFAULT_BOOL
-     , CC.DEFAULT_DESC
-     , CC.DAMAGE_BOOL
-     , CC.DAMAGE_DESC
-     , CC.DAMAGE_TYPE
-FROM INFORMATION AS I
-         LEFT OUTER JOIN
-     CASE_CLEANUP AS CC
-     ON CC.PROJECT_ID = I.PROJECT_ID
-ORDER BY I.SERVICE_NAME
+   , TOTAL_TABLE AS (
+    SELECT I.FULL_NAME
+         , I.SERVICE_NAME
+         , I.SERVICE_2
+         , I.SERVICE_CITY
+         , I.INSTALLATION_COMPLETE
+         , I.PTO_AWARDED
+         , I.SALES_REP_NAME
+         , I.TRANSACTION_DATE
+         , CC.ER_BOOL
+         , CC.ER_DESC
+         , CC.BBB_DESC
+         , CC.ESCALATION_BOOL
+         , CC.ESCALATION_DESC
+         , CC.SERVICE_BOOL
+         , CC.SERVICE_DESC
+         , CC.TS_BOOL
+         , CC.TS_DESC
+         , CC.SPC_BOOL
+         , CC.SPC_DESC
+         , CC.DEFAULT_BOOL
+         , CC.DEFAULT_DESC
+         , CC.DAMAGE_BOOL
+         , CC.DAMAGE_DESC
+         , CC.DAMAGE_TYPE
+    FROM INFORMATION AS I
+             LEFT OUTER JOIN
+         CASE_CLEANUP AS CC
+         ON CC.PROJECT_ID = I.PROJECT_ID
+    ORDER BY I.SERVICE_NAME
+)
+
+SELECT *
+FROM TOTAL_TABLE
