@@ -40,6 +40,20 @@ WITH INFORMATION AS (
     ORDER BY P.SERVICE_NAME
 )
 
+   , TASKS AS (
+    SELECT T.PROJECT_ID
+         , T.CREATED_DATE
+         , ROW_NUMBER() OVER(PARTITION BY T.PROJECT_ID ORDER BY T.CREATED_DATE DESC) AS RN
+         , CASE
+               WHEN SUBJECT ILIKE '%QX1%'
+                   THEN TRUE END                                                     AS QX1BOOL
+         , CASE
+               WHEN SUBJECT ILIKE '%QX1%'
+                   THEN T.DESCRIPTION END                                            AS QX1DESC
+    FROM RPT.T_TASK AS T
+    WHERE T.SUBJECT ILIKE '%QX1%'
+)
+
    , CASES AS (
 -- Objectives Table
 /*
@@ -70,6 +84,10 @@ TODO: Fields needed:
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   THEN C.ORIGIN END                                                                AS ER_ORIGIN
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
                    THEN C.DESCRIPTION END                                                           AS ER_DESC
          -- TODO: NPS, and split that into their own column and page into the PA
          -- TODO: QX1 activities... use RPT.T_TASK
@@ -83,6 +101,17 @@ TODO: Fields needed:
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
                     C.ORIGIN = 'BBB'
                    THEN C.DESCRIPTION END                                                           AS BBB_DESC
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
+                    (C.ORIGIN = 'NPS' OR C.SUBJECT ILIKE 'NPS')
+                   THEN TRUE END                                                                    AS NPS_BOOL
+         , CASE
+               WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
+                    (C.ORIGIN = 'NPS' OR C.SUBJECT ILIKE 'NPS')
+                   THEN C.DESCRIPTION END                                                           AS NPS_DESC
+
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
@@ -124,7 +153,7 @@ TODO: Fields needed:
                    THEN C.DESCRIPTION END                                                           AS DAMAGE_DESC
          , CASE
                WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
-                   THEN C.DAMAGE_TYPE END                                                           AS DAMAGE_TYPE
+                   THEN C.DAMAGE_TYPE END                                                AS DAMAGE_TYPE
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE IN
           ('Solar - Troubleshooting', 'Solar - Customer Escalation', 'Solar Damage Resolutions', 'Solar - Service',
@@ -138,7 +167,10 @@ TODO: Fields needed:
          , MAX(BBB_BOOL)        AS BBB_BOOL
          , MAX(BBB_DESC)        AS BBB_DESC
          , MAX(ESCALATION_BOOL) AS ESCALATION_BOOL
+         , MAX(ER_ORIGIN)       AS ER_ORIGIN
          , MAX(ESCALATION_DESC) AS ESCALATION_DESC
+         , MAX(NPS_BOOL)        AS NPS_BOOL
+         , MAX(NPS_DESC)        AS NPS_DESC
          , MAX(SERVICE_BOOL)    AS SERVICE_BOOL
          , MAX(SERVICE_DESC)    AS SERVICE_DESC
          , MAX(TS_BOOL)         AS TS_BOOL
@@ -156,6 +188,16 @@ TODO: Fields needed:
     ORDER BY PROJECT_ID
 )
 
+   , TASK_CLEANUP AS (
+    SELECT PROJECT_ID
+         , MAX(QX1BOOL) AS QX1BOOL
+         , MAX(QX1DESC) AS QX1DESC
+    FROM TASKS
+    WHERE RN = 1
+    GROUP BY PROJECT_ID
+    ORDER BY PROJECT_ID
+)
+
    , TOTAL_TABLE AS (
     SELECT I.FULL_NAME
          , I.SERVICE_NAME
@@ -166,10 +208,15 @@ TODO: Fields needed:
          , I.SALES_REP_NAME
          , I.TRANSACTION_DATE
          , CC.ER_BOOL
+         , CC.ER_ORIGIN
          , CC.ER_DESC
          , CC.BBB_DESC
+         , CC.NPS_BOOL
+         , CC.NPS_DESC
          , CC.ESCALATION_BOOL
          , CC.ESCALATION_DESC
+         , TA.QX1BOOL
+         , TA.QX1DESC
          , CC.SERVICE_BOOL
          , CC.SERVICE_DESC
          , CC.TS_BOOL
@@ -185,8 +232,12 @@ TODO: Fields needed:
              LEFT OUTER JOIN
          CASE_CLEANUP AS CC
          ON CC.PROJECT_ID = I.PROJECT_ID
+             LEFT OUTER JOIN
+         TASK_CLEANUP AS TA
+         ON TA.PROJECT_ID = I.PROJECT_ID
     ORDER BY I.SERVICE_NAME
 )
 
 SELECT *
 FROM TOTAL_TABLE
+WHERE ER_BOOL
