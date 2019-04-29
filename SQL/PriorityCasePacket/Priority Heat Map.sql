@@ -5,24 +5,29 @@
 -- v2> Added unique project counts; adjusted ratio calculations to use unique project count instead of case count
 WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
-         , NVL(SERVICE_STATE, '[blank]') AS ROC_NAME
+         , NVL(SERVICE_STATE, '[blank]') AS STATE_NAME
     FROM RPT.T_PROJECT
     WHERE INSTALLATION_COMPLETE IS NOT NULL
       AND CANCELLATION_DATE IS NULL
 )
 
    , INSTALLS_BY_ROC AS (
-    SELECT DISTINCT ROC_NAME
-                  , COUNT(PROJECT_ID) OVER(PARTITION BY ROC_NAME) AS INSTALL_TALLY
+    SELECT DISTINCT STATE_NAME
+                  , COUNT(PROJECT_ID) OVER(PARTITION BY STATE_NAME) AS INSTALL_TALLY
                   ,
-            TO_CHAR(100 * COUNT(PROJECT_ID) OVER(PARTITION BY ROC_NAME) / COUNT(PROJECT_ID) OVER(), '90.00') ||
-            '%'                                                   AS INSTALL_RATIO
+            TO_CHAR(100 * COUNT(PROJECT_ID) OVER(PARTITION BY STATE_NAME) / COUNT(PROJECT_ID) OVER(), '90.00') ||
+            '%'                                                     AS INSTALL_RATIO
     FROM PROJECTS_RAW
 )
 
    , CASES_SERVICE AS (
-    SELECT PR.ROC_NAME
+    SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Service' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)   AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)    AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
@@ -31,40 +36,50 @@ WITH PROJECTS_RAW AS (
     WHERE CA.RECORD_TYPE = 'Solar - Service'
       AND UPPER(CA.SUBJECT) LIKE '%NF%'
       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
-      AND CA.CLOSED_DATE IS NULL
+--       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_SERVICE AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
     FROM CASES_SERVICE
-    GROUP BY ROC_NAME
+    GROUP BY STATE_NAME
 )
 
    , CASES_REMOVAL_REINSTALL AS (
-    SELECT PR.ROC_NAME
+    SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Removal Reinstall' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)             AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)              AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Panel Removal'
-      AND CA.CLOSED_DATE IS NULL
+--       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_REMOVAL_REINSTALL AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
     FROM CASES_REMOVAL_REINSTALL
-    GROUP BY ROC_NAME
+    GROUP BY STATE_NAME
 )
 
    , CASES_TROUBLESHOOTING AS (
-    SELECT PR.ROC_NAME
+    SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Troubleshooting' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)           AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)            AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
@@ -72,40 +87,50 @@ WITH PROJECTS_RAW AS (
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
       AND UPPER(CA.SUBJECT) LIKE '%NF%'
-      AND ca.closed_date IS NULL
+--       AND ca.closed_date IS NULL
 )
 
    , G_CASES_TROUBLESHOOTING AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
     FROM CASES_TROUBLESHOOTING
-    GROUP BY ROC_NAME
+    GROUP BY STATE_NAME
 )
 
    , CASES_DAMAGE AS (
-    SELECT PR.ROC_NAME
+    SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Damage' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)  AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)   AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE IN ('Solar Damage Resolutions', 'Home Damage')
-      AND CA.CLOSED_DATE IS NULL
+--       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_DAMAGE AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
     FROM CASES_DAMAGE
-    GROUP BY ROC_NAME
+    GROUP BY STATE_NAME
 )
 
    , CASES_ESCALATION AS (
-    SELECT PR.ROC_NAME
+    SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Escalation' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)      AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)       AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
@@ -113,84 +138,108 @@ WITH PROJECTS_RAW AS (
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Customer Escalation'
       AND CA.SUBJECT NOT ILIKE '%VIP%'
-      AND CA.CLOSED_DATE IS NULL
+--       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_ESCALATION AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
     FROM CASES_ESCALATION
-    GROUP BY ROC_NAME
+    GROUP BY STATE_NAME
 )
 
-   , G_CASES_OVERALL AS (
-    SELECT ROC_NAME
-         , COUNT(ROC_NAME)            AS CASE_TALLY
-         , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
+   , CASES_OVERALL AS (
+    SELECT STATE_NAME
+         , PROJECT_ID
+         , CASE_BUCKET
+         , CREATED_DATE
+         , CLOSED_DATE
     FROM (
-             SELECT ROC_NAME
+             SELECT STATE_NAME
                   , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
              FROM CASES_SERVICE
              UNION ALL
-             SELECT ROC_NAME
+             SELECT STATE_NAME
                   , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
              FROM CASES_REMOVAL_REINSTALL
              UNION ALL
-             SELECT ROC_NAME
+             SELECT STATE_NAME
                   , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
              FROM CASES_TROUBLESHOOTING
              UNION ALL
-             SELECT ROC_NAME
+             SELECT STATE_NAME
                   , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
              FROM CASES_DAMAGE
              UNION ALL
-             SELECT ROC_NAME
+             SELECT STATE_NAME
                   , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
              FROM CASES_ESCALATION
          )
-    GROUP BY ROC_NAME
 )
 
-SELECT IBR.ROC_NAME
-     , TO_CHAR(IBR.INSTALL_TALLY, '999,990')                                        AS INSTALL_TALLY
-     , IBR.INSTALL_RATIO
-     , NVL(CS.CASE_TALLY, 0)                                                        AS SERVICE_CASE_TALLY
-     , NVL(CS.PROJECT_TALLY, 0)                                                     AS SERVICE_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CS.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS SERVICE_PROJECT_RATIO
-     , NVL(CR.CASE_TALLY, 0)                                                        AS REMOVAL_CASE_TALLY
-     , NVL(CR.PROJECT_TALLY, 0)                                                     AS REMOVAL_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CR.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS REMOVAL_PROJECT_RATIO
-     , NVL(CT.CASE_TALLY, 0)                                                        AS TROUBLESHOOTING_CASE_TALLY
-     , NVL(CT.PROJECT_TALLY, 0)                                                     AS TROUBLESHOOTING_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CT.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS TROUBLESHOOTING_PROJECT_RATIO
-     , NVL(CD.CASE_TALLY, 0)                                                        AS DAMAGE_CASE_TALLY
-     , NVL(CD.PROJECT_TALLY, 0)                                                     AS DAMAGE_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CD.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS DAMAGE_PROJECT_RATIO
-     , NVL(CE.CASE_TALLY, 0)                                                        AS ESCALATION_CASE_TALLY
-     , NVL(CE.PROJECT_TALLY, 0)                                                     AS ESCALATION_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CE.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS ESCALATION_PROJECT_RATIO
-     , NVL(CO.CASE_TALLY, 0)                                                        AS OVERALL_CASE_TALLY
-     , NVL(CO.PROJECT_TALLY, 0)                                                     AS OVERALL_PROJECT_TALLY
-     , TO_CHAR(100 * NVL(CO.PROJECT_TALLY, 0) / IBR.INSTALL_TALLY, '990.00') || '%' AS OVERALL_PROJECT_RATIO
-FROM INSTALLS_BY_ROC IBR
-         LEFT OUTER JOIN
-     G_CASES_SERVICE CS
-     ON IBR.ROC_NAME = CS.ROC_NAME
-         LEFT OUTER JOIN
-     G_CASES_REMOVAL_REINSTALL CR
-     ON IBR.ROC_NAME = CR.ROC_NAME
-         LEFT OUTER JOIN
-     G_CASES_TROUBLESHOOTING CT
-     ON IBR.ROC_NAME = CT.ROC_NAME
-         LEFT OUTER JOIN
-     G_CASES_DAMAGE CD
-     ON IBR.ROC_NAME = CD.ROC_NAME
-         LEFT OUTER JOIN
-     G_CASES_ESCALATION CE
-     ON IBR.ROC_NAME = CE.ROC_NAME
-         LEFT OUTER JOIN
-     G_CASES_OVERALL CO
-     ON IBR.ROC_NAME = CO.ROC_NAME
-ORDER BY OVERALL_CASE_TALLY DESC
+   , G_WIP_TABLE AS (
+    SELECT D.DT
+         , C.STATE_NAME
+         , C.CASE_BUCKET
+         , COUNT(
+            CASE
+                WHEN C.CREATED_DATE <= D.DT AND (C.CLOSED_DATE >= D.DT OR C.CLOSED_DATE IS NULL)
+                    THEN 1 END) AS ACTIVE_WIP
+    FROM CASES_OVERALL AS C
+       , RPT.T_DATES AS D
+    WHERE D.DT BETWEEN DATEADD('Y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+    GROUP BY D.DT
+           , C.STATE_NAME
+           , C.CASE_BUCKET
+    ORDER BY C.STATE_NAME
+           , C.CASE_BUCKET
+           , D.DT
+)
+
+   , G_ION_TABLE AS (
+    SELECT LAST_DAY(D.DT)                                  AS HEAT_MONTH1
+         , CO.STATE_NAME
+         , CO.CASE_BUCKET
+         , COUNT(CASE WHEN CREATED_DATE = D.DT THEN 1 END) AS HEAT_INFLOW
+         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)  AS HEAT_OUTFLOW
+         , HEAT_INFLOW - HEAT_OUTFLOW                      AS HEAT_NET
+    FROM CASES_OVERALL AS CO
+       , RPT.T_DATES AS D
+    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+    GROUP BY HEAT_MONTH1
+           , CO.STATE_NAME
+           , CO.CASE_BUCKET
+    ORDER BY CO.STATE_NAME
+           , CO.CASE_BUCKET
+           , HEAT_MONTH1
+)
+
+   , FINAL AS (
+    SELECT GWT.DT AS HEAT_DT
+         , GWT.STATE_NAME
+         , GWT.CASE_BUCKET
+         , GWT.ACTIVE_WIP
+    FROM G_WIP_TABLE AS GWT
+    WHERE GWT.DT = LAST_DAY(GWT.DT)
+       OR GWT.DT = CURRENT_DATE()
+)
+
+SELECT *
+FROM G_ION_TABLE
 ;

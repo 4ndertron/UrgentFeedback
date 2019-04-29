@@ -294,16 +294,16 @@ WITH AGENTS AS (
                         T3.PRIORITY_BUCKET = 'Legal/BBB' THEN 1 END)            AS P2_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END)  AS P3_WIP
+                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END)        AS P3_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Social Media' THEN 1 END)   AS P4_WIP
+                        T3.PRIORITY_BUCKET = 'Social Media' THEN 1 END)         AS P4_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Credit Dispute' THEN 1 END) AS P5_WIP
+                        T3.PRIORITY_BUCKET = 'Credit Dispute' THEN 1 END)       AS P5_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)       AS P6_WIP
+                        T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)             AS P6_WIP
     FROM MERGE AS T3
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()

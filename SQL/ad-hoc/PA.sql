@@ -55,42 +55,25 @@ WITH INFORMATION AS (
 )
 
    , CASES AS (
--- Objectives Table
-/*
-TODO: Fields needed:
-    Executive Resolutions Boolean
-    Executive Resolutions Description
-    BBB Complaint Boolean
-    BBB Description
-    Escalation Boolean
-    Escalation Description
-    Service Boolean
-    Service Description
-    Troubleshooting Boolean
-    Troubleshooting Description
-    Damage Boolean
-    Damage Description
-    Damage Primary Reason
- */
-
     SELECT C.PROJECT_ID
          , C.RECORD_TYPE
          , C.CREATED_DATE
          , ROW_NUMBER() OVER(PARTITION BY C.PROJECT_ID, C.RECORD_TYPE ORDER BY C.CREATED_DATE DESC) AS RN
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
-                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
+                    (C.ORIGIN NOT IN ('NPS', 'BBB', 'Marketing') OR UPPER(C.SUBJECT) NOT LIKE '%NPS%')
                    THEN TRUE END                                                                    AS ER_BOOL
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
-                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
+                    (C.ORIGIN NOT IN ('NPS', 'BBB', 'Marketing') OR UPPER(C.SUBJECT) NOT LIKE '%NPS%')
                    THEN C.ORIGIN END                                                                AS ER_ORIGIN
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
-                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                    C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
+                    (C.ORIGIN NOT IN ('NPS', 'BBB', 'Marketing') OR UPPER(C.SUBJECT) NOT LIKE '%NPS%')
                    THEN C.DESCRIPTION END                                                           AS ER_DESC
-         -- TODO: NPS, and split that into their own column and page into the PA
-         -- TODO: QX1 activities... use RPT.T_TASK
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
@@ -104,19 +87,18 @@ TODO: Fields needed:
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
-                    (C.ORIGIN = 'NPS' OR C.SUBJECT ILIKE 'NPS')
+                    (C.ORIGIN IN ('NPS', 'Marketing') OR C.SUBJECT ILIKE 'NPS')
                    THEN TRUE END                                                                    AS NPS_BOOL
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL AND
-                    (C.ORIGIN = 'NPS' OR C.SUBJECT ILIKE 'NPS')
+                    (C.ORIGIN IN ('NPS', 'Marketing') OR C.SUBJECT ILIKE 'NPS')
                    THEN C.DESCRIPTION END                                                           AS NPS_DESC
 
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
                    THEN TRUE END                                                                    AS ESCALATION_BOOL
-
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
@@ -144,7 +126,7 @@ TODO: Fields needed:
                    THEN TRUE END                                                                    AS DEFAULT_BOOL
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Default' AND C.SUBJECT NOT ILIKE '%D3%'
-                   THEN C.DESCRIPTION END                                                           AS DEFAULT_DESC
+                   THEN C.DESCRIPTION END                                                AS DEFAULT_DESC
          , CASE
                WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
                    THEN TRUE END                                                                    AS DAMAGE_BOOL
@@ -153,7 +135,7 @@ TODO: Fields needed:
                    THEN C.DESCRIPTION END                                                           AS DAMAGE_DESC
          , CASE
                WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
-                   THEN C.DAMAGE_TYPE END                                                AS DAMAGE_TYPE
+                   THEN C.DAMAGE_TYPE END                                                           AS DAMAGE_TYPE
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE IN
           ('Solar - Troubleshooting', 'Solar - Customer Escalation', 'Solar Damage Resolutions', 'Solar - Service',
@@ -210,6 +192,7 @@ TODO: Fields needed:
          , CC.ER_BOOL
          , CC.ER_ORIGIN
          , CC.ER_DESC
+         , CC.BBB_BOOL
          , CC.BBB_DESC
          , CC.NPS_BOOL
          , CC.NPS_DESC
@@ -240,4 +223,4 @@ TODO: Fields needed:
 
 SELECT *
 FROM TOTAL_TABLE
-WHERE ER_BOOL
+-- WHERE ER_BOOL
