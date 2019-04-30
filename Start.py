@@ -4,8 +4,7 @@ TODO: Initiative for paired programming. Think of the project and then coordinat
         BBB API
         Smartsheet API
 
-TODO: Overhaul Priority Case Report
-
+TODO: Create the Agent KPI table and trend for Default.
 """
 
 # %% begin code
