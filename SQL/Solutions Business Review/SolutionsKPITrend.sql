@@ -1,0 +1,23 @@
+/*
+TODO: Required Fields
+    WIP
+    Avg Coverage
+    Cases Closed
+    Avg Closed Age
+*/
+
+WITH AGENTS AS (
+    SELECT HR.FULL_NAME
+         , ANY_VALUE(HR.FIRST_NAME) AS FIRST_NAME
+         , ANY_VALUE(HR.LAST_NAME)  AS LAST_NAME
+         , MIN(HR.CREATED_DATE)     AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)      AS TEAM_END_DATE
+         , ANY_VALUE(HR.TERMINATED) AS TERMINATED
+    FROM HR.T_EMPLOYEE_ALL AS HR
+    WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
+    GROUP BY HR.FULL_NAME
+    ORDER BY TEAM_START_DATE DESC
+)
+
+SELECT *
+FROM AGENTS
