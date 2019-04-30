@@ -14,15 +14,16 @@ WITH AGENTS AS (
    , CASE_TABLE AS (
     -- Collect all the open Default 1,2,4,5 and Escalation Cases in Salesforce --
     SELECT C.CASE_NUMBER
-         , ANY_VALUE(C.CASE_ID)                                                                          AS CASE_ID
+         , ANY_VALUE(C.CASE_ID)                            AS CASE_ID
          , C.PROJECT_ID
-         , ANY_VALUE(LDD.AGE)                                                                            AS AGE_FOR_CASE
-         , ANY_VALUE(C.SUBJECT)                                                                          AS SUBJECT1
-         , ANY_VALUE(CAD.SYSTEM_SIZE)                                                                    AS SYSTEM_SIZE
-         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2)                                               AS SYSTEM_VALUE
-         , ANY_VALUE(C.STATUS)                                                                           AS STATUS2
-         , ANY_VALUE(C.CREATED_DATE)                                                                     AS CREATED_DATE1
-         , ANY_VALUE(C.CLOSED_DATE)                                                                      AS CLOSED_DATE1
+         , ANY_VALUE(LDD.AGE)                              AS AGE_FOR_CASE
+         , ANY_VALUE(C.SUBJECT)                            AS SUBJECT1
+         , ANY_VALUE(C.OWNER)                              AS OWNER
+         , ANY_VALUE(CAD.SYSTEM_SIZE)                      AS SYSTEM_SIZE
+         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2) AS SYSTEM_VALUE
+         , ANY_VALUE(C.STATUS)                             AS STATUS2
+         , ANY_VALUE(C.CREATED_DATE)                       AS CREATED_DATE1
+         , ANY_VALUE(C.CLOSED_DATE)                        AS CLOSED_DATE1
          , ANY_VALUE(C.EXECUTIVE_RESOLUTIONS_ACCEPTED)                                                   AS EXECUTIVE_RESOLUTIONS_ACCEPTED
          , ANY_VALUE(C.RECORD_TYPE)                                                                      AS RECORD_TYPE1
          , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)                                                     AS SOLAR_BILLING_ACCOUNT_NUMBER1
@@ -118,15 +119,16 @@ WITH AGENTS AS (
 
    , FULL_CASE AS (
     SELECT CHT.CASE_NUMBER
-         , ANY_VALUE(CHT.SUBJECT1)                                                               AS SUBJECT
-         , ANY_VALUE(CHT.SYSTEM_SIZE)                                                            AS SYSTEM_SIZE
-         , ANY_VALUE(CHT.SYSTEM_VALUE)                                                           AS SYSTEM_VALUE
-         , ANY_VALUE(CHT.STATUS2)                                                                AS STATUS1
-         , ANY_VALUE(CHT.AGE_FOR_CASE)                                                           AS AGE_FOR_CASE
-         , ANY_VALUE(CHT.CREATED_DATE1)                                                          AS CREATED_DATE
-         , ANY_VALUE(CHT.RECORD_PRIORITY1)                                                       AS RECORD_PRIORITY
-         , ANY_VALUE(CHT.CLOSED_DATE1)                                                           AS CLOSED_DATE
-         , ANY_VALUE(CHT.EXECUTIVE_RESOLUTIONS_ACCEPTED)                                         AS ERA
+         , ANY_VALUE(CHT.SUBJECT1)                       AS SUBJECT
+         , ANY_VALUE(CHT.SYSTEM_SIZE)                    AS SYSTEM_SIZE
+         , ANY_VALUE(CHT.SYSTEM_VALUE)                   AS SYSTEM_VALUE
+         , ANY_VALUE(CHT.STATUS2)                        AS STATUS1
+         , ANY_VALUE(CHT.OWNER)                          AS OWNER
+         , ANY_VALUE(CHT.AGE_FOR_CASE)                   AS AGE_FOR_CASE
+         , ANY_VALUE(CHT.CREATED_DATE1)                  AS CREATED_DATE
+         , ANY_VALUE(CHT.RECORD_PRIORITY1)               AS RECORD_PRIORITY
+         , ANY_VALUE(CHT.CLOSED_DATE1)                   AS CLOSED_DATE
+         , ANY_VALUE(CHT.EXECUTIVE_RESOLUTIONS_ACCEPTED) AS ERA
          , ANY_VALUE(CHT.RECORD_TYPE1)                                                           AS RECORD_TYPE1
          , CHT.SOLAR_BILLING_ACCOUNT_NUMBER1
          , ANY_VALUE(DEFAULT_BUCKET)                                                             AS DEFAULT_BUCKET1
@@ -293,6 +295,7 @@ WITH AGENTS AS (
          , WIP_END
          , DATEDIFF('D', CREATED_DATE, NVL(CLOSED_DATE, CURRENT_DATE())) AS CASE_AGE
          , CASE_NUMBER
+         , OWNER
          , STATUS_NAME
          , AVERAGE_GAP
          , COVERAGE
