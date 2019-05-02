@@ -1,12 +1,3 @@
-/*
-TODO: required fields
-    Active Cases
-    Avg Open Case Age
-    Last 30 Day Coverage
-    Last 30 Day Closed Case
-    Last 30 Day Avg Daily Comments
-*/
-
 WITH ALL_DEFAULT AS (
     SELECT HR.FULL_NAME
          , ANY_VALUE(HR.FIRST_NAME)            AS FIRST_NAME
