@@ -95,45 +95,45 @@ WITH ch1 AS
          SELECT D.DT,
                 d.WEEK_DAY_NUM,
                 SUM(CASE WHEN T1.ERA <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) THEN 1 END) AS ALL_WIP,
-                SUM(CASE WHEN T1.CLOSED = D.DT AND T1.CLOSED IS NOT NULL THEN 1 END) AS                 ALL_CLOSED,
+                SUM(CASE WHEN T1.CLOSED = D.DT AND T1.CLOSED IS NOT NULL THEN 1 END)                 AS ALL_CLOSED,
                 SUM(CASE
                         WHEN T1.CLOSED = D.DT AND
                              DATEDIFF('d', DATE_TRUNC('d', T1.CREATED), DATE_TRUNC('d', T1.CLOSED)) <= 30
-                            THEN TOTAL_CASES END) AS                                                    ALL_CLOSED_IN_30,
+                            THEN TOTAL_CASES END)                                                    AS ALL_CLOSED_IN_30,
                 ROUND(AVG(CASE
                               WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL)
-                                  THEN DATEDIFF('d', T1.CREATED, D.DT) END), 2) AS                      ALL_WIP_AVG_AGE,
+                                  THEN DATEDIFF('d', T1.CREATED, D.DT) END), 2)                      AS ALL_WIP_AVG_AGE,
                 ROUND(MEDIAN(CASE
                                  WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL)
                                      THEN DATEDIFF('d', T1.CREATED, D.DT) END),
-                      2) AS                                                                             ALL_WIP_MEDIAN_AGE,
+                      2)                                                                             AS ALL_WIP_MEDIAN_AGE,
                 MAX(CASE
                         WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL)
-                            THEN DATEDIFF('d', T1.CREATED, D.DT) END) AS                                ALL_MAX_AGE,
+                            THEN DATEDIFF('d', T1.CREATED, D.DT) END)                                AS ALL_MAX_AGE,
                 MIN(CASE
                         WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL)
-                            THEN DATEDIFF('d', T1.CREATED, D.DT) END) AS                                ALL_MIN_AGE,
+                            THEN DATEDIFF('d', T1.CREATED, D.DT) END)                                AS ALL_MIN_AGE,
                 SUM(CASE
                         WHEN T1.ERA <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) AND T1.IS_P1
-                            THEN 1 END) AS                                                              P1_WIP,
-                SUM(CASE WHEN T1.CLOSED = D.DT AND T1.CLOSED IS NOT NULL AND T1.IS_P1 THEN 1 END) AS    P1_CLOSED,
+                            THEN 1 END)                                                              AS P1_WIP,
+                SUM(CASE WHEN T1.CLOSED = D.DT AND T1.CLOSED IS NOT NULL AND T1.IS_P1 THEN 1 END)    AS P1_CLOSED,
                 SUM(CASE
                         WHEN T1.CLOSED = D.DT AND
                              DATEDIFF('d', DATE_TRUNC('d', T1.CREATED), DATE_TRUNC('d', T1.CLOSED)) <= 30 AND T1.IS_P1
-                            THEN TOTAL_CASES END) AS                                                    P1_CLOSED_IN_30,
+                            THEN TOTAL_CASES END)                                                    AS P1_CLOSED_IN_30,
                 ROUND(AVG(CASE
                               WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) AND T1.IS_P1
-                                  THEN DATEDIFF('d', T1.CREATED, D.DT) END), 2) AS                      P1_WIP_AVG_AGE,
+                                  THEN DATEDIFF('d', T1.CREATED, D.DT) END), 2)                      AS P1_WIP_AVG_AGE,
                 ROUND(MEDIAN(CASE
                                  WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) AND T1.IS_P1
                                      THEN DATEDIFF('d', T1.CREATED, D.DT) END),
-                      2) AS                                                                             P1_WIP_MEDIAN_AGE,
+                      2)                                                                             AS P1_WIP_MEDIAN_AGE,
                 MAX(CASE
                         WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) AND T1.IS_P1
-                            THEN DATEDIFF('d', T1.CREATED, D.DT) END) AS                                P1_MAX_AGE,
+                            THEN DATEDIFF('d', T1.CREATED, D.DT) END)                                AS P1_MAX_AGE,
                 MIN(CASE
                         WHEN T1.CREATED <= D.DT AND (T1.CLOSED > D.DT OR T1.CLOSED IS NULL) AND T1.IS_P1
-                            THEN DATEDIFF('d', T1.CREATED, D.DT) END) AS                                P1_MIN_AGE
+                            THEN DATEDIFF('d', T1.CREATED, D.DT) END)                                AS P1_MIN_AGE
          FROM RPT.V_DATES D,
               T1
          WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('d', CURRENT_TIMESTAMP :: TIMESTAMP_NTZ))
