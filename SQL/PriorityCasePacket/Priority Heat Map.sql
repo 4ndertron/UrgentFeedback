@@ -242,4 +242,8 @@ WITH PROJECTS_RAW AS (
 
 SELECT *
 FROM G_ION_TABLE
+
+/*
+ TODO: Setup the case volumes against the active install total for the month, and stack that ratio.
+ */
 ;
