@@ -4,8 +4,8 @@ TODO: Initiative for paired programming. Think of the project and then coordinat
         BBB API
         Smartsheet API
 
-TODO: Split filings volumes by UCC and PUC
 TODO: ECL DASHBOARD
+TODO: Update MSTG delivery time to Tuesday, not Monday
 """
 
 # %% begin code
