@@ -13,7 +13,7 @@ WITH CORE_TABLE AS (
     FROM RPT.T_dates AS D,
          RPT.T_CASE AS c,
          RPT.T_PROJECT AS P
-    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE()))
+    WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('MM', CURRENT_DATE()))
         AND CURRENT_DATE()
       AND c.RECORD_TYPE = 'Solar - Customer Escalation'
       AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
@@ -26,6 +26,7 @@ WITH CORE_TABLE AS (
 )
 
 SELECT MONTH_1
+     , YEAR(MONTH_1)                                                                     AS YEAR_1
      , SUM(CASE WHEN PRIORITY_BUCKET = 'Executive/News Media' THEN PRIORITY_CREATED END) AS EXECUTIVE
      , SUM(CASE WHEN PRIORITY_BUCKET = 'Legal/BBB' THEN PRIORITY_CREATED END)            AS LEGAL
      , EXECUTIVE + LEGAL                                                                 AS TOTAL

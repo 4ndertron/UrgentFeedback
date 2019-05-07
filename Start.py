@@ -9,7 +9,6 @@ TODO: Triple Trouble Automation
     - Transfers Cases
     - Continuations/Refiles
 TODO: ECL DASHBOARD
-TODO: Update MSTG delivery time to Tuesday, not Monday
 
 Team Priorities and outputs from priority case reviews.
 -------------------------------------------------------

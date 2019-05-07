@@ -5,7 +5,8 @@
 -- v2> Added unique project counts; adjusted ratio calculations to use unique project count instead of case count
 WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
-         , NVL(SERVICE_STATE, '[blank]') AS STATE_NAME
+         , NVL(SERVICE_STATE, '[blank]')  AS STATE_NAME
+         , TO_DATE(INSTALLATION_COMPLETE) AS INSTALL_DATE
     FROM RPT.T_PROJECT
     WHERE INSTALLATION_COMPLETE IS NOT NULL
       AND CANCELLATION_DATE IS NULL
@@ -238,10 +239,45 @@ WITH PROJECTS_RAW AS (
     FROM G_WIP_TABLE AS GWT
     WHERE GWT.DT = LAST_DAY(GWT.DT)
        OR GWT.DT = CURRENT_DATE()
+    ORDER BY GWT.STATE_NAME
+           , HEAT_DT
+)
+
+   , I_WIP AS (
+    SELECT D.DT
+         , STATE_NAME
+         , COUNT(CASE WHEN INSTALL_DATE <= D.DT THEN 1 END) AS ACTIVE_INSTALLS
+    FROM PROJECTS_RAW AS PR
+       , RPT.T_DATES AS D
+    WHERE D.DT BETWEEN DATEADD('Y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+    GROUP BY D.DT
+           , STATE_NAME
+    ORDER BY STATE_NAME
+           , D.DT
+)
+
+   , WIP_RATIO AS (
+    SELECT IW.DT
+         , IW.STATE_NAME
+         , F.ACTIVE_WIP
+         , IW.ACTIVE_INSTALLS
+    FROM (SELECT *
+          FROM I_WIP
+          WHERE DT = LAST_DAY(DT)
+             OR DT = CURRENT_DATE()
+          ORDER BY STATE_NAME, DT
+         ) AS IW
+             INNER JOIN
+         FINAL AS F
+         ON F.HEAT_DT = IW.DT
+    WHERE IW.DT = LAST_DAY(IW.DT)
+       OR IW.DT = CURRENT_DATE()
+    ORDER BY IW.STATE_NAME, IW.DT
 )
 
 SELECT *
-FROM G_ION_TABLE
+FROM WIP_RATIO
+
 
 /*
  TODO: Setup the case volumes against the active install total for the month, and stack that ratio.

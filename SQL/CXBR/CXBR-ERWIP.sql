@@ -196,13 +196,14 @@ WITH T1 AS (
                              T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)             AS INTERNAL_WIP
          FROM T3
             , RPT.T_DATES AS D
-         WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()
+         WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()
          GROUP BY D.DT
                 , D.WEEK_DAY_NUM
          ORDER BY D.DT
      )
 
 SELECT DT
+     , YEAR(DT)                  AS YEAR_DT
      , EXECUTIVE_WIP
      , LEGAL_WIP
      , EXECUTIVE_WIP + LEGAL_WIP AS TOTAL
