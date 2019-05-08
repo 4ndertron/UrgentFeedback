@@ -2,13 +2,15 @@
 TODO: Initiative for paired programming. Think of the project and then coordinate a time to screenshare.
     Project Ideas:
         BBB API
-        Smartsheet API
 
 TODO: Triple Trouble Automation
     - New Account Batches
     - Transfers Cases
     - Continuations/Refiles
 TODO: ECL DASHBOARD
+TODO: Add credit bucket to ER Buckets
+TODO: Turn all Default WIP_END fields to CLOSED_DATE after collaboration with Brittany
+TODO: Update all Default reports with the new WIP_END Field.
 
 Team Priorities and outputs from priority case reviews.
 -------------------------------------------------------

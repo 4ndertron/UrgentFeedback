@@ -1,18 +1,18 @@
 WITH CASE_TABLE AS (
     -- Collect all the open Default 1,2,4,5 and Escalation Cases in Salesforce --
     SELECT C.CASE_NUMBER
-         , ANY_VALUE(C.CASE_ID)                                                                          AS CASE_ID
+         , ANY_VALUE(C.CASE_ID)                                                                           AS CASE_ID
          , C.PROJECT_ID
-         , ANY_VALUE(LDD.AGE)                                                                            AS AGE_FOR_CASE
-         , ANY_VALUE(C.SUBJECT)                                                                          AS SUBJECT1
-         , ANY_VALUE(CAD.SYSTEM_SIZE)                                                                    AS SYSTEM_SIZE
-         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2)                                               AS SYSTEM_VALUE
-         , ANY_VALUE(C.STATUS)                                                                           AS STATUS2
-         , ANY_VALUE(C.CREATED_DATE)                                                                     AS CREATED_DATE1
-         , ANY_VALUE(C.CLOSED_DATE)                                                                      AS CLOSED_DATE1
-         , ANY_VALUE(C.EXECUTIVE_RESOLUTIONS_ACCEPTED)                                                   AS EXECUTIVE_RESOLUTIONS_ACCEPTED
-         , ANY_VALUE(C.RECORD_TYPE)                                                                      AS RECORD_TYPE1
-         , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)                                                     AS SOLAR_BILLING_ACCOUNT_NUMBER1
+         , ANY_VALUE(LDD.AGE)                                                                             AS AGE_FOR_CASE
+         , ANY_VALUE(C.SUBJECT)                                                                           AS SUBJECT1
+         , ANY_VALUE(CAD.SYSTEM_SIZE)                                                                     AS SYSTEM_SIZE
+         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2)                                                AS SYSTEM_VALUE
+         , ANY_VALUE(C.STATUS)                                                                            AS STATUS2
+         , ANY_VALUE(C.CREATED_DATE)                                                                      AS CREATED_DATE1
+         , ANY_VALUE(C.CLOSED_DATE)                                                                       AS CLOSED_DATE1
+         , ANY_VALUE(C.EXECUTIVE_RESOLUTIONS_ACCEPTED)                                                    AS EXECUTIVE_RESOLUTIONS_ACCEPTED
+         , ANY_VALUE(C.RECORD_TYPE)                                                                       AS RECORD_TYPE1
+         , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)                                                      AS SOLAR_BILLING_ACCOUNT_NUMBER1
          , CASE
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' THEN 1
                WHEN RECORD_TYPE1 = 'Solar Damage Resolutions' THEN 2
@@ -22,8 +22,8 @@ WITH CASE_TABLE AS (
                WHEN RECORD_TYPE1 = 'Solar - Service' THEN 6
                WHEN RECORD_TYPE1 = 'Solar - Troubleshooting' THEN 7
                WHEN RECORD_TYPE1 = 'Solar - Panel Removal' THEN 8
-        END                                                                                              AS RECORD_PRIORITY1
-         , ROW_NUMBER() OVER(PARTITION BY C.PROJECT_ID ORDER BY RECORD_PRIORITY1 ASC,CREATED_DATE1 DESC) AS RN
+        END                                                                                               AS RECORD_PRIORITY1
+         , ROW_NUMBER() OVER (PARTITION BY C.PROJECT_ID ORDER BY RECORD_PRIORITY1 ASC,CREATED_DATE1 DESC) AS RN
          , CASE
                WHEN STATUS2 = 'Escalated' AND RECORD_TYPE1 = 'Solar - Customer Default' THEN 'Pending Legal'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND ANY_VALUE(C.DESCRIPTION) ILIKE '%MBW%' THEN 'MBW'
@@ -32,8 +32,8 @@ WITH CASE_TABLE AS (
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D4%' THEN 'D4'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D5%' THEN 'D5'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%CORP%' THEN 'CORP-Default'
-        END                                                                                              AS DEFAULT_BUCKET
-         , CASE WHEN CLOSED_DATE1 IS NULL THEN 1 END                                                     AS CASE_WIP_KPI
+        END                                                                                               AS DEFAULT_BUCKET
+         , CASE WHEN CLOSED_DATE1 IS NULL THEN 1 END                                                      AS CASE_WIP_KPI
     FROM RPT.T_CASE AS C
              LEFT OUTER JOIN
          RPT.T_SERVICE AS S
@@ -73,20 +73,20 @@ WITH CASE_TABLE AS (
          SELECT CT.*
               , CH.CREATEDDATE
               , DATEDIFF(S, CREATEDDATE,
-                         NVL(LEAD(CREATEDDATE) OVER(PARTITION BY CT.CASE_NUMBER ORDER BY CH.CREATEDDATE),
-                             CURRENT_TIMESTAMP())) / (24 * 60 * 60)                    AS GAP
-              , ROW_NUMBER() OVER(PARTITION BY CT.CASE_NUMBER ORDER BY CH.CREATEDDATE) AS COVERAGE
+                         NVL(LEAD(CREATEDDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CH.CREATEDDATE),
+                             CURRENT_TIMESTAMP())) / (24 * 60 * 60)                     AS GAP
+              , ROW_NUMBER() OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CH.CREATEDDATE) AS COVERAGE
               , IFF(CH.CREATEDDATE >= DATEADD('D', -30, CURRENT_DATE()),
                     DATEDIFF(S,
                              CREATEDDATE,
-                             NVL(LEAD(CREATEDDATE) OVER(PARTITION BY CT.CASE_NUMBER
-                                      ORDER BY CH.CREATEDDATE),
+                             NVL(LEAD(CREATEDDATE) OVER (PARTITION BY CT.CASE_NUMBER
+                                 ORDER BY CH.CREATEDDATE),
                                  CURRENT_TIMESTAMP())) / (24 * 60 * 60), NULL)
-                                                                                       AS LAST_30_DAY_GAP
+                                                                                        AS LAST_30_DAY_GAP
               , IFF(CH.CREATEDDATE >= DATEADD('D', -30, CURRENT_DATE()),
                     1,
                     NULL)
-                                                                                       AS LAST_30_DAY_COVERAGE_TALLY
+                                                                                        AS LAST_30_DAY_COVERAGE_TALLY
          FROM CASE_TABLE CT
                   LEFT OUTER JOIN
               RPT.V_SF_CASEHISTORY AS CH
@@ -97,30 +97,30 @@ WITH CASE_TABLE AS (
 
      FULL_CASE AS (
          SELECT CASE_NUMBER
-              , ANY_VALUE(SUBJECT1)                                                                        AS SUBJECT
-              , ANY_VALUE(SYSTEM_SIZE)                                                                     AS SYSTEM_SIZE
-              , ANY_VALUE(SYSTEM_VALUE)                                                                    AS SYSTEM_VALUE
-              , ANY_VALUE(STATUS2)                                                                         AS STATUS1
-              , ANY_VALUE(AGE_FOR_CASE)                                                                    AS AGE_FOR_CASE
-              , ANY_VALUE(CREATED_DATE1)                                                                   AS CREATED_DATE
-              , ANY_VALUE(RECORD_PRIORITY1)                                                                AS RECORD_PRIORITY
-              , ANY_VALUE(CLOSED_DATE1)                                                                    AS CLOSED_DATE
-              , ANY_VALUE(EXECUTIVE_RESOLUTIONS_ACCEPTED)                                                  AS ERA
-              , ANY_VALUE(RECORD_TYPE1)                                                                    AS RECORD_TYPE1
+              , ANY_VALUE(SUBJECT1)                                                                         AS SUBJECT
+              , ANY_VALUE(SYSTEM_SIZE)                                                                      AS SYSTEM_SIZE
+              , ANY_VALUE(SYSTEM_VALUE)                                                                     AS SYSTEM_VALUE
+              , ANY_VALUE(STATUS2)                                                                          AS STATUS1
+              , ANY_VALUE(AGE_FOR_CASE)                                                                     AS AGE_FOR_CASE
+              , ANY_VALUE(CREATED_DATE1)                                                                    AS CREATED_DATE
+              , ANY_VALUE(RECORD_PRIORITY1)                                                                 AS RECORD_PRIORITY
+              , ANY_VALUE(CLOSED_DATE1)                                                                     AS CLOSED_DATE
+              , ANY_VALUE(EXECUTIVE_RESOLUTIONS_ACCEPTED)                                                   AS ERA
+              , ANY_VALUE(RECORD_TYPE1)                                                                     AS RECORD_TYPE1
               , SOLAR_BILLING_ACCOUNT_NUMBER1
-              , ANY_VALUE(DEFAULT_BUCKET)                                                                  AS DEFAULT_BUCKET1
-              , ANY_VALUE(CASE_WIP_KPI)                                                                    AS CASE_WIP_KPI
+              , ANY_VALUE(DEFAULT_BUCKET)                                                                   AS DEFAULT_BUCKET1
+              , ANY_VALUE(CASE_WIP_KPI)                                                                     AS CASE_WIP_KPI
               , CASE
                     WHEN STATUS1 IN ('In Progress') AND DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal')
                         THEN 'P4/P5/DRA Letters'
                     WHEN STATUS1 IN ('Pending Corporate Action', 'Pending Customer Action') AND
                          DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal') THEN 'Working with Customer'
-             END                                                                                           AS STATUS_BUCKET
-              , AVG(GAP)                                                                                   AS AVERAGE_GAP
-              , MAX(COVERAGE)                                                                              AS COVERAGE
-              , AVG(LAST_30_DAY_GAP)                                                                       AS LAST_30_DAY_GAP
-              , SUM(LAST_30_DAY_COVERAGE_TALLY)                                                            AS LAST_30_DAY_COVERAGE
-              , ROW_NUMBER() OVER(PARTITION BY SOLAR_BILLING_ACCOUNT_NUMBER1 ORDER BY RECORD_PRIORITY ASC) AS RN
+             END                                                                                            AS STATUS_BUCKET
+              , AVG(GAP)                                                                                    AS AVERAGE_GAP
+              , MAX(COVERAGE)                                                                               AS COVERAGE
+              , AVG(LAST_30_DAY_GAP)                                                                        AS LAST_30_DAY_GAP
+              , SUM(LAST_30_DAY_COVERAGE_TALLY)                                                             AS LAST_30_DAY_COVERAGE
+              , ROW_NUMBER() OVER (PARTITION BY SOLAR_BILLING_ACCOUNT_NUMBER1 ORDER BY RECORD_PRIORITY ASC) AS RN
          FROM CASE_HISTORY_TABLE
          GROUP BY SOLAR_BILLING_ACCOUNT_NUMBER1
                 , CASE_NUMBER
@@ -140,8 +140,8 @@ WITH CASE_TABLE AS (
               , IFF(COLLECTION_CODE LIKE '%BK%', 'BK', COLLECTION_CODE) AS LD_CODE
               , COLLECTION_DATE
               , MAX(AGE)                                                AS AGE
-              , ROW_NUMBER() OVER(PARTITION BY BILLING_ACCOUNT
-                             ORDER BY COLLECTION_DATE)
+              , ROW_NUMBER() OVER (PARTITION BY BILLING_ACCOUNT
+             ORDER BY COLLECTION_DATE)
                                                                         AS RN
          FROM LD.T_DAILY_DATA_EXTRACT_HIST AS LDH
          WHERE (
@@ -176,10 +176,10 @@ WITH CASE_TABLE AS (
               , NVL(LDH.COLLECTION_CODE, 'NULL')                             AS COLLECTION_CODE1
               , IFF(LDH.COLLECTION_CODE LIKE '%BK%', 'BK', COLLECTION_CODE1) AS LD_CODE
               , NVL(LDH.COLLECTION_DATE,
-                    NVL(LAG(LDH.AS_OF_DATE) OVER(PARTITION BY LDF.BILLING_ACCOUNT ORDER BY LDH.COLLECTION_DATE),
+                    NVL(LAG(LDH.AS_OF_DATE) OVER (PARTITION BY LDF.BILLING_ACCOUNT ORDER BY LDH.COLLECTION_DATE),
                         LDH.AS_OF_DATE))                                     AS CODE_WIP_START1
-              , LEAD(LDH.COLLECTION_DATE) OVER(PARTITION BY LDF.BILLING_ACCOUNT
-                     ORDER BY LDH.COLLECTION_DATE)                           AS CODE_WIP_END1
+              , LEAD(LDH.COLLECTION_DATE) OVER (PARTITION BY LDF.BILLING_ACCOUNT
+             ORDER BY LDH.COLLECTION_DATE)                                   AS CODE_WIP_END1
          FROM LD_HISTORY_FLAG AS LDF
                   LEFT JOIN
               LD.T_DAILY_DATA_EXTRACT_HIST AS LDH

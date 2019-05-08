@@ -81,34 +81,34 @@ WITH AGENTS AS (
          , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
          , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
          , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
-         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                                    AS ERA
-         , DATE_TRUNC('D', ERA)                                                                    AS ER_ACCEPTED_DAY
-         , DATE_TRUNC('W', ERA)                                                                    AS ER_ACCEPTED_WEEK
-         , DATE_TRUNC('month', ERA)                                                                AS ER_ACCEPTED_MONTH
+         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
+         , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
+         , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
+         , DATE_TRUNC('month', ERA)                                              AS ER_ACCEPTED_MONTH
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
-                             ORDER BY CC.CREATEDATE),
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+                        ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)
-                                                                                                   AS GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                    AS COVERAGE
+                                                                                 AS GAP
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE) AS COVERAGE
          , IFF(
             CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
             DATEDIFF(S,
                      CC.CREATEDATE,
-                     NVL(LEAD(CC.CREATEDATE) OVER(
-                              PARTITION BY C.CASE_NUMBER
-                              ORDER BY CC.CREATEDATE
-                             ),
+                     NVL(LEAD(CC.CREATEDATE) OVER (
+                         PARTITION BY C.CASE_NUMBER
+                         ORDER BY CC.CREATEDATE
+                         ),
                          CURRENT_TIMESTAMP())) / (24 * 60 * 60),
             NULL
         )
-                                                                                                   AS LAST_30_DAY_GAP
+                                                                                 AS LAST_30_DAY_GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                1,
                NULL)
-                                                                                                   AS LAST_30_DAY_COVERAGE_TALLY
+                                                                                 AS LAST_30_DAY_COVERAGE_TALLY
          , CC.CREATEDBYID
          , CASE
                WHEN
@@ -117,7 +117,7 @@ WITH AGENTS AS (
                        c.CLOSED_DATE IS NULL
                    THEN
                    1
-        END                                                                                        AS WIP_kpi
+        END                                                                      AS WIP_kpi
          , CASE
                WHEN
                    CREATEDBYID = OWNER_ID
@@ -280,28 +280,36 @@ WITH AGENTS AS (
     GROUP BY T3.CREATED_DATE
 )
 
-SELECT DATE_TRUNC('MM', D.DT)    AS MONTH_1
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
-                     THEN 1 END) AS EXECUTIVE_INFLOW
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Legal/BBB'
-                     THEN 1 END) AS LEGAL_BBB_INFLOW
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Online Review'
-                     THEN 1 END) AS REVIEW_INFLOW
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Social Media'
-                     THEN 1 END) AS SOCIAL_INFLOW
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Credit Dispute'
-                     THEN 1 END) AS CREDIT_INFLOW
-     , COUNT(CASE
-                 WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Internal'
-                     THEN 1 END) AS INTERNAL_INFLOW
-FROM RPT.T_dates AS D
-   , MERGE AS C
-WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
-  AND C.PRIORITY_BUCKET IS NOT NULL
-GROUP BY MONTH_1
-ORDER BY MONTH_1
+   , INFLOW_TABLE AS (
+    SELECT DATE_TRUNC('MM', D.DT)    AS MONTH_1
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT
+                         THEN 1 END) AS OVERALL_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
+                         THEN 1 END) AS EXECUTIVE_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Legal/BBB'
+                         THEN 1 END) AS LEGAL_BBB_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Online Review'
+                         THEN 1 END) AS REVIEW_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Social Media'
+                         THEN 1 END) AS SOCIAL_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Credit Dispute'
+                         THEN 1 END) AS CREDIT_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Internal'
+                         THEN 1 END) AS INTERNAL_INFLOW
+    FROM RPT.T_dates AS D
+       , MERGE AS C
+    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+      AND C.PRIORITY_BUCKET IS NOT NULL
+    GROUP BY MONTH_1
+    ORDER BY MONTH_1
+)
+
+SELECT *
+FROM INFLOW_TABLE
