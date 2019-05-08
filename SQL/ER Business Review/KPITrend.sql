@@ -11,6 +11,58 @@ WITH AGENTS AS (
     ORDER BY TEAM_START_DATE DESC
 )
 
+   , ER_HISTORY AS (
+    SELECT HR.EMPLOYEE_ID
+         , HR.SUPERVISORY_ORG
+         , ANY_VALUE(COST_CENTER)                                                   AS COST_CENTER
+         , ANY_VALUE(HR.FULL_NAME)                                                  AS FULL_NAME
+         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                                          AS SUPERVISOR_NAME_1
+         , DATEDIFF('MM', ANY_VALUE(HR.HIRE_DATE),
+                    NVL(ANY_VALUE(HR.TERMINATION_DATE), CURRENT_DATE()))            AS MONTH_TENURE1
+         , ANY_VALUE(HR.HIRE_DATE)                                                  AS HIRE_DATE1
+         , ANY_VALUE(HR.TERMINATED)                                                 AS TERMINATED
+         , ANY_VALUE(HR.TERMINATION_DATE)                                           AS TERMINATION_DATE
+         , ANY_VALUE(HR.TERMINATION_CATEGORY)                                       AS TERMINATION_CATEGORY
+         , ANY_VALUE(HR.TERMINATION_REASON)                                         AS TERMINATION_REASON
+         , MIN(HR.CREATED_DATE)                                                     AS TEAM_START_DATE
+         -- Begin custom fields IN the TABLE
+         , CASE
+               WHEN MAX(HR.EXPIRY_DATE) >= CURRENT_DATE() AND ANY_VALUE(HR.TERMINATION_DATE) IS NOT NULL
+                   THEN ANY_VALUE(HR.TERMINATION_DATE)
+               WHEN MAX(HR.EXPIRY_DATE) >= ANY_VALUE(HR.TERMINATION_DATE) THEN ANY_VALUE(HR.TERMINATION_DATE)
+               ELSE MAX(HR.EXPIRY_DATE) END                                         AS TEAM_END_DATE1
+         , ROW_NUMBER() OVER (PARTITION BY HR.EMPLOYEE_ID ORDER BY TEAM_START_DATE) AS RN
+         , CASE
+               WHEN ANY_VALUE(HR.COST_CENTER_ID) IN ('3400', '3700', '4967-60') THEN TRUE
+               ELSE FALSE END                                                       AS DIRECTOR_ORG
+         , LEAD(DIRECTOR_ORG, 1, DIRECTOR_ORG) OVER (PARTITION BY HR.EMPLOYEE_ID
+        ORDER BY TEAM_START_DATE)                                                   AS NEXT_DIRECTOR
+         , CASE
+               WHEN ANY_VALUE(HR.TERMINATION_DATE) >= TEAM_END_DATE1 AND NOT NEXT_DIRECTOR THEN TRUE
+               WHEN DIRECTOR_ORG != NEXT_DIRECTOR THEN TRUE
+               ELSE FALSE END                                                       AS TRANSFER
+    FROM HR.T_EMPLOYEE_ALL AS HR
+    GROUP BY HR.EMPLOYEE_ID
+           , HR.SUPERVISORY_ORG
+    ORDER BY HR.EMPLOYEE_ID
+           , TEAM_START_DATE DESC
+)
+
+   , ER_WIP_TABLE AS (
+    SELECT D.DT
+         , COUNT(CASE
+                     WHEN EH.TEAM_START_DATE <= D.DT AND
+                          (EH.TEAM_END_DATE1 > D.DT)
+                         THEN 1 END)                                                   AS WIP
+         , ROUND(AVG(WIP) OVER (PARTITION BY DATE_TRUNC('MM', D.DT) ORDER BY D.DT), 2) AS MONTH_AVG
+    FROM RPT.T_dates AS D
+       , ER_HISTORY AS EH
+    WHERE D.DT BETWEEN DATEADD('Y', -2, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+      AND EH.SUPERVISORY_ORG = 'Executive Resolutions'
+    GROUP BY D.DT
+    ORDER BY D.DT
+)
+
    , QA AS (
     SELECT HR.FULL_NAME
          , ANY_VALUE(HR.FIRST_NAME || ' ') AS AGENT
@@ -107,21 +159,21 @@ WITH AGENTS AS (
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
-                             ORDER BY CC.CREATEDATE),
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+                        ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)                      AS GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                DATEDIFF(S,
                         CC.CREATEDATE,
-                        NVL(LEAD(CC.CREATEDATE) OVER(
-                                 PARTITION BY C.CASE_NUMBER
-                                 ORDER BY CC.CREATEDATE
-                                ),
+                        NVL(LEAD(CC.CREATEDATE) OVER (
+                            PARTITION BY C.CASE_NUMBER
+                            ORDER BY CC.CREATEDATE
+                            ),
                             CURRENT_TIMESTAMP())) / (24 * 60 * 60),
                NULL)                                                                AS LAST_30_DAY_GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)     AS COVERAGE
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)    AS COVERAGE
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
-               ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
                NULL)                                                                AS LAST_30_DAY_COVERAGE
          , CC.CREATEDBYID
          , CASE
@@ -221,7 +273,7 @@ WITH AGENTS AS (
    , COVERAGE_30 AS (
     SELECT CASE_NUMBER
          , CREATEDATE
-         , ROW_NUMBER() OVER(PARTITION BY CASE_NUMBER ORDER BY CREATEDATE) AS LAST_30_DAY_COVERAGE
+         , ROW_NUMBER() OVER (PARTITION BY CASE_NUMBER ORDER BY CREATEDATE) AS LAST_30_DAY_COVERAGE
     FROM T1
     WHERE CREATEDATE >= DATEADD('D', -30, CURRENT_DATE())
 )
@@ -315,19 +367,21 @@ WITH AGENTS AS (
 )
 
    , MONTH_MERGE AS (
-    SELECT WT.DT                 AS KPI_DT
-         , WT.ALL_WIP            AS KPI_ALL_WIP
-         , WT.AVG_COVERAGE       AS KPI_AVG_COVERAGE
-         , IT.CASES_CLOSED       AS KPI_CASES_CLOSED
-         , IT.AVERAGE_CLOSED_AGE AS KPI_AVERAGE_CLOSED_AGE
+    SELECT WT.DT                                             AS KPI_DT
+         , IFF(EH.WIP = 0, NULL, ROUND(WT.ALL_WIP / EH.WIP)) AS KPI_AVG_CASE_LOAD
+         , WT.AVG_COVERAGE                                   AS KPI_AVG_COVERAGE
+         , IT.CASES_CLOSED                                   AS KPI_CASES_CLOSED
+         , IT.AVERAGE_CLOSED_AGE                             AS KPI_AVERAGE_CLOSED_AGE
     FROM WIP_TABLE AS WT
              INNER JOIN
          ION_TABLE AS IT
          ON IT.MONTH_1 = WT.DT
+             INNER JOIN
+         ER_WIP_TABLE AS EH
+         ON EH.DT = WT.DT
     WHERE WT.DT = LAST_DAY(WT.DT)
        OR WT.DT = CURRENT_DATE()
 )
 
 SELECT *
 FROM MONTH_MERGE
-ORDER BY KPI_DT
