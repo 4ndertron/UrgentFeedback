@@ -14,12 +14,13 @@ WITH AGENTS AS (
    , ER_HISTORY AS (
     SELECT HR.EMPLOYEE_ID
          , HR.SUPERVISORY_ORG
-         , ANY_VALUE(COST_CENTER)                                                   AS COST_CENTER
-         , ANY_VALUE(HR.FULL_NAME)                                                  AS FULL_NAME
-         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                                          AS SUPERVISOR_NAME_1
+         , ANY_VALUE(HR.POSITION_TITLE)                                  AS POSITION_TITLE
+         , ANY_VALUE(COST_CENTER)                                        AS COST_CENTER
+         , ANY_VALUE(HR.FULL_NAME)                                       AS FULL_NAME
+         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                               AS SUPERVISOR_NAME_1
          , DATEDIFF('MM', ANY_VALUE(HR.HIRE_DATE),
-                    NVL(ANY_VALUE(HR.TERMINATION_DATE), CURRENT_DATE()))            AS MONTH_TENURE1
-         , ANY_VALUE(HR.HIRE_DATE)                                                  AS HIRE_DATE1
+                    NVL(ANY_VALUE(HR.TERMINATION_DATE), CURRENT_DATE())) AS MONTH_TENURE1
+         , ANY_VALUE(HR.HIRE_DATE)                                       AS HIRE_DATE1
          , ANY_VALUE(HR.TERMINATED)                                                 AS TERMINATED
          , ANY_VALUE(HR.TERMINATION_DATE)                                           AS TERMINATION_DATE
          , ANY_VALUE(HR.TERMINATION_CATEGORY)                                       AS TERMINATION_CATEGORY
@@ -59,6 +60,7 @@ WITH AGENTS AS (
        , ER_HISTORY AS EH
     WHERE D.DT BETWEEN DATEADD('Y', -2, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
       AND EH.SUPERVISORY_ORG = 'Executive Resolutions'
+      AND EH.SUPERVISOR_NAME_1 NOT LIKE '%Anderson%'
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -367,11 +369,12 @@ WITH AGENTS AS (
 )
 
    , MONTH_MERGE AS (
-    SELECT WT.DT                                             AS KPI_DT
-         , IFF(EH.WIP = 0, NULL, ROUND(WT.ALL_WIP / EH.WIP)) AS KPI_AVG_CASE_LOAD
-         , WT.AVG_COVERAGE                                   AS KPI_AVG_COVERAGE
-         , IT.CASES_CLOSED                                   AS KPI_CASES_CLOSED
-         , IT.AVERAGE_CLOSED_AGE                             AS KPI_AVERAGE_CLOSED_AGE
+    SELECT WT.DT                                                AS KPI_DT
+         , IFF(EH.WIP = 0, NULL, ROUND(WT.ALL_WIP / EH.WIP, 2)) AS KPI_AVG_CASE_LOAD
+         , EH.WIP                                               AS KPI_ACTIVE_EMPLOYEES
+         , WT.AVG_COVERAGE                                      AS KPI_AVG_COVERAGE
+         , IT.CASES_CLOSED                                      AS KPI_CASES_CLOSED
+         , IT.AVERAGE_CLOSED_AGE                                AS KPI_AVERAGE_CLOSED_AGE
     FROM WIP_TABLE AS WT
              INNER JOIN
          ION_TABLE AS IT
@@ -381,7 +384,11 @@ WITH AGENTS AS (
          ON EH.DT = WT.DT
     WHERE WT.DT = LAST_DAY(WT.DT)
        OR WT.DT = CURRENT_DATE()
+    ORDER BY WT.DT
 )
 
 SELECT *
-FROM MONTH_MERGE
+FROM ER_HISTORY
+WHERE SUPERVISOR_NAME_1 = 'Jacob Azevedo'
+  AND NOT TERMINATED
+  AND TEAM_END_DATE1 >= CURRENT_DATE()
