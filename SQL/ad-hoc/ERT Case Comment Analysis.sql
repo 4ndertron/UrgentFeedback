@@ -5,64 +5,11 @@ WITH AGENTS AS (
          , MIN(HR.CREATED_DATE)     AS TEAM_START_DATE
          , MAX(HR.EXPIRY_DATE)      AS TEAM_END_DATE
          , ANY_VALUE(HR.TERMINATED) AS TERMINATED
+         , ANY_VALUE(SF_REP_ID)     AS REP_ID
     FROM HR.T_EMPLOYEE_ALL AS HR
     WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
     GROUP BY HR.FULL_NAME
     ORDER BY TEAM_START_DATE DESC
-)
-
-   , ER_HISTORY AS (
-    SELECT HR.EMPLOYEE_ID
-         , HR.SUPERVISORY_ORG
-         , ANY_VALUE(HR.POSITION_TITLE)                                  AS POSITION_TITLE
-         , ANY_VALUE(COST_CENTER)                                        AS COST_CENTER
-         , ANY_VALUE(HR.FULL_NAME)                                       AS FULL_NAME
-         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                               AS SUPERVISOR_NAME_1
-         , DATEDIFF('MM', ANY_VALUE(HR.HIRE_DATE),
-                    NVL(ANY_VALUE(HR.TERMINATION_DATE), CURRENT_DATE())) AS MONTH_TENURE1
-         , ANY_VALUE(HR.HIRE_DATE)                                       AS HIRE_DATE1
-         , ANY_VALUE(HR.TERMINATED)                                      AS TERMINATED
-         , ANY_VALUE(HR.TERMINATION_DATE)                                AS TERMINATION_DATE
-         , ANY_VALUE(HR.TERMINATION_CATEGORY)                            AS TERMINATION_CATEGORY
-         , ANY_VALUE(HR.TERMINATION_REASON)                              AS TERMINATION_REASON
-         , MIN(HR.CREATED_DATE)                                          AS TEAM_START_DATE
-         -- Begin custom fields IN the TABLE
-         , CASE
-               WHEN MAX(HR.EXPIRY_DATE) >= CURRENT_DATE() AND ANY_VALUE(HR.TERMINATION_DATE) IS NOT NULL
-                   THEN ANY_VALUE(HR.TERMINATION_DATE)
-               WHEN MAX(HR.EXPIRY_DATE) >= ANY_VALUE(HR.TERMINATION_DATE) THEN ANY_VALUE(HR.TERMINATION_DATE)
-               ELSE MAX(HR.EXPIRY_DATE) END                                         AS TEAM_END_DATE1
-         , ROW_NUMBER() OVER (PARTITION BY HR.EMPLOYEE_ID ORDER BY TEAM_START_DATE) AS RN
-         , CASE
-               WHEN ANY_VALUE(HR.COST_CENTER_ID) IN ('3400', '3700', '4967-60') THEN TRUE
-               ELSE FALSE END                                                       AS DIRECTOR_ORG
-         , LEAD(DIRECTOR_ORG, 1, DIRECTOR_ORG) OVER (PARTITION BY HR.EMPLOYEE_ID
-        ORDER BY TEAM_START_DATE)                                                   AS NEXT_DIRECTOR
-         , CASE
-               WHEN ANY_VALUE(HR.TERMINATION_DATE) >= TEAM_END_DATE1 AND NOT NEXT_DIRECTOR THEN TRUE
-               WHEN DIRECTOR_ORG != NEXT_DIRECTOR THEN TRUE
-               ELSE FALSE END                                                       AS TRANSFER
-    FROM HR.T_EMPLOYEE_ALL AS HR
-    GROUP BY HR.EMPLOYEE_ID
-           , HR.SUPERVISORY_ORG
-    ORDER BY HR.EMPLOYEE_ID
-           , TEAM_START_DATE DESC
-)
-
-   , ER_WIP_TABLE AS (
-    SELECT D.DT
-         , COUNT(CASE
-                     WHEN EH.TEAM_START_DATE <= D.DT AND
-                          (EH.TEAM_END_DATE1 > D.DT)
-                         THEN 1 END)                                                   AS WIP
-         , ROUND(AVG(WIP) OVER (PARTITION BY DATE_TRUNC('MM', D.DT) ORDER BY D.DT), 2) AS MONTH_AVG
-    FROM RPT.T_dates AS D
-       , ER_HISTORY AS EH
-    WHERE D.DT BETWEEN DATEADD('Y', -2, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
-      AND EH.SUPERVISORY_ORG = 'Executive Resolutions'
-      AND EH.SUPERVISOR_NAME_1 NOT LIKE '%Anderson%'
-    GROUP BY D.DT
-    ORDER BY D.DT
 )
 
    , QA AS (
@@ -129,41 +76,46 @@ WITH AGENTS AS (
     SELECT C.CASE_NUMBER
          , C.ORIGIN
          , C.STATUS
-         , C.PROJECT_ID                                                             AS PID
+         , C.CASE_ID
+         , C.PROJECT_ID                                                          AS PID
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
                ELSE 'Internal'
-        END                                                                         AS PRIORITY_BUCKET
+        END                                                                      AS PRIORITY_BUCKET
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
                WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
                ELSE 'Internal'
-        END                                                                         AS PRIORITY_TABLE
+        END                                                                      AS PRIORITY_TABLE
          , C.OWNER
          , C.OWNER_ID
+         , CC.CREATEDBYID                                                        AS COMMENT_CREATED_ID
+         , USR.NAME                                                              AS COMMENT_CREATED_BY
+         , CC.CREATEDATE                                                         AS COMMENT_CREATED_DATE
+         , CC.COMMENTBODY                                                        AS CASE_COMMENT
          , C.CREATED_DATE
-         , DATE_TRUNC('D', C.CREATED_DATE)                                          AS DAY_CREATED
-         , DATE_TRUNC('W', C.CREATED_DATE)                                          AS WEEK_CREATED
-         , DATE_TRUNC('month', C.CREATED_DATE)                                      AS MONTH_CREATED
+         , DATE_TRUNC('D', C.CREATED_DATE)                                       AS DAY_CREATED
+         , DATE_TRUNC('W', C.CREATED_DATE)                                       AS WEEK_CREATED
+         , DATE_TRUNC('month', C.CREATED_DATE)                                   AS MONTH_CREATED
          , C.CLOSED_DATE
-         , DATE_TRUNC('D', C.CLOSED_DATE)                                           AS DAY_CLOSED
-         , DATE_TRUNC('W', C.CLOSED_DATE)                                           AS WEEK_CLOSED
-         , DATE_TRUNC('month', C.CLOSED_DATE)                                       AS MONTH_CLOSED
-         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                     AS ERA
-         , DATE_TRUNC('D', ERA)                                                     AS ER_ACCEPTED_DAY
-         , DATE_TRUNC('W', ERA)                                                     AS ER_ACCEPTED_WEEK
-         , DATE_TRUNC('month', ERA)                                                 AS ER_ACCEPTED_MONTH
+         , DATE_TRUNC('D', C.CLOSED_DATE)                                        AS DAY_CLOSED
+         , DATE_TRUNC('W', C.CLOSED_DATE)                                        AS WEEK_CLOSED
+         , DATE_TRUNC('month', C.CLOSED_DATE)                                    AS MONTH_CLOSED
+         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
+         , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
+         , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
+         , DATE_TRUNC('month', ERA)                                              AS ER_ACCEPTED_MONTH
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
                         ORDER BY CC.CREATEDATE),
-                        CURRENT_TIMESTAMP())) / (24 * 60 * 60)                      AS GAP
+                        CURRENT_TIMESTAMP())) / (24 * 60 * 60)                   AS GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                DATEDIFF(S,
                         CC.CREATEDATE,
@@ -172,33 +124,37 @@ WITH AGENTS AS (
                             ORDER BY CC.CREATEDATE
                             ),
                             CURRENT_TIMESTAMP())) / (24 * 60 * 60),
-               NULL)                                                                AS LAST_30_DAY_GAP
-         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)    AS COVERAGE
+               NULL)                                                             AS LAST_30_DAY_GAP
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE) AS COVERAGE
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               NULL)                                                                AS LAST_30_DAY_COVERAGE
-         , CC.CREATEDBYID
+               NULL)                                                             AS LAST_30_DAY_COVERAGE
          , CASE
-               WHEN c.CREATED_DATE IS NOT NULL AND c.CLOSED_DATE IS NULL THEN 1 END AS WIP_kpi
+               WHEN c.CREATED_DATE IS NOT NULL
+                   AND c.CLOSED_DATE IS NULL
+                   AND C.STATUS != 'In Dispute' THEN 1 END                       AS WIP_kpi
          , CASE
-               WHEN CREATEDBYID = OWNER_ID THEN
+               WHEN CC.CREATEDBYID = C.OWNER_ID THEN
                            DATEDIFF(S, C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
                        - (DATEDIFF(WK, C.CREATED_DATE, CC.CREATEDATE) * 2)
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sun' THEN 24 ELSE 0 END)
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sat' THEN 24 ELSE 0 END)
                ELSE DATEDIFF('S', C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
-        END                                                                         AS HOURLY_RESPONSE_TAT
+        END                                                                      AS HOURLY_RESPONSE_TAT
          , DATEDIFF('s'
                , C.CREATED_DATE
-               , NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60)          AS CASE_AGE
-         , CASE WHEN HOURLY_RESPONSE_TAT <= 24 THEN 1 END                           AS RESPONSE_SLA
-         , CASE WHEN HOURLY_RESPONSE_TAT <= 2 THEN 1 END                            AS PRIORITY_RESPONSE_SLA
-         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15 THEN 1 END        AS CLOSED_15_DAY_SLA
-         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30 THEN 1 END        AS CLOSED_30_DAY_SLA
+               , NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60)       AS CASE_AGE
+         , CASE WHEN HOURLY_RESPONSE_TAT <= 24 THEN 1 END                        AS RESPONSE_SLA
+         , CASE WHEN HOURLY_RESPONSE_TAT <= 2 THEN 1 END                         AS PRIORITY_RESPONSE_SLA
+         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15 THEN 1 END     AS CLOSED_15_DAY_SLA
+         , CASE WHEN C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30 THEN 1 END     AS CLOSED_30_DAY_SLA
     FROM RPT.T_CASE AS C
              LEFT OUTER JOIN
          RPT.V_SF_CASECOMMENT AS CC
          ON C.CASE_ID = CC.PARENTID
+             LEFT JOIN
+         RPT.V_SF_USER AS USR
+         ON USR.ID = CC.CREATEDBYID
     WHERE RECORD_TYPE = 'Solar - Customer Escalation'
       AND EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
       AND SUBJECT NOT ILIKE '[NPS]%'
@@ -334,58 +290,24 @@ WITH AGENTS AS (
     GROUP BY T3.CREATED_DATE
 )
 
-   , WIP_TABLE AS (
-    SELECT D.DT
-         , SUM(CASE
-                   WHEN C.ER_ACCEPTED_DAY <= D.DT AND (C.DAY_CLOSED >= D.DT OR C.DAY_CLOSED IS NULL)
-                       THEN 1 END)                                AS ALL_WIP
-         , ROUND(AVG(CASE
-                         WHEN C.ER_ACCEPTED_DAY <= D.DT AND (C.DAY_CLOSED >= D.DT OR C.DAY_CLOSED IS NULL)
-                             THEN CASE_AGE END), 2)               AS AVG_ACTIVE_AGE
-         , ROUND(AVG(CASE
-                         WHEN C.ER_ACCEPTED_DAY <= D.DT AND (C.DAY_CLOSED >= D.DT OR C.DAY_CLOSED IS NULL)
-                             THEN C.LAST_30_DAY_COVERAGE END), 2) AS AVG_COVERAGE
-    FROM MERGE AS C
-       , RPT.T_DATES AS D
-    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()
-      AND C.CASE_STATUS != 'In Dispute'
-    GROUP BY D.DT
-    ORDER BY D.DT
-)
-
-   , ION_TABLE AS (
-    SELECT IFF(LAST_DAY(D.DT) >= CURRENT_DATE, CURRENT_DATE, LAST_DAY(D.DT))        AS MONTH_1
-         , COUNT(CASE WHEN TO_DATE(C.CREATED_DATE) = D.DT THEN 1 END)               AS CASES_CREATED
-         , COUNT(CASE WHEN TO_DATE(C.CLOSED_DATE) = D.DT THEN 1 END)                AS CASES_CLOSED
-         , CASES_CREATED - CASES_CLOSED                                             AS NET
-         , ROUND(AVG(CASE WHEN TO_DATE(C.CLOSED_DATE) = D.DT THEN CASE_AGE END), 2) AS AVERAGE_CLOSED_AGE
-    FROM RPT.T_dates AS D
-       , MERGE AS C
-    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
-      AND C.PRIORITY_BUCKET IS NOT NULL
-      AND C.CASE_STATUS != 'In Dispute'
-    GROUP BY MONTH_1
-    ORDER BY MONTH_1
-)
-
-   , MONTH_MERGE AS (
-    SELECT WT.DT                                                AS KPI_DT
-         , IFF(EH.WIP = 0, NULL, ROUND(WT.ALL_WIP / EH.WIP, 2)) AS KPI_AVG_CASE_LOAD
-         , EH.WIP                                               AS KPI_ACTIVE_EMPLOYEES
-         , WT.AVG_COVERAGE                                      AS KPI_AVG_COVERAGE
-         , IT.CASES_CLOSED                                      AS KPI_CASES_CLOSED
-         , IT.AVERAGE_CLOSED_AGE                                AS KPI_AVERAGE_CLOSED_AGE
-    FROM WIP_TABLE AS WT
-             INNER JOIN
-         ION_TABLE AS IT
-         ON IT.MONTH_1 = WT.DT
-             INNER JOIN
-         ER_WIP_TABLE AS EH
-         ON EH.DT = WT.DT
-    WHERE WT.DT = LAST_DAY(WT.DT)
-       OR WT.DT = CURRENT_DATE()
-    ORDER BY WT.DT
+   , COMMENT_ANALYSIS_TABLE AS (
+    SELECT CASE_NUMBER
+         , CASE_ID
+         , ORIGIN
+         , PRIORITY_BUCKET
+         , OWNER
+         , ERA AS EXECUTIVE_RESOLUTION_ACCEPTED_DATE
+         , CREATED_DATE
+         , STATUS
+         , COMMENT_CREATED_BY
+         , COMMENT_CREATED_DATE
+         , LAST_30_DAY_GAP
+         , LAST_30_DAY_COVERAGE
+         , CASE_COMMENT
+    FROM T1
+    WHERE CLOSED_DATE IS NULL
+      AND STATUS != 'In Dispute'
 )
 
 SELECT *
-FROM MONTH_MERGE
+FROM COMMENT_ANALYSIS_TABLE

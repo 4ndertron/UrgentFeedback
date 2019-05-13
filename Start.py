@@ -8,7 +8,6 @@ TODO: Triple Trouble Automation
     - Transfers Cases
     - Continuations/Refiles
 TODO: ECL DASHBOARD
-TODO: Add credit bucket to ER Buckets
 TODO: Turn all Default WIP_END fields to CLOSED_DATE after collaboration with Brittany
 TODO: Update all Default reports with the new WIP_END Field.
 
