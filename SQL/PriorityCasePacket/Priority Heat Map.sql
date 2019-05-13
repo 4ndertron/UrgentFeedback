@@ -14,10 +14,10 @@ WITH PROJECTS_RAW AS (
 
    , INSTALLS_BY_ROC AS (
     SELECT DISTINCT STATE_NAME
-                  , COUNT(PROJECT_ID) OVER(PARTITION BY STATE_NAME) AS INSTALL_TALLY
+                  , COUNT(PROJECT_ID) OVER (PARTITION BY STATE_NAME) AS INSTALL_TALLY
                   ,
-            TO_CHAR(100 * COUNT(PROJECT_ID) OVER(PARTITION BY STATE_NAME) / COUNT(PROJECT_ID) OVER(), '90.00') ||
-            '%'                                                     AS INSTALL_RATIO
+            TO_CHAR(100 * COUNT(PROJECT_ID) OVER (PARTITION BY STATE_NAME) / COUNT(PROJECT_ID) OVER (), '90.00') ||
+            '%'                                                      AS INSTALL_RATIO
     FROM PROJECTS_RAW
 )
 
@@ -261,25 +261,52 @@ WITH PROJECTS_RAW AS (
          , IW.STATE_NAME
          , F.ACTIVE_WIP
          , IW.ACTIVE_INSTALLS
-    FROM (SELECT *
+    FROM FINAL AS F
+             LEFT JOIN
+         (SELECT *
           FROM I_WIP
           WHERE DT = LAST_DAY(DT)
              OR DT = CURRENT_DATE()
           ORDER BY STATE_NAME, DT
          ) AS IW
-             INNER JOIN
-         FINAL AS F
          ON F.HEAT_DT = IW.DT
     WHERE IW.DT = LAST_DAY(IW.DT)
        OR IW.DT = CURRENT_DATE()
     ORDER BY IW.STATE_NAME, IW.DT
 )
 
-SELECT *
-FROM WIP_RATIO
+   , PLZ AS (
+    SELECT F.HEAT_DT
+         , F.STATE_NAME
+         , SUM(F.ACTIVE_WIP) AS FINAL_WIP
+    FROM FINAL AS F
+    GROUP BY F.HEAT_DT, F.STATE_NAME
+    ORDER BY F.STATE_NAME, F.HEAT_DT
+)
 
+   , WORK AS (
+    SELECT *
+    FROM I_WIP
+    WHERE DT = LAST_DAY(DT)
+       OR DT = CURRENT_DATE()
+    ORDER BY STATE_NAME, DT
+)
+
+   , GOT_IT AS (
+    SELECT *
+    FROM PLZ AS P
+             INNER JOIN
+         WORK AS W
+         ON P.HEAT_DT = W.DT AND P.STATE_NAME = W.STATE_NAME
+)
+
+SELECT *
+FROM GOT_IT
 
 /*
  TODO: Setup the case volumes against the active install total for the month, and stack that ratio.
+ TODO: Deceases is probate
+ TODO: pre-default in house not in progress
+ TODO: deceased and foreclosure are the only different things.
  */
 ;
