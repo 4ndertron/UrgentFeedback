@@ -27,6 +27,8 @@ WITH CASE_TABLE AS (
          , CASE
                WHEN STATUS2 = 'Escalated' AND RECORD_TYPE1 = 'Solar - Customer Default' THEN 'Pending Legal'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND ANY_VALUE(C.DESCRIPTION) ILIKE '%MBW%' THEN 'MBW'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND ANY_VALUE(C.PRIMARY_REASON) = 'Customer Deceased'
+                   THEN 'Deceased'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D1%' THEN 'D1'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D2%' THEN 'D2'
                WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D4%' THEN 'D4'
@@ -236,7 +238,7 @@ WITH CASE_TABLE AS (
                      (C.RECORD_TYPE1 = 'Solar - Customer Escalation' AND C.ERA IS NULL)) AND LD.LD_CODE = 'CORP'
                    THEN 'CORP-CX'
                ELSE LD.LD_CODE
-        END                                                                      AS CORP_BUCKET
+        END                                    AS CORP_BUCKET
          , CASE
                WHEN C.STATUS1 = 'New' THEN 'Needs Audit & Assigned'
                WHEN C.STATUS1 = 'Escalated' THEN 'Legal/Lawsuit'
@@ -244,11 +246,11 @@ WITH CASE_TABLE AS (
                WHEN C.STATUS1 = 'Pending Customer Action' THEN 'Working to Cure'
                WHEN C.STATUS1 = 'Pending Corporate Action' THEN 'Cancellation Approval'
                ELSE C.STATUS1
-        END                                                                      AS STATUS_NAME
-         , NVL(DEFAULT_BUCKET1, CORP_BUCKET)                                     AS MASTER_BUCKET
-         , NVL(CODE_WIP_START, CREATED_DATE)                                     AS WIP_START
-         , NVL(CODE_WIP_END, CLOSED_DATE)                                        AS WIP_END
-         , CASE WHEN C.CASE_WIP_KPI = 1 OR LD.CODE_WIP_KPI = 1 THEN 1 ELSE 0 END AS WIP_KPI
+        END                                    AS STATUS_NAME
+         , NVL(C.DEFAULT_BUCKET1, CORP_BUCKET) AS MASTER_BUCKET
+         , C.CREATED_DATE                      AS WIP_START
+         , C.CLOSED_DATE                       AS WIP_END
+         , C.CASE_WIP_KPI                      AS WIP_KPI
     FROM LD_CODES AS LD
              FULL JOIN
          CASE_ACCOUNT_TABLE AS C
@@ -286,7 +288,8 @@ WITH CASE_TABLE AS (
    , DAILY_WIP AS (
     SELECT D.DT
          , SUM(CASE
-                   WHEN TO_DATE(WIP_START) <= D.DT AND (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1)
+                   WHEN TO_DATE(WIP_START) <= D.DT AND
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1)
                        THEN 1 END)                                                AS ALL_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
@@ -294,31 +297,38 @@ WITH CASE_TABLE AS (
                         SW.MASTER_BUCKET = 'Pending Legal' THEN 1 END)            AS Pending_Legal_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'D1'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'D1'
                        THEN 1 END)                                                AS D1_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'D2'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'D2'
                        THEN 1 END)                                                AS D2_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'D4'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'D4'
                        THEN 1 END)                                                AS D4_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'D5'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'D5'
                        THEN 1 END)                                                AS D5_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'MBW'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'MBW'
                        THEN 1 END)                                                AS MBW_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'BK'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'BK'
                        THEN 1 END)                                                AS BK_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
-                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND SW.MASTER_BUCKET = 'FORE'
+                        (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
+                        SW.MASTER_BUCKET = 'FORE'
                        THEN 1 END)                                                AS FORE_WIP
          , SUM(CASE
                    WHEN TO_DATE(WIP_START) <= D.DT AND
