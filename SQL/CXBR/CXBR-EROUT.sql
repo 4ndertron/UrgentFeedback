@@ -75,12 +75,12 @@ WITH AGENTS AS (
          , C.OWNER_ID
          , C.CREATED_DATE
          , DATE_TRUNC('D', C.CREATED_DATE)                                                         AS DAY_CREATED
-         , DATE_TRUNC('W', C.CREATED_DATE)                                                         AS WEEK_CREATED
-         , DATE_TRUNC('month', C.CREATED_DATE)                                                     AS MONTH_CREATED
+         , DATE_TRUNC('W', C.CREATED_DATE)                                       AS WEEK_CREATED
+         , DATE_TRUNC('month', C.CREATED_DATE)                                   AS MONTH_CREATED
          , C.CLOSED_DATE
-         , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
-         , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
-         , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
+         , DATE_TRUNC('D', C.CLOSED_DATE)                                        AS DAY_CLOSED
+         , DATE_TRUNC('W', C.CLOSED_DATE)                                        AS WEEK_CLOSED
+         , DATE_TRUNC('month', C.CLOSED_DATE)                                    AS MONTH_CLOSED
          , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
          , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
          , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
@@ -128,7 +128,7 @@ WITH AGENTS AS (
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sat' THEN 24 ELSE 0 END)
                ELSE
                        DATEDIFF('S', C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
-        END                                                                                        AS HOURLY_RESPONSE_TAT
+        END                                                                      AS HOURLY_RESPONSE_TAT
          , DATEDIFF('s', C.CREATED_DATE, NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60) AS CASE_AGE
          , CASE
                WHEN
@@ -282,9 +282,13 @@ WITH AGENTS AS (
 
    , INFLOW_TABLE AS (
     SELECT DATE_TRUNC('MM', D.DT)    AS MONTH_1
+         , YEAR(MONTH_1)             AS YEAR_1
          , COUNT(CASE
                      WHEN TO_DATE(C.CREATED_DATE) = D.DT
                          THEN 1 END) AS OVERALL_INFLOW
+         , COUNT(CASE
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT
+                         THEN 1 END) AS OVERALL_OUTFLOW
          , COUNT(CASE
                      WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
                          THEN 1 END) AS EXECUTIVE_INFLOW
@@ -305,7 +309,8 @@ WITH AGENTS AS (
                          THEN 1 END) AS INTERNAL_INFLOW
     FROM RPT.T_dates AS D
        , MERGE AS C
-    WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+    WHERE D.DT BETWEEN DATE_TRUNC('Y', DATEADD('y', -1, CURRENT_DATE())) AND
+        LAST_DAY(DATEADD('MM', -1, CURRENT_DATE()))
       AND C.PRIORITY_BUCKET IS NOT NULL
     GROUP BY MONTH_1
     ORDER BY MONTH_1

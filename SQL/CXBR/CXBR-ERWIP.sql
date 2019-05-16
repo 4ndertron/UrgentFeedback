@@ -20,13 +20,13 @@ WITH T1 AS (
          , C.OWNER
          , C.OWNER_ID
          , C.CREATED_DATE
-         , DATE_TRUNC('D', C.CREATED_DATE)                                                         AS DAY_CREATED
-         , DATE_TRUNC('W', C.CREATED_DATE)                                                         AS WEEK_CREATED
-         , DATE_TRUNC('month', C.CREATED_DATE)                                                     AS MONTH_CREATED
+         , DATE_TRUNC('D', C.CREATED_DATE)                                       AS DAY_CREATED
+         , DATE_TRUNC('W', C.CREATED_DATE)                                       AS WEEK_CREATED
+         , DATE_TRUNC('month', C.CREATED_DATE)                                   AS MONTH_CREATED
          , C.CLOSED_DATE
-         , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
-         , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
-         , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
+         , DATE_TRUNC('D', C.CLOSED_DATE)                                        AS DAY_CLOSED
+         , DATE_TRUNC('W', C.CLOSED_DATE)                                        AS WEEK_CLOSED
+         , DATE_TRUNC('month', C.CLOSED_DATE)                                    AS MONTH_CLOSED
          , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
          , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
          , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
@@ -74,7 +74,7 @@ WITH T1 AS (
                        - (CASE WHEN DAYNAME(C.CREATED_DATE) = 'Sat' THEN 24 ELSE 0 END)
                ELSE
                        DATEDIFF('S', C.CREATED_DATE, nvl(cc.CREATEDATE, CURRENT_TIMESTAMP())) / (60 * 60)
-        END                                                                                        AS HOURLY_RESPONSE_TAT
+        END                                                                      AS HOURLY_RESPONSE_TAT
          , DATEDIFF('s', C.CREATED_DATE, NVL(C.CLOSED_DATE, CURRENT_TIMESTAMP())) / (24 * 60 * 60) AS CASE_AGE
          , CASE
                WHEN
@@ -87,13 +87,13 @@ WITH T1 AS (
                    HOURLY_RESPONSE_TAT <= 2
                    THEN
                    1
-        END                                                                                        AS PRIORITY_RESPONSE_SLA
+        END                                                           AS PRIORITY_RESPONSE_SLA
          , CASE
                WHEN
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15
                    THEN
                    1
-        END                                                                                        AS CLOSED_15_DAY_SLA
+        END                                                                      AS CLOSED_15_DAY_SLA
          , CASE
                WHEN
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30
@@ -186,21 +186,22 @@ WITH T1 AS (
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
                         T3.PRIORITY_BUCKET = 'Legal/BBB' THEN 1 END)            AS LEGAL_WIP
-         , SUM(CASE
+         , NVL(SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END)        AS ONLINE_REVIEW_WIP
+                        T3.PRIORITY_BUCKET = 'Online Review' THEN 1 END), 0)    AS ONLINE_REVIEW_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
                         T3.PRIORITY_BUCKET = 'Social Media' THEN 1 END)         AS SOCIAL_MEDIA_WIP
          , SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
                         T3.PRIORITY_BUCKET = 'Internal' THEN 1 END)             AS INTERNAL_WIP
-         , SUM(CASE
+         , NVL(SUM(CASE
                    WHEN T3.ER_ACCEPTED_DAY <= D.DT AND (T3.DAY_CLOSED >= D.DT OR T3.DAY_CLOSED IS NULL) AND
-                        T3.PRIORITY_BUCKET = 'Credit Dispute' THEN 1 END)       AS CREDIT_WIP
+                        T3.PRIORITY_BUCKET = 'Credit Dispute' THEN 1 END), 0)   AS CREDIT_WIP
     FROM T3
        , RPT.T_DATES AS D
-    WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('month', CURRENT_DATE())) AND CURRENT_DATE()
+    WHERE D.DT BETWEEN DATE_TRUNC('Y', DATEADD('y', -1, DATE_TRUNC('month', CURRENT_DATE()))) AND
+              LAST_DAY(DATEADD('MM', -1, CURRENT_DATE()))
     GROUP BY D.DT
            , D.WEEK_DAY_NUM
     ORDER BY D.DT
