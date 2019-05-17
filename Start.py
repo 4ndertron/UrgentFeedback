@@ -10,6 +10,8 @@ TODO: BBB Inflow graph and attach what root cause tags that we do have for 2019.
 
 TODO: What is the cost, and what did they pay?
 
+add D1-5 EXPLANATION
+
 """
 
 # %% begin code
