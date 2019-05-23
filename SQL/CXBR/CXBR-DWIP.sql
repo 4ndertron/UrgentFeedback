@@ -98,44 +98,48 @@ WITH CASE_TABLE AS (
 
    , DAILY_WIP AS (
     SELECT D.DT
+         , YEAR(D.DT)                                                    AS DT_YEAR
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'CORP-Default' THEN 1 END)  AS CORP_Default_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'D1' THEN 1 END)            AS D1_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'D2' THEN 1 END)            AS D2_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'D4' THEN 1 END)            AS D4_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'D5' THEN 1 END)            AS D5_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'Pending Legal' THEN 1 END) AS Pending_Legal_WIP
+         , SUM(CASE
+                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
+                        FC.DEFAULT_BUCKET1 = 'MBW' THEN 1 END)           AS Pending_TPC_WIP
          , SUM(CASE
                    WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
                         (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1)
-                       THEN 1 END)                                                AS ALL_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'Pending Legal' THEN 1 END)          AS Pending_Legal_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'D1' THEN 1 END)                     AS D1_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'D2' THEN 1 END)                     AS D2_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'D4' THEN 1 END)                     AS D4_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'D5' THEN 1 END)                     AS D5_WIP
-         , SUM(CASE
-                   WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
-                        (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL OR WIP_KPI = 1) AND
-                        FC.DEFAULT_BUCKET1 = 'CORP-Default' THEN 1 END)           AS CORP_Default_WIP
+                       THEN 1 END)                                       AS ALL_WIP
     FROM FULL_CASE AS FC
        , RPT.T_DATES AS D
-    WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
+    WHERE D.DT BETWEEN DATE_TRUNC('Y', DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE))) AND CURRENT_DATE
     GROUP BY D.DT
     ORDER BY D.DT
 )
 
    , FINAL_WIP AS (
     SELECT DW.*
-         , D1_WIP + D2_WIP + D4_WIP + D5_WIP + CORP_DEFAULT_WIP AS TOTAL
     FROM DAILY_WIP AS DW
     WHERE DW.DT = CURRENT_DATE()
        OR DW.DT = LAST_DAY(DW.DT)

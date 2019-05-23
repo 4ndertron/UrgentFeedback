@@ -24,6 +24,7 @@ WITH T1 AS (
          ON CTO.CONTACT_ID = S.CONTRACT_CO_SIGNER
     WHERE C.RECORD_TYPE = 'Solar - Transfer'
       AND C.CREATED_DATE >= '2018-09-01'
+      AND C.CLOSED_DATE BETWEEN '2019-05-15' AND '2019-05-21'
       AND C.STATUS = 'Closed - Processed'
       AND S.SERVICE_STATUS != 'Solar - Transfer'
     ORDER BY C.CASE_NUMBER

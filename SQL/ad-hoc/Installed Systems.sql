@@ -1,4 +1,4 @@
-SELECT count(p.PROJECT_ID)
+SELECT count(p.PROJECT_ID) AS "Systems"
 FROM RPT.T_PROJECT AS P
          INNER JOIN
      RPT.T_SERVICE AS S
