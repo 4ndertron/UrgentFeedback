@@ -53,7 +53,11 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_ID
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Removal Reinstall' END AS CASE_BUCKET
+                   AND CA.ACTUAL_UNINSTALL_DATE IS NULL
+                   THEN 'Pre-Temporary Removal'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.ACTUAL_UNINSTALL_DATE IS NOT NULL
+                   THEN 'Post-Temporary Removal' END AS CASE_BUCKET
          , TO_DATE(CA.CREATED_DATE)             AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)              AS CLOSED_DATE
     FROM RPT.T_CASE CA
@@ -62,7 +66,6 @@ WITH PROJECTS_RAW AS (
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Panel Removal'
---       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_REMOVAL_REINSTALL AS (
@@ -129,9 +132,13 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_ID
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Escalation' END AS CASE_BUCKET
-         , TO_DATE(CA.CREATED_DATE)      AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)       AS CLOSED_DATE
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   THEN 'Executive Resolutions'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
+                   THEN 'General Escalation' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)              AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)               AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
@@ -139,7 +146,6 @@ WITH PROJECTS_RAW AS (
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Customer Escalation'
       AND CA.SUBJECT NOT ILIKE '%VIP%'
---       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_ESCALATION AS (
@@ -155,24 +161,22 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_ID
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Escalation' END AS CASE_BUCKET
-         , TO_DATE(CA.CREATED_DATE)      AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)       AS CLOSED_DATE
+                   THEN 'Default' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)   AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)    AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
-    WHERE CA.RECORD_TYPE = 'Solar - Customer Escalation'
-      AND CA.SUBJECT NOT ILIKE '%VIP%'
---       AND CA.CLOSED_DATE IS NULL
+    WHERE CA.RECORD_TYPE = 'Solar - Customer Default'
 )
 
    , G_CASES_DEFAULT AS (
     SELECT STATE_NAME
          , COUNT(STATE_NAME)          AS CASE_TALLY
          , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
-    FROM CASES_ESCALATION
+    FROM CASES_DEFAULT
     GROUP BY STATE_NAME
 )
 
@@ -217,6 +221,13 @@ WITH PROJECTS_RAW AS (
                   , CLOSED_DATE
                   , CASE_BUCKET
              FROM CASES_ESCALATION
+             UNION ALL
+             SELECT STATE_NAME
+                  , PROJECT_ID
+                  , CREATED_DATE
+                  , CLOSED_DATE
+                  , CASE_BUCKET
+             FROM CASES_DEFAULT
          )
 )
 
