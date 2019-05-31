@@ -150,6 +150,32 @@ WITH PROJECTS_RAW AS (
     GROUP BY STATE_NAME
 )
 
+   , CASES_DEFAULT AS (
+    SELECT PR.STATE_NAME
+         , PR.PROJECT_ID
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Escalation' END AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE)      AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)       AS CLOSED_DATE
+    FROM RPT.T_CASE CA
+             INNER JOIN
+         PROJECTS_RAW PR
+         ON
+             CA.PROJECT_ID = PR.PROJECT_ID
+    WHERE CA.RECORD_TYPE = 'Solar - Customer Escalation'
+      AND CA.SUBJECT NOT ILIKE '%VIP%'
+--       AND CA.CLOSED_DATE IS NULL
+)
+
+   , G_CASES_DEFAULT AS (
+    SELECT STATE_NAME
+         , COUNT(STATE_NAME)          AS CASE_TALLY
+         , COUNT(DISTINCT PROJECT_ID) AS PROJECT_TALLY
+    FROM CASES_ESCALATION
+    GROUP BY STATE_NAME
+)
+
    , CASES_OVERALL AS (
     SELECT STATE_NAME
          , PROJECT_ID
@@ -306,7 +332,7 @@ WITH PROJECTS_RAW AS (
 )
 
 SELECT *
-FROM GOT_IT
+FROM FINAL
 
 /*
  TODO: Setup the case volumes against the active install total for the month, and stack that ratio.

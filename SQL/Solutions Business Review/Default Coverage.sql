@@ -1,9 +1,10 @@
 WITH WORK_TABLE AS (
-    select distinct u.name                        names
+    select distinct u.name                          names
                   , c.project_id
                   , P.SOLAR_BILLING_ACCOUNT_NUMBER
                   , LD.AGE
-                  , date_trunc(day, s.createdate) created_date
+                  , date_trunc(day, s.createdate)   created_date
+                  , DATE_TRUNC(D, C.CLOSED_DATE) AS CLOSED_DATE
     from rpt.v_sf_casecomment s
              inner join rpt.v_sf_user u
                         on u.id = s.createdbyid
@@ -34,7 +35,7 @@ WITH WORK_TABLE AS (
          , AGE
          , AGE_GROUP
     FROM LD.T_DAILY_DATA_EXTRACT AS LD
-    WHERE LD.AGE > 30
+--     WHERE LD.AGE > 30
 )
 
    , T1 AS (
@@ -65,19 +66,28 @@ WITH WORK_TABLE AS (
     FROM T1
        , RPT.T_DATES AS D
     WHERE SUPERVISOR_NAME_1 = 'Brittany Percival'
-      AND D.DT BETWEEN '2019-04-01' AND '2019-05-01'
-      AND AGE > 30
+      AND D.DT BETWEEN '2019-01-01' AND '2019-05-01'
+--       AND AGE > 30
     GROUP BY D.DT
            , FULL_NAME
     ORDER BY D.DT DESC
 )
 
    , CASE_WIP AS (
-    SELECT *
-    FROM WORK_TABLE
+--        Broken
+    SELECT D.DT
+         , COUNT(CASE
+                     WHEN TO_DATE(WT.created_date) < D.DT AND
+                          (TO_DATE(WT.CLOSED_DATE) >= D.DT OR WT.CLOSED_DATE IS NULL) THEN 1 END) AS TOTAL_CASES
+    FROM WORK_TABLE AS WT
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN DATEADD('Y', -1, CURRENT_DATE) AND CURRENT_DATE
+    GROUP BY D.DT
+    ORDER BY D.DT
 )
 
-SELECT *
-FROM AGENT_COVERAGE
+SELECT LAST_DAY(DT)  AS MONTH
+     , SUM(COVERAGE) AS COVERAGE
+FROM AGENT_DELINQUENT_COVERAGE
+GROUP BY LAST_DAY(DT)
+ORDER BY MONTH

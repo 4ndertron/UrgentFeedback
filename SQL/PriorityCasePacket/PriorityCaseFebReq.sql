@@ -27,34 +27,34 @@ WITH T1 AS (
          , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
          , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
          , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
-         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                                    AS ERA
-         , DATE_TRUNC('D', ERA)                                                                    AS ER_ACCEPTED_DAY
-         , DATE_TRUNC('W', ERA)                                                                    AS ER_ACCEPTED_WEEK
-         , DATE_TRUNC('month', ERA)                                                                AS ER_ACCEPTED_MONTH
+         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
+         , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
+         , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
+         , DATE_TRUNC('month', ERA)                                              AS ER_ACCEPTED_MONTH
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
-                             ORDER BY CC.CREATEDATE),
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+                        ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)
-                                                                                                   AS GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                    AS COVERAGE
+                                                                                 AS GAP
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE) AS COVERAGE
          , IFF(
             CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
             DATEDIFF(S,
                      CC.CREATEDATE,
-                     NVL(LEAD(CC.CREATEDATE) OVER(
-                              PARTITION BY C.CASE_NUMBER
-                              ORDER BY CC.CREATEDATE
-                             ),
+                     NVL(LEAD(CC.CREATEDATE) OVER (
+                         PARTITION BY C.CASE_NUMBER
+                         ORDER BY CC.CREATEDATE
+                         ),
                          CURRENT_TIMESTAMP())) / (24 * 60 * 60),
             NULL
         )
-                                                                                                   AS LAST_30_DAY_GAP
+                                                                                 AS LAST_30_DAY_GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                1,
                NULL)
-                                                                                                   AS LAST_30_DAY_COVERAGE_TALLY
+                                                                                 AS LAST_30_DAY_COVERAGE_TALLY
          , CC.CREATEDBYID
          , CASE
                WHEN
@@ -63,7 +63,7 @@ WITH T1 AS (
                        c.CLOSED_DATE IS NULL
                    THEN
                    1
-        END                                                                                        AS WIP_kpi
+        END                                                                      AS WIP_kpi
          , CASE
                WHEN
                    CREATEDBYID = OWNER_ID

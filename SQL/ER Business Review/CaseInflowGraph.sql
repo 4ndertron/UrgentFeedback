@@ -58,7 +58,8 @@ WITH AGENTS AS (
          , C.PROJECT_ID                                                                            AS PID
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
-               WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
+               WHEN C.ORIGIN IN ('BBB') THEN 'BBB'
+               WHEN C.ORIGIN IN ('Legal') THEN 'Legal'
                WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
                WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
                WHEN C.ORIGIN IN ('Credit Dispute') OR C.SUBJECT ILIKE '%CRED%' THEN 'Credit Dispute'
@@ -290,6 +291,7 @@ FROM RPT.T_dates AS D
    , MERGE AS C
 WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
   AND C.PRIORITY_BUCKET IS NOT NULL
+  AND C.PRIORITY_BUCKET = 'Legal'
 GROUP BY MONTH_1
        , C.PRIORITY_BUCKET
 ORDER BY C.PRIORITY_BUCKET
