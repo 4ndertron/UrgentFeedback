@@ -14,10 +14,7 @@ WITH WORK_TABLE AS (
                         ON P.PROJECT_ID = C.PROJECT_ID
              INNER JOIN LD.T_DAILY_DATA_EXTRACT AS LD
                         ON LD.BILLING_ACCOUNT = P.SOLAR_BILLING_ACCOUNT_NUMBER
-    where (c.subject ilike 'D3%'
-        or c.subject ilike 'corp%')
-      and date_trunc(day, s.createdate) between
-        to_date(dateadd('Y', -1, current_date)) and current_date
+    where C.RECORD_TYPE = 'Solar - Customer Default'
 )
 
    , RM_AGENTS AS (
