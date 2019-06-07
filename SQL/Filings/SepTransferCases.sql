@@ -3,7 +3,7 @@ WITH T1 AS (
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER
          , CT.FULL_NAME                                         AS SIGNER_FULL_NAME
-         , CTO.FULL_NAME                                        AS C0_SIGNER_FULL_NAME
+         , CTO.FULL_NAME                                        AS CO_SIGNER_FULL_NAME
          , S.SERVICE_ADDRESS
          , S.SERVICE_CITY
          , S.SERVICE_COUNTY
@@ -16,13 +16,15 @@ WITH T1 AS (
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Customer Escalation' AND
                     C.CLOSED_DATE IS NOT NULL
-                   THEN TRUE END                                AS ER_BOOL
+                   THEN TRUE END                                AS ESCALATION_BOOL
          , CASE
                WHEN C.RECORD_TYPE = 'Solar - Troubleshooting' AND
                     C.CLOSED_DATE IS NOT NULL
                    THEN TRUE END                                AS TS_BOOL
-         , TO_DATE(C.HOME_CLOSING_DATE)                         AS TRANSACTION_DATE
+         , TO_DATE(CN.TRANSACTION_DATE)                         AS TRANSACTION_DATE
          , DATEADD('MM', 246, TO_DATE(P.INSTALLATION_COMPLETE)) AS TERMINATION_DATE
+         , TO_DATE(P.INSTALLATION_COMPLETE)                     AS INSTALLATION_DATE
+         , CN.RECORD_TYPE                                       AS CONTRACT_TYPE
          , LDD.TOTAL_CURRENT_AMOUNT_DUE
     FROM RPT.T_CASE AS C
              LEFT JOIN
@@ -40,16 +42,34 @@ WITH T1 AS (
              LEFT JOIN
          LD.T_DAILY_DATA_EXTRACT AS LDD
          ON LDD.BILLING_ACCOUNT = P.SOLAR_BILLING_ACCOUNT_NUMBER
+             LEFT JOIN
+         RPT.T_CONTRACT AS CN
+         ON CN.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
     WHERE C.RECORD_TYPE = 'Solar - Transfer'
       AND C.CREATED_DATE >= '2018-09-01'
-      AND C.CLOSED_DATE < '2019-05-15'
---       AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- 291
+      AND C.CLOSED_DATE < '2019-05-15' -- < 289
+--       AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
+--       AND C.CLOSED_DATE BETWEEN '2019-05-29' AND '2019-06-05' -- 291
 --       AND C.CLOSED_DATE BETWEEN '2019-05-15' AND '2019-05-21' -- 289
 --       AND C.CLOSED_DATE BETWEEN '2019-05-22' AND '2019-05-28' -- 290
       AND C.STATUS = 'Closed - Processed'
       AND S.SERVICE_STATUS != 'Solar - Transfer'
     ORDER BY TOTAL_CURRENT_AMOUNT_DUE DESC
+           , DEFAULT_BOOL
+           , ESCALATION_BOOL
 )
 
-SELECT *
+SELECT SERVICE_NAME
+     , PROJECT_NUMBER
+     , SIGNER_FULL_NAME
+     , CO_SIGNER_FULL_NAME
+     , SERVICE_ADDRESS
+     , SERVICE_CITY
+     , SERVICE_COUNTY
+     , SERVICE_STATE
+     , SERVICE_ZIP_CODE
+     , TRANSACTION_DATE
+     , TERMINATION_DATE
+     , INSTALLATION_DATE
+     , CONTRACT_TYPE
 FROM T1

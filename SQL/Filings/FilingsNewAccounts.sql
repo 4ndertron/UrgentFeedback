@@ -9,9 +9,9 @@ WITH ALL_INSTALLS AS (
          , P.SERVICE_STATE
          , P.SERVICE_ZIP_CODE
          , TO_DATE(P.INSTALLATION_COMPLETE)                        AS INSTALL_DATE
-         , DATE_TRUNC('W', INSTALL_DATE)                           AS INSTALL_WEEK
          , TO_DATE(CON.TRANSACTION_DATE)                           AS TRANSACTION_DATE
          , DATEADD('MM', 246, TO_DATE(INSTALL_DATE))               AS TERMINATION_DATE
+         , CON.RECORD_TYPE                                         AS CONTRACT_TYPE
          , ROUND(DATEDIFF('D', '2013-11-02', INSTALL_DATE) / 7, 0) AS WEEK_BATCH
     FROM RPT.T_PROJECT AS P
              LEFT JOIN
