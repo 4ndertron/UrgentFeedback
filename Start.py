@@ -1,9 +1,24 @@
 """
 
 TODO: SOP and Checklist for handling Filing Batch Issues.
-    What did Emily do?
-    Where did Emily keep the batch issues?
+    What did Emily do? They would make an activity for the problem children.
+    Where did Emily keep the batch issues? In Salesforce. She got them from sharefile. "Customer Solutions Workflow" folder.
+    "Customer Solutions - Filing Tracking" Dashboard...
+    "Risk Management Activity Codes" google sheet.
+    In progress while investigating. Closed when returned. If it can't be returned.
+    Every "Funding Request" spreadsheet in Sharefile has a "Batch ### Issues" page in the workbook.
     How should the current issues be handled?
+
+TODO: Continuations:
+    Do we just have to worry about First Associate accounts?.
+    "Continuations Backlog Batch ##" - Name of ShareFile Upload.
+    Buckets: Expired Filings, Not-yet Expired, and Completed by Emily...
+    When do the filings expire? [Continuations]
+    Sort Priority:
+    1) Expired Filings
+    2) Open Default Case
+    3) Past-due Amount
+    4) Open Escalation
 
 TODO: SOP and Checklist for handling monthly billing review items.
     What does Jason/Alfonso do?
