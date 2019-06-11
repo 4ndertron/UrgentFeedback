@@ -1,5 +1,4 @@
 """
-
 TODO: SOP and Checklist for handling Filing Batch Issues.
     What did Emily do? They would make an activity for the problem children.
     Where did Emily keep the batch issues? In Salesforce. She got them from sharefile. "Customer Solutions Workflow" folder.
@@ -8,6 +7,7 @@ TODO: SOP and Checklist for handling Filing Batch Issues.
     In progress while investigating. Closed when returned. If it can't be returned.
     Every "Funding Request" spreadsheet in Sharefile has a "Batch ### Issues" page in the workbook.
     How should the current issues be handled?
+
 
 TODO: Continuations:
     Do we just have to worry about First Associate accounts?.
@@ -19,6 +19,7 @@ TODO: Continuations:
     2) Open Default Case
     3) Past-due Amount
     4) Open Escalation
+
 
 TODO: SOP and Checklist for handling monthly billing review items.
     What does Jason/Alfonso do?
@@ -34,13 +35,13 @@ TODO: MSTG Rep:
     Volume graph per rep.
     Ratio graph per rep.
 
+
 TODO: Create a Root Cause Google Form and subsequent sheet with a parser. Then make Cambree and Joel Buss the owners of
  their respective forms and sheets.
 
+
 TODO: Add london's money to paid in the risk management report.
 TODO: Add service charges.
-
-TODO: Add priority case lists to Root Cause Workbook.
 
 Austin from legal wants a pre-pto loan customer "is vslr's fault. tehy want to be reimbursing the loan customer's
  their loan payemtns. Loan customer's that are 90 Day past install. What they're monthly loan payment is...
