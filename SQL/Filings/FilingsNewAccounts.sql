@@ -1,18 +1,28 @@
 WITH ALL_INSTALLS AS (
     SELECT P.PROJECT_NAME
          , P.SOLAR_BILLING_ACCOUNT_NUMBER
-         , CT.FULL_NAME                                            AS SIGNER_NAME
-         , CNT.FULL_NAME                                           AS COSIGNER_NAME
+         , CT.FIRST_NAME                                                                       AS CUSTOMER_1_First
+         , ''                                                                                  AS Customer_1_Middle
+         ----------------------------------------------------------
+         , REVERSE(REGEXP_SUBSTR(REVERSE(CT.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1, 'ie'))  AS CUSTOMER_1_SUFFIX
+         , TRIM(REPLACE(CT.LAST_NAME, NVL(CUSTOMER_1_SUFFIX, '')))                             AS CUSTOMER_1_LAST
+         ----------------------------------------------------------
+         , CNT.FIRST_NAME                                                                      AS CUSTOMER_2_First
+         , ''                                                                                  AS Customer_2_Middle
+         ----------------------------------------------------------
+         , REVERSE(REGEXP_SUBSTR(REVERSE(CNT.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1, 'ie')) AS CUSTOMER_2_SUFFIX_NAME
+         , TRIM(REPLACE(CNT.LAST_NAME, NVL(CUSTOMER_2_SUFFIX_NAME, '')))                       AS CUSTOMER_2_LAST_NAME
+         ----------------------------------------------------------
          , P.SERVICE_ADDRESS
          , P.SERVICE_CITY
          , P.SERVICE_COUNTY
          , P.SERVICE_STATE
          , P.SERVICE_ZIP_CODE
-         , TO_DATE(P.INSTALLATION_COMPLETE)                        AS INSTALL_DATE
-         , TO_DATE(CON.TRANSACTION_DATE)                           AS TRANSACTION_DATE
-         , DATEADD('MM', 246, TO_DATE(INSTALL_DATE))               AS TERMINATION_DATE
-         , CON.RECORD_TYPE                                         AS CONTRACT_TYPE
-         , ROUND(DATEDIFF('D', '2013-11-02', INSTALL_DATE) / 7, 0) AS WEEK_BATCH
+         , TO_DATE(P.INSTALLATION_COMPLETE)                                                    AS INSTALL_DATE
+         , TO_DATE(CON.TRANSACTION_DATE)                                                       AS TRANSACTION_DATE
+         , DATEADD('MM', 246, TO_DATE(INSTALL_DATE))                                           AS TERMINATION_DATE
+         , CON.RECORD_TYPE                                                                     AS CONTRACT_TYPE
+         , ROUND(DATEDIFF('D', '2013-11-02', INSTALL_DATE) / 7, 0)                             AS WEEK_BATCH
     FROM RPT.T_PROJECT AS P
              LEFT JOIN
          RPT.T_CONTRACT AS CON
@@ -78,8 +88,8 @@ WITH ALL_INSTALLS AS (
 )
 
 SELECT *
--- FROM FINAL
+FROM FINAL
 
-FROM ALL_INSTALLS
-WHERE INSTALL_DATE >= '2018-12-26'
-ORDER BY INSTALL_DATE DESC
+-- FROM ALL_INSTALLS
+-- WHERE INSTALL_DATE >= '2018-12-26'
+-- ORDER BY INSTALL_DATE DESC

@@ -114,23 +114,33 @@ WITH Filings AS--
           , M1.PAST_DUE
           , M1.DEFAULT_BOOL
           , M1.ESCALATION_BOOL
-          , C.FULL_NAME                             AS CONTRACT_SIGNER
-          , CO.FULL_NAME                            AS CONTRACT_COSIGNER
+          , C.FIRST_NAME                                                                       AS CUSTOMER_1_First
+          , ''                                                                                 AS Customer_1_Middle
+          ----------------------------------------------------------
+          , REVERSE(REGEXP_SUBSTR(REVERSE(C.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1, 'ie'))  AS CUSTOMER_1_SUFFIX
+          , TRIM(REPLACE(C.LAST_NAME, NVL(CUSTOMER_1_SUFFIX, '')))                             AS CUSTOMER_1_LAST
+          ----------------------------------------------------------
+          , CO.FIRST_NAME                                                                      AS CUSTOMER_2_First
+          , ''                                                                                 AS Customer_2_Middle
+          ----------------------------------------------------------
+          , REVERSE(REGEXP_SUBSTR(REVERSE(CO.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1, 'ie')) AS CUSTOMER_2_SUFFIX_NAME
+          , TRIM(REPLACE(CO.LAST_NAME, NVL(CUSTOMER_2_SUFFIX_NAME, '')))                       AS CUSTOMER_2_LAST_NAME
+          ----------------------------------------------------------
           , M1.ADDRESS
           , M1.CITY
           , M1.COUNTY
           , M1.STATE
           , M1.ZIP_CODE
-          , DATE_TRUNC('d', M1.INSTALL_COMPLETE)    AS INSTALL_COMPLETE
-          , DATE_TRUNC('d', T.TRANSACTION_DATE)     AS TRANSACTION_DATE
+          , DATE_TRUNC('d', M1.INSTALL_COMPLETE)                                               AS INSTALL_COMPLETE
+          , DATE_TRUNC('d', T.TRANSACTION_DATE)                                                AS TRANSACTION_DATE
           , S.OPTY_CONTRACT_TYPE
-          , DATE_TRUNC('d', M1.FILING_CREATED_DATE) AS Filing_Date
+          , DATE_TRUNC('d', M1.FILING_CREATED_DATE)                                            AS Filing_Date
           , CASE
                 WHEN M1.INSTALL_COMPLETE > '2015-09-31' AND
                      TRANSACTION_DATE IS NULL
                     THEN 1
-            END                                     AS EXCLUDE_INSTALLS
-          , CURRENT_DATE                            AS LAST_RUN_DATE
+            END                                                                                AS EXCLUDE_INSTALLS
+          , CURRENT_DATE                                                                       AS LAST_RUN_DATE
      FROM M1
               LEFT JOIN CONTACT c
                         ON C.CONTACT_ID = M1.CUSTOMER_1
@@ -154,8 +164,14 @@ WITH Filings AS--
          , M.PAST_DUE
          , M.ESCALATION_BOOL
          , M.DEFAULT_BOOL
-         , M.CONTRACT_SIGNER
-         , M.CONTRACT_COSIGNER
+         , M.CUSTOMER_1_First
+         , M.Customer_1_Middle
+         , M.CUSTOMER_1_SUFFIX
+         , M.CUSTOMER_1_LAST
+         , M.CUSTOMER_2_First
+         , M.Customer_2_Middle
+         , M.CUSTOMER_2_SUFFIX_NAME
+         , M.CUSTOMER_2_LAST_NAME
          , M.ADDRESS
          , M.CITY
          , M.COUNTY
@@ -177,8 +193,14 @@ WITH Filings AS--
    , FINAL AS (
     SELECT SERVICE
          , PROJECT
-         , CONTRACT_SIGNER
-         , CONTRACT_COSIGNER
+         , CUSTOMER_1_First
+         , Customer_1_Middle
+         , CUSTOMER_1_SUFFIX
+         , CUSTOMER_1_LAST
+         , CUSTOMER_2_First
+         , Customer_2_Middle
+         , CUSTOMER_2_SUFFIX_NAME
+         , CUSTOMER_2_LAST_NAME
          , ADDRESS
          , CITY
          , COUNTY
