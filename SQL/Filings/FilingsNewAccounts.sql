@@ -1,6 +1,6 @@
 WITH ALL_INSTALLS AS (
-    SELECT P.PROJECT_NAME
-         , P.SOLAR_BILLING_ACCOUNT_NUMBER
+    SELECT P.SERVICE_NAME
+         , P.PROJECT_NAME
          , CT.FIRST_NAME                                                                       AS CUSTOMER_1_First
          , ''                                                                                  AS Customer_1_Middle
          ----------------------------------------------------------
@@ -88,8 +88,8 @@ WITH ALL_INSTALLS AS (
 )
 
 SELECT *
-FROM FINAL
+-- FROM FINAL
 
--- FROM ALL_INSTALLS
--- WHERE INSTALL_DATE >= '2018-12-26'
--- ORDER BY INSTALL_DATE DESC
+FROM ALL_INSTALLS
+WHERE INSTALL_DATE >= '2018-12-26'
+ORDER BY INSTALL_DATE DESC

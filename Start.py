@@ -7,6 +7,7 @@ TODO: SOP and Checklist for handling Filing Batch Issues.
     In progress while investigating. Closed when returned. If it can't be returned.
     Every "Funding Request" spreadsheet in Sharefile has a "Batch ### Issues" page in the workbook.
     How should the current issues be handled?
+    Work with Vanessa and Timecamp, and 5 sample individual accounts for both Social Media and Online Reviews.
 
 
 TODO: Continuations:
