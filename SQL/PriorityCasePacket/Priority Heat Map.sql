@@ -35,7 +35,7 @@ WITH PROJECTS_RAW AS (
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Service'
-      AND UPPER(CA.SUBJECT) LIKE '%NF%'
+--       AND UPPER(CA.SUBJECT) LIKE '%NF%'
       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 --       AND CA.CLOSED_DATE IS NULL
 )
@@ -342,8 +342,13 @@ WITH PROJECTS_RAW AS (
          ON P.HEAT_DT = W.DT AND P.STATE_NAME = W.STATE_NAME
 )
 
-SELECT *
+SELECT HEAT_DT
+,CASE_BUCKET
+,sum(ACTIVE_WIP)
 FROM FINAL
+WHERE CASE_BUCKET = 'Service'
+group by CASE_BUCKET, HEAT_DT
+order by HEAT_DT
 
 /*
  TODO: Setup the case volumes against the active install total for the month, and stack that ratio.
