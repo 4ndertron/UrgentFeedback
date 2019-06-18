@@ -15,6 +15,8 @@ WITH WORK_TABLE AS (
              INNER JOIN LD.T_DAILY_DATA_EXTRACT AS LD
                         ON LD.BILLING_ACCOUNT = P.SOLAR_BILLING_ACCOUNT_NUMBER
     where C.RECORD_TYPE = 'Solar - Customer Default'
+    AND C.STATUS = 'Pending Customer Action'
+    AND C.SUBJECT NOT ILIKE '%D3%'
 )
 
    , RM_AGENTS AS (
@@ -28,6 +30,9 @@ WITH WORK_TABLE AS (
 )
 
    , DELINQUENT_ACCOUNTS AS (
+       /*
+        Not in use
+        */
     SELECT BILLING_ACCOUNT
          , AGE
          , AGE_GROUP
