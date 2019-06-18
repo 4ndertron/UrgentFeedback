@@ -4,4 +4,7 @@
  fleet.t_invintory
  MSTG the Sheet on the system id. Grab the system id in the project. Map the two together, and see what's there. Take those out of the workbook...???
  Wait for tyson to send the new list... That will be the deadline of this new filtering view.
+
+ TODO: Finish the Billing Review Objectives document.
+ TODO: Filter the existing 333 Billing Review Accounts with the envoy-r's that are "currently backlogging"
  */
