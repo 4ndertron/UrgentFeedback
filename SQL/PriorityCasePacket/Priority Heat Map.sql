@@ -26,18 +26,16 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_ID
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Service' END AS CASE_BUCKET
-         , TO_DATE(CA.CREATED_DATE)   AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)    AS CLOSED_DATE
+                   THEN 'CX' END    AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)  AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Service'
---       AND UPPER(CA.SUBJECT) LIKE '%NF%'
       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
---       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_SERVICE AS (
@@ -58,8 +56,8 @@ WITH PROJECTS_RAW AS (
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.ACTUAL_UNINSTALL_DATE IS NOT NULL
                    THEN 'Post-Temporary Removal' END AS CASE_BUCKET
-         , TO_DATE(CA.CREATED_DATE)             AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)              AS CLOSED_DATE
+         , TO_DATE(CA.CREATED_DATE)                  AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)                   AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
@@ -76,22 +74,29 @@ WITH PROJECTS_RAW AS (
     GROUP BY STATE_NAME
 )
 
+    /*
+     TODO: Canceled this year that had an install date and has BB PR, Legal escalation cases.
+     */
+
    , CASES_TROUBLESHOOTING AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Troubleshooting' END AS CASE_BUCKET
-         , TO_DATE(CA.CREATED_DATE)           AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)            AS CLOSED_DATE
+                   AND CA.SOLAR_QUEUE = 'SPC'
+                   THEN 'SPC'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.SOLAR_QUEUE != 'SPC'
+                   THEN 'CX'
+        END                         AS CASE_BUCKET
+         , TO_DATE(CA.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)  AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN
          PROJECTS_RAW PR
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
-      AND UPPER(CA.SUBJECT) LIKE '%NF%'
---       AND ca.closed_date IS NULL
 )
 
    , G_CASES_TROUBLESHOOTING AS (
@@ -116,7 +121,6 @@ WITH PROJECTS_RAW AS (
          ON
              CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE IN ('Solar Damage Resolutions', 'Home Damage')
---       AND CA.CLOSED_DATE IS NULL
 )
 
    , G_CASES_DAMAGE AS (
@@ -342,13 +346,13 @@ WITH PROJECTS_RAW AS (
          ON P.HEAT_DT = W.DT AND P.STATE_NAME = W.STATE_NAME
 )
 
-SELECT HEAT_DT
-,CASE_BUCKET
-,sum(ACTIVE_WIP)
-FROM FINAL
-WHERE CASE_BUCKET = 'Service'
-group by CASE_BUCKET, HEAT_DT
-order by HEAT_DT
+   , OVERALL_WIP_LIST AS (
+    SELECT *
+    FROM CASES_OVERALL
+)
+
+SELECT *
+FROM G_ION_TABLE
 
 /*
  TODO: Setup the case volumes against the active install total for the month, and stack that ratio.

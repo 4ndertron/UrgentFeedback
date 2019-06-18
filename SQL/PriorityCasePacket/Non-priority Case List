@@ -343,7 +343,7 @@ WITH PROJECTS_RAW AS (
 )
 
 SELECT *
-FROM FINAL
+FROM CASES_OVERALL
 
 /*
  TODO: Create a case list with the following fields:
