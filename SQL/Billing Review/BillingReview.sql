@@ -6,5 +6,4 @@
  Wait for tyson to send the new list... That will be the deadline of this new filtering view.
 
  TODO: Finish the Billing Review Objectives document.
- TODO: Filter the existing 333 Billing Review Accounts with the envoy-r's that are "currently backlogging"
  */
