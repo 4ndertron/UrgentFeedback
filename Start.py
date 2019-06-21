@@ -6,8 +6,6 @@ TODO: MSTG Rep:
     Volume graph per rep.
     Ratio graph per rep.
 
-TODO: Add cancelled accounts, this year, with Legal/BBB/Media escalation cases on the account.
-
 """
 
 # %% begin code
