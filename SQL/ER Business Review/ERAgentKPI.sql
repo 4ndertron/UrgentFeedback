@@ -1,14 +1,19 @@
 WITH ALL_ER AS (
     SELECT HR.FULL_NAME
-         , ANY_VALUE(HR.FIRST_NAME)            AS FIRST_NAME
-         , ANY_VALUE(HR.LAST_NAME)             AS LAST_NAME
-         , ANY_VALUE(HR.SUPERVISOR_BADGE_ID_1) AS SUPERVISOR
-         , MIN(HR.CREATED_DATE)                AS TEAM_START_DATE
-         , MAX(HR.EXPIRY_DATE)                 AS TEAM_END_DATE
-         , ANY_VALUE(HR.TERMINATED)            AS TERMINATED
-         , ANY_VALUE(HR.SF_REP_ID)             AS SF_ID
+         , ANY_VALUE(HR.FIRST_NAME)                       AS FIRST_NAME
+         , ANY_VALUE(HR.LAST_NAME)                        AS LAST_NAME
+         , ANY_VALUE(HR.SUPERVISOR_BADGE_ID_1)            AS SUPERVISOR
+         , CASE
+               WHEN SUPERVISOR = 124126 THEN 'Tier I'
+               WHEN SUPERVISOR = 208513 THEN 'Tier II'
+               WHEN SUPERVISOR = 67600 THEN 'Default' END AS AGENT_TIER
+         , ANY_VALUE(HR.SUPERVISOR_NAME_1)                AS SUP_NAME
+         , MIN(HR.CREATED_DATE)                           AS TEAM_START_DATE
+         , MAX(HR.EXPIRY_DATE)                            AS TEAM_END_DATE
+         , ANY_VALUE(HR.TERMINATED)                       AS TERMINATED
+         , ANY_VALUE(HR.SF_REP_ID)                        AS SF_ID
     FROM HR.T_EMPLOYEE_ALL AS HR
-    WHERE HR.SUPERVISORY_ORG = 'Executive Resolutions'
+    WHERE HR.SUPERVISOR_BADGE_ID_2 = 101769
     GROUP BY HR.FULL_NAME
     ORDER BY TEAM_START_DATE DESC
 )
@@ -17,7 +22,7 @@ WITH ALL_ER AS (
     SELECT *
     FROM ALL_ER
     WHERE NOT TERMINATED
-      AND SUPERVISOR = '208513'
+      AND AGENT_TIER != 'Default'
       AND TEAM_END_DATE > CURRENT_DATE()
 )
 
@@ -117,21 +122,21 @@ WITH ALL_ER AS (
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
-                             ORDER BY CC.CREATEDATE),
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+                        ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)                      AS GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                DATEDIFF(S,
                         CC.CREATEDATE,
-                        NVL(LEAD(CC.CREATEDATE) OVER(
-                                 PARTITION BY C.CASE_NUMBER
-                                 ORDER BY CC.CREATEDATE
-                                ),
+                        NVL(LEAD(CC.CREATEDATE) OVER (
+                            PARTITION BY C.CASE_NUMBER
+                            ORDER BY CC.CREATEDATE
+                            ),
                             CURRENT_TIMESTAMP())) / (24 * 60 * 60),
                NULL)                                                                AS LAST_30_DAY_GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)     AS COVERAGE
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)    AS COVERAGE
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
-               ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
                NULL)                                                                AS LAST_30_DAY_COVERAGE
          , CC.CREATEDBYID
          , CASE
@@ -232,7 +237,7 @@ WITH ALL_ER AS (
    , COVERAGE_30 AS (
     SELECT CASE_NUMBER
          , CREATEDATE
-         , ROW_NUMBER() OVER(PARTITION BY CASE_NUMBER ORDER BY CREATEDATE) AS LAST_30_DAY_COVERAGE
+         , ROW_NUMBER() OVER (PARTITION BY CASE_NUMBER ORDER BY CREATEDATE) AS LAST_30_DAY_COVERAGE
     FROM T1
     WHERE CREATEDATE >= DATEADD('D', -30, CURRENT_DATE())
 )
@@ -240,21 +245,21 @@ WITH ALL_ER AS (
    , MERGE AS (
     SELECT T3.CREATED_DATE
          , ANY_VALUE(T3.CASE_NUMBER)                    AS CASE_NUMBER
-         , ANY_VALUE(T3.PROJECT_ID)                   AS PROJECT_ID
-         , ANY_VALUE(T3.CASE_STATUS)                  AS CASE_STATUS
-         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER) AS SOLAR_BILLING_ACCOUNT_NUMBER
-         , ANY_VALUE(T3.SYSTEM_SIZE)                  AS SYSTEM_SIZE
-         , ANY_VALUE(T3.SYSTEM_VALUE)                 AS SYSTEM_VALUE
-         , ANY_VALUE(T3.SERVICE_STATE)                AS SERVICE_STATE
-         , ANY_VALUE(T3.OWNER)                        AS OWNER
-         , ANY_VALUE(T3.OWNER_ID)                     AS OWNER_ID
-         , ANY_VALUE(T3.ORIGIN)                       AS ORIGIN
-         , ANY_VALUE(T3.PRIORITY_BUCKET)              AS PRIORITY_BUCKET
-         , ANY_VALUE(T3.PRIORITY_TABLE)               AS PRIORITY_TABLE
-         , ANY_VALUE(T3.DAY_CREATED)                  AS DAY_CREATED
-         , ANY_VALUE(T3.WEEK_CREATED)                 AS WEEK_CREATED
-         , ANY_VALUE(T3.MONTH_CREATED)                AS MONTH_CREATED
-         , ANY_VALUE(T3.CLOSED_DATE)                  AS CLOSED_DATE
+         , ANY_VALUE(T3.PROJECT_ID)                     AS PROJECT_ID
+         , ANY_VALUE(T3.CASE_STATUS)                    AS CASE_STATUS
+         , ANY_VALUE(T3.SOLAR_BILLING_ACCOUNT_NUMBER)   AS SOLAR_BILLING_ACCOUNT_NUMBER
+         , ANY_VALUE(T3.SYSTEM_SIZE)                    AS SYSTEM_SIZE
+         , ANY_VALUE(T3.SYSTEM_VALUE)                   AS SYSTEM_VALUE
+         , ANY_VALUE(T3.SERVICE_STATE)                  AS SERVICE_STATE
+         , ANY_VALUE(T3.OWNER)                          AS OWNER
+         , ANY_VALUE(T3.OWNER_ID)                       AS OWNER_ID
+         , ANY_VALUE(T3.ORIGIN)                         AS ORIGIN
+         , ANY_VALUE(T3.PRIORITY_BUCKET)                AS PRIORITY_BUCKET
+         , ANY_VALUE(T3.PRIORITY_TABLE)                 AS PRIORITY_TABLE
+         , ANY_VALUE(T3.DAY_CREATED)                    AS DAY_CREATED
+         , ANY_VALUE(T3.WEEK_CREATED)                   AS WEEK_CREATED
+         , ANY_VALUE(T3.MONTH_CREATED)                  AS MONTH_CREATED
+         , ANY_VALUE(T3.CLOSED_DATE)                    AS CLOSED_DATE
          , ANY_VALUE(T3.DAY_CLOSED)                     AS DAY_CLOSED
          , ANY_VALUE(T3.WEEK_CLOSED)                    AS WEEK_CLOSED
          , ANY_VALUE(T3.MONTH_CLOSED)                   AS MONTH_CLOSED
@@ -332,6 +337,7 @@ WITH ALL_ER AS (
 
    , AGENT_KPI_TABLE AS (
     SELECT AC.OWNER
+         , AC.AGENT_TIER
          , SUM(AC.WIP_KPI)                                                                 AS ACTIVE_CASES
          , ROUND(AVG(CASE WHEN AC.WIP_KPI > 0 THEN AC.CASE_AGE END), 2)                    AS AVG_OPEN_CASE_AGE
          , ROUND(AVG(CASE WHEN AC.WIP_KPI > 0 THEN AC.LAST_30_DAY_COVERAGE END), 2)        AS OPEN_LAST_30_DAY_COVERAGE
@@ -342,8 +348,8 @@ WITH ALL_ER AS (
              LEFT OUTER JOIN
          AGENT_COMMENTS_KPI AS CC
          ON CC.OWNER = AC.OWNER
-    GROUP BY AC.OWNER
-    ORDER BY ACTIVE_CASES DESC
+    GROUP BY AC.OWNER, AC.AGENT_TIER
+    ORDER BY AC.AGENT_TIER, ACTIVE_CASES DESC
 )
 
 SELECT *

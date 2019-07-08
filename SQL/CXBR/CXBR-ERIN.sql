@@ -30,7 +30,7 @@ WITH CORE_TABLE AS (
     SELECT MONTH_1
          , YEAR(MONTH_1)                                                                     AS YEAR_1
          , SUM(PRIORITY_CREATED)                                                             AS PRIORITY_CREATED
---          , SUM(PRIORITY_CLOSED)                                                              AS PRIORITY_CLOSED
+         , SUM(PRIORITY_CLOSED)                                                              AS PRIORITY_CLOSED
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Executive/News Media' THEN PRIORITY_CREATED END) AS EXECUTIVE
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Legal/BBB' THEN PRIORITY_CREATED END)            AS LEGAL
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Online Review' THEN PRIORITY_CREATED END)        AS REVIEW

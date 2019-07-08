@@ -18,6 +18,6 @@ FROM RPT.T_CASE AS C
      ON P.PROJECT_ID = C.PROJECT_ID
 WHERE C.STATUS IN ('Closed', 'Closed - Saved')
   AND C.RECORD_TYPE IN ('Solar - Customer Default', 'Solar - Customer Escalation')
-  AND H.SUPERVISOR_NAME_1 = 'Jacob Azevedo'
+  AND H.SUPERVISOR_BADGE_ID_2 = 101769
   AND H.TERMINATED = 'False'
   AND C.CLOSED_DATE >= DATEADD('d', -30, CURRENT_DATE())
