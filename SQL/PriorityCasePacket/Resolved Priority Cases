@@ -1,0 +1,31 @@
+WITH VALID_ERT_CASES AS (
+    SELECT C.ORIGIN
+         , P.SERVICE_STATE
+         , P.SERVICE_NAME
+         , C.OWNER
+         , CN.FULL_NAME                              AS CUSTOMER
+         , C.PROJECT_ID
+         , C.RECORD_TYPE
+         , TO_DATE(C.EXECUTIVE_RESOLUTIONS_ACCEPTED) AS ERA
+    FROM RPT.T_CASE AS C
+             LEFT JOIN
+         RPT.T_CONTACT AS CN
+         ON CN.CONTACT_ID = C.CONTACT_ID
+             LEFT JOIN
+         RPT.T_PROJECT AS P
+         ON C.PROJECT_ID = P.PROJECT_ID
+    WHERE ERA IS NOT NULL
+      AND C.RECORD_TYPE = 'Solar - Customer Escalation'
+      AND C.ORIGIN IN ('BBB', 'Legal', 'News Media')
+      AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED >= DATE_TRUNC('Y', CURRENT_DATE)
+      AND C.STATUS ILIKE '%CLOSE%'
+)
+
+/*
+ Current open-active
+ Pending complaints... Resolved on TPC, not VSLR... Not really a valid option
+ Resolved
+ */
+
+SELECT *
+FROM VALID_ERT_CASES

@@ -1,4 +1,8 @@
 WITH T1 AS (
+    /*
+    TODO: Fix blanks... Is this where they are?
+        - Check the file that LD returned to try to find the source of the blanks...
+     */
     SELECT P.PROJECT_NUMBER
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER
@@ -16,7 +20,8 @@ WITH T1 AS (
          ----------------------------------------------------------
          , S.SERVICE_ADDRESS
          , S.SERVICE_CITY
-         , S.SERVICE_COUNTY
+         , NVL(S.SERVICE_COUNTY, SD.AVALARA_SHIPPING_COUNTY) AS SERVICE_COUNTY -- 157
+--          , S.SERVICE_COUNTY -- 158
          , S.SERVICE_STATE
          , S.SERVICE_ZIP_CODE
          , CASE
@@ -55,6 +60,9 @@ WITH T1 AS (
              LEFT JOIN
          RPT.T_CONTRACT AS CN
          ON CN.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
+    LEFT JOIN
+        RPT.V_SF_ORDER AS SD
+    ON SD.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
     WHERE C.RECORD_TYPE = 'Solar - Transfer'
       AND C.CREATED_DATE >= '2018-09-01'
 --       AND C.CLOSED_DATE < '2019-05-15' -- < 289
@@ -62,7 +70,7 @@ WITH T1 AS (
 --       AND C.CLOSED_DATE BETWEEN '2019-05-22' AND '2019-05-28' -- 290
 --       AND C.CLOSED_DATE BETWEEN '2019-05-29' AND '2019-06-05' -- 291
 --       AND C.CLOSED_DATE BETWEEN '2019-06-26' AND '2019-07-02' -- 295
-      AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
+--       AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
       AND C.STATUS = 'Closed - Processed'
       AND S.SERVICE_STATUS != 'Solar - Transfer'
     ORDER BY TOTAL_CURRENT_AMOUNT_DUE DESC
@@ -90,3 +98,4 @@ SELECT SERVICE_NAME
      , INSTALLATION_DATE
      , CONTRACT_TYPE
 FROM T1
+WHERE SERVICE_COUNTY IS NULL

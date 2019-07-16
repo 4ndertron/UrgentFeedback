@@ -1,4 +1,9 @@
 WITH CANCELLED_ACCOUNTS AS (
+    /*
+     Turn to look for closed cancellation case in 2019 instad of cancelled accounts in 2019.
+     Maybe have the core account list be ert cases created in 2019 with open/closed cancellation cases...
+     Core ERT created in 2019. Of those, how many of those have a cancellation case...
+     */
     SELECT P.PROJECT_NAME
          , ANY_VALUE(P.SERVICE_NAME)               AS  SERVICE
          , ANY_VALUE(P.SERVICE_STATE)              AS  STATE
@@ -62,5 +67,50 @@ WITH CANCELLED_ACCOUNTS AS (
     ORDER BY CA.CANCELLATION_DATE
 )
 
-SELECT *
-FROM CANCELLATION_LOR
+   , NEW_CORE AS (
+    SELECT ERT.CASE_NUMBER
+         , ANY_VALUE(P.SERVICE_STATE)                             AS SERVICE_STATE
+         , ANY_VALUE(P.SERVICE_NAME)                              AS SERVICE_NUMBER
+         , ANY_VALUE(ERT.CUSTOMER)                                AS CUSTOMER
+         , ANY_VALUE(ERT.OWNER)                                   AS OWNER
+         , ANY_VALUE(ERT.PROJECT_ID)                              AS PROJECT_ID
+         , ANY_VALUE(ERT.RECORD_TYPE)                             AS RECORD_TYPE
+         , ANY_VALUE(ERT.ORIGIN)                                  AS ORIGIN
+         , ANY_VALUE(ERT.ERA)                                     AS ERA
+         , ANY_VALUE(CAD.SYSTEM_SIZE_ACTUAL)                      AS SYSTEM_SIZE_ACTUAL
+         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE_ACTUAL) * 4 * 1000, 2) AS SYSTEM_VALUE
+    FROM VALID_ERT_CASES AS ERT
+             LEFT JOIN
+         RPT.T_CASE AS C
+         ON C.PROJECT_ID = ERT.PROJECT_ID
+             LEFT JOIN
+         RPT.T_SYSTEM_DETAILS_SNAP AS CAD
+         ON CAD.PROJECT_ID = ERT.PROJECT_ID
+             LEFT JOIN
+         RPT.T_PROJECT AS P
+         ON C.PROJECT_ID = P.PROJECT_ID
+    WHERE C.RECORD_TYPE = 'Solar - Cancellation Request'
+      AND ERT.ERA >= DATE_TRUNC('Y', CURRENT_DATE)
+    GROUP BY ERT.CASE_NUMBER
+)
+
+/*
+ bbb Non-active are showing up... somewhere.
+ Desired, REcc, Cost, Current Update.
+ Source, Channel,
+
+ */
+
+/*
+ Current open-active
+ Pending complaints... Resolved on TPC, not VSLR
+ Resolved
+ */
+
+SELECT ORIGIN
+     , SERVICE_STATE
+     , SERVICE_NUMBER
+     , OWNER
+     , CUSTOMER
+     , SYSTEM_VALUE
+FROM NEW_CORE

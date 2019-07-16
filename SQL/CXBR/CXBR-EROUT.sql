@@ -290,23 +290,23 @@ WITH AGENTS AS (
                      WHEN TO_DATE(C.CLOSED_DATE) = D.DT
                          THEN 1 END) AS OVERALL_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
-                         THEN 1 END) AS EXECUTIVE_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Executive/News Media'
+                         THEN 1 END) AS EXECUTIVE_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Legal/BBB'
-                         THEN 1 END) AS LEGAL_BBB_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Legal/BBB'
+                         THEN 1 END) AS LEGAL_BBB_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Online Review'
-                         THEN 1 END) AS REVIEW_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Online Review'
+                         THEN 1 END) AS REVIEW_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Social Media'
-                         THEN 1 END) AS SOCIAL_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Social Media'
+                         THEN 1 END) AS SOCIAL_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Credit Dispute'
-                         THEN 1 END) AS CREDIT_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Credit Dispute'
+                         THEN 1 END) AS CREDIT_OUTFLOW
          , COUNT(CASE
-                     WHEN TO_DATE(C.CREATED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Internal'
-                         THEN 1 END) AS INTERNAL_INFLOW
+                     WHEN TO_DATE(C.CLOSED_DATE) = D.DT AND C.PRIORITY_BUCKET = 'Internal'
+                         THEN 1 END) AS INTERNAL_OUTFLOW
     FROM RPT.T_dates AS D
        , MERGE AS C
     WHERE D.DT BETWEEN DATE_TRUNC('Y', DATEADD('y', -1, CURRENT_DATE())) AND
