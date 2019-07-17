@@ -1,5 +1,27 @@
 CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
-    WITH cases AS -- Active Escalation Cases | Closed > Today - 90
+    WITH employees AS -- Team Specific Members
+        (SELECT e.EMPLOYEE_ID
+              , e.FULL_NAME
+              , e.BUSINESS_TITLE
+              , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
+              , e.SUPERVISORY_ORG
+              , TO_DATE(NVL(ea.max_dt, e.HIRE_DATE))                          AS team_start_date
+         FROM hr.T_EMPLOYEE e
+                  LEFT OUTER JOIN -- Determine last time each employee WASN'T on target manager's team
+             (SELECT EMPLOYEE_ID
+                   , MAX(EXPIRY_DATE) AS max_dt
+              FROM hr.T_EMPLOYEE_ALL
+              WHERE NOT TERMINATED
+                AND MGR_ID_5 <> '67600'
+                -- Placeholder Manager (Tyler Anderson)
+              GROUP BY EMPLOYEE_ID) ea
+                                  ON e.employee_id = ea.employee_id
+         WHERE NOT e.TERMINATED
+           AND e.PAY_RATE_TYPE = 'Hourly'
+           AND e.MGR_ID_5 = '67600'
+            -- Placeholder Manager (Tyler Anderson)
+        )
+       , cases AS -- Active Escalation Cases | Closed > Today - 90
         (SELECT c.project_id
               , c.OWNER_EMPLOYEE_ID
               , c.OWNER
@@ -11,19 +33,8 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
                             ON p.PROJECT_ID = c.PROJECT_ID
          WHERE c.RECORD_TYPE = 'Solar - Customer Default'
            AND C.SUBJECT NOT ILIKE '%D3%'
---        AND c.STATUS != 'In Dispute'
---        AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+           AND C.PRIMARY_REASON NOT IN ('Foreclosure', 'Customer Deceased')
            AND (c.CLOSED_DATE >= current_date - 90 OR c.CLOSED_DATE IS NULL))
-       , employees AS -- Team Specific Members
-        (SELECT e.BADGE_ID
-              , e.FULL_NAME
-              , e.BUSINESS_TITLE
-              , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
-              , e.SUPERVISORY_ORG
-         FROM hr.T_EMPLOYEE e
-         WHERE e.TERMINATED = FALSE
-           AND e.PAY_RATE_TYPE = 'Hourly'
-           AND e.MGR_ID_5 = '67600')
        , qa AS -- Calabrio QA Scores
         (SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
                        , rc.AGENT_DISPLAY_ID       AS agent_evaluated
@@ -38,28 +49,32 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
                             ON p.ACD_ID = rc.AGENT_ACD_ID
          WHERE rc.EVALUATION_EVALUATED >= current_date - 90)
        , main AS -- Joins | Aggregations
-        (SELECT ca.OWNER
+        (SELECT row_number() over (partition by ca.OWNER order by ca.OWNER)   as rn
+              , ca.OWNER
               , ca.OWNER_EMPLOYEE_ID
               , e.BUSINESS_TITLE
               , e.direct_manager
               , e.SUPERVISORY_ORG
-              , sum(CASE WHEN ca.closed_date >= current_date - 90 THEN 1 END) AS closed
+              , sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 90 THEN 1 END) AS closed
               , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)              AS wip_count
               , round(avg(CASE
                               WHEN ca.CLOSED_DATE IS NULL
-                                  THEN datediff('m', ca.CREATED_DATE, current_date) / 1440
+                                  THEN datediff('m', ca.CREATED_DATE, current_timestamp) / 1440
                 END), 2)                                                      AS avg_wip_cycle
               , round(median(CASE
                                  WHEN ca.CLOSED_DATE IS NULL
-                                     THEN datediff('m', ca.CREATED_DATE, current_date) / 1440
+                                     THEN datediff('m', ca.CREATED_DATE, current_timestamp) /
+                                          1440
                 END), 2)                                                      AS med_wip_cycle
               , round(avg(qa.qa_score), 2)                                    AS avg_qa_score
               , round(median(qa.qa_score), 2)                                 AS med_qa_score
-         FROM cases ca
-                  LEFT JOIN employees e
-                            ON e.BADGE_ID = ca.OWNER_EMPLOYEE_ID
+         FROM employees e
+                  INNER JOIN cases ca
+                             ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
+                                 AND NVL(ca.CLOSED_DATE, current_timestamp) >= e.team_start_date
                   LEFT JOIN qa
-                            ON qa.agent_badge = ca.OWNER_EMPLOYEE_ID
+                            ON qa.agent_badge = e.EMPLOYEE_ID
+                                AND qa.evaluation_date >= e.team_start_date
          GROUP BY ca.OWNER, ca.OWNER_EMPLOYEE_ID, e.BUSINESS_TITLE, e.direct_manager, e.SUPERVISORY_ORG)
     SELECT *
     FROM main m
@@ -67,4 +82,4 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
        OR m.SUPERVISORY_ORG IS NOT NULL
 );
 
-GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_DEFAULT TO GENERAL_REPORTING_R -- Share the view
+GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_DEFAULT_DECEASED TO GENERAL_REPORTING_R -- Share the view

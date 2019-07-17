@@ -1,0 +1,35 @@
+/*
+ Intake:
+ -------
+ Everything that the intake team does is completed in external systems that are not tracked by VSLR.
+ All work completed by the intake team is recorded manually.
+
+
+ Evaluation:
+ -----------
+ The evaluation team is a mixture of recurring queue based work-flows, and ad-hoc, one-time reports/audits.
+ Brandon does not have a compiled list of all the recurring queues that his team is expected to complete.
+ The Evaulation tasks are not archived into the warehouse.
+ What about the projects does Brandon want to be reported? % complete? A minimum quota? Average time spent on any given
+    line item?
+
+Hello,
+I'm trying to compile all the recurring tasks that you are asked to have completed in any given time frame. Could you brainstorm a list of tasks/projects/queues you're asked to stay on top of, and send that to me?
+
+ List of projects:
+ -----------------
+ Billing Reviews (queue)
+ Root Cause Tag (queue)
+ P1 case review (queue)
+ Emails (Filings) x
+ Daily Terminations (Filings) x
+
+ My team doesn't really work on projects. I would occasionally get projects from Brittany, but they weren't limited to only the filings team.
+
+The teams' tasks consist of keeping the inbox within a 24-48 hour response time. We have one person, Kaitlyn, that works on the inbox for her entire shift unless we are really hurting on something else and absolutely need her help. Usually, she will come into the office, search the entire inbox for any emails that say "Urgent" in the subject line. She will resolve those first (tracked using case comments and activity codes). After she's done with that, she will work from the oldest email in the inbox. It usually takes her the full current day to complete the previous day. We release all of our terminations within 24-48 business hours of the request as long as we have all of the information that we need (agreements, borrower's authorization, emails/addresses, filing, etc.). We audit the accounts for this information, whether that be through the case and solar project or the email and solar project (tracked using case comments and activity codes). Tori is the one that handles our urgent requests. The SLA for these are 24-48 business hours. Hannah takes care of our dailies. The SLA for these are 1-3 business days (we still get them out within 24-48 hours but use the SLA if we have an unusually busy week). Refinances are usually what Kaitlyn is dealing with in the inbox, the SLA for these is 1-3 business days as well (again, we use the SLA if we have a busy week). Once all of the termination are audited (Hannah and Tori audit the same things, Katelyn audits as she works the email), they are added to a list to prepare to be created. Once they are all ready, I use excel and word to create the terminations. Depending on how busy we are and how many need to be created, this takes anywhere from 30 minutes to 2 hours. During the creation, I format them correctly and make sure they are in the correct tabs. I print the CA terminations and manually separate and download all of the Non-CA terminations. Once everything is made, the Non-CA (UCCs) are uploaded to our google drive and ready to be sent out. I get the CA (PUCs) from the printer, sign and date all of them, find a notary, and work with them to get them signed again and notarized. After this, they are scanned and renamed, then uploaded to the drive to be sent. While this is happening, Tori will be creating shipping labels for the CA terminations. When Hannah isn't helping with the PUCs, she is doing the email. When Tori is done with shipping labels, she helps with the email (or if we have a lot of terminations she helps me send them out). I usually send out all of the terminations.
+Those are our recurring tasks, but occasionally the team is making calls for things that we need to work with the county with. This happens mostly with cancellations and requests from legal because either the customer has signed an agreement where we are responsible to file or they are highly, highly escalated. In this case, we are responsible for calling the county or working with the OA to get the release filed. The process is still in the works for this. Aside from that, we basically do the same things every single day
+
+ FTP sync button in Salesforce Attachment.
+ , failed goes into another "folder"
+ ~ 124,000 records.
+ */

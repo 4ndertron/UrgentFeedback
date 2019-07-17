@@ -32,7 +32,7 @@ WITH employees AS -- Team Specific Members
                         ON p.PROJECT_ID = c.PROJECT_ID
      WHERE c.RECORD_TYPE = 'Solar - Customer Default'
        AND C.SUBJECT NOT ILIKE '%D3%'
-       AND C.PRIMARY_REASON NOT IN ('Foreclosure', 'Customer Deceased')
+       AND C.PRIMARY_REASON = 'Customer Deceased'
        AND (c.CLOSED_DATE >= current_date - 90 OR c.CLOSED_DATE IS NULL))
    , qa AS -- Calabrio QA Scores
     (SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
