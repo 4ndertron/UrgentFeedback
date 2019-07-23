@@ -26,7 +26,7 @@ SELECT employee_id
     //
      , expiry_date
 FROM hr.t_employee
-WHERE mgr_id_3 = 209122 -- Chuck Browne
+WHERE MGR_ID_4 = 209122 -- Chuck Browne
   AND terminated
   AND termination_date >= '2019-01-01'
 ORDER BY termination_date ASC

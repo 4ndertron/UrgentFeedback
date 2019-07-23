@@ -11,13 +11,13 @@ WITH employees AS -- Team Specific Members
                , MAX(EXPIRY_DATE) AS max_dt
           FROM hr.T_EMPLOYEE_ALL
           WHERE NOT TERMINATED
-            AND MGR_ID_5 <> '67600'
+            AND MGR_ID_6 <> '67600'
             -- Placeholder Manager (Tyler Anderson)
           GROUP BY EMPLOYEE_ID) ea
                               ON e.employee_id = ea.employee_id
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
-       AND e.MGR_ID_5 = '67600'
+       AND e.MGR_ID_6 = '67600'
         -- Placeholder Manager (Tyler Anderson)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 90

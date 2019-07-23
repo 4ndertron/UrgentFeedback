@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
+CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT_DECEASED AS ( -- Create the view
     WITH employees AS -- Team Specific Members
         (SELECT e.EMPLOYEE_ID
               , e.FULL_NAME
@@ -12,13 +12,13 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
                    , MAX(EXPIRY_DATE) AS max_dt
               FROM hr.T_EMPLOYEE_ALL
               WHERE NOT TERMINATED
-                AND MGR_ID_5 <> '67600'
+                AND MGR_ID_6 <> '67600'
                 -- Placeholder Manager (Tyler Anderson)
               GROUP BY EMPLOYEE_ID) ea
                                   ON e.employee_id = ea.employee_id
          WHERE NOT e.TERMINATED
            AND e.PAY_RATE_TYPE = 'Hourly'
-           AND e.MGR_ID_5 = '67600'
+           AND e.MGR_ID_6 = '67600'
             -- Placeholder Manager (Tyler Anderson)
         )
        , cases AS -- Active Escalation Cases | Closed > Today - 90
@@ -33,7 +33,7 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_DEFAULT AS ( -- Create the view
                             ON p.PROJECT_ID = c.PROJECT_ID
          WHERE c.RECORD_TYPE = 'Solar - Customer Default'
            AND C.SUBJECT NOT ILIKE '%D3%'
-           AND C.PRIMARY_REASON NOT IN ('Foreclosure', 'Customer Deceased')
+           AND C.PRIMARY_REASON = 'Foreclosure'
            AND (c.CLOSED_DATE >= current_date - 90 OR c.CLOSED_DATE IS NULL))
        , qa AS -- Calabrio QA Scores
         (SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge

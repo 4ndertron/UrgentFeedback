@@ -12,7 +12,7 @@ WITH activities AS -- Activities | Times
      FROM hr.T_EMPLOYEE e
      WHERE e.TERMINATED = FALSE
        AND e.PAY_RATE_TYPE = 'Hourly'
-       AND e.MGR_ID_5 = '200023')
+       AND e.MGR_ID_6 = '200023')
    , time_clock AS -- Hours/Days Worked
     (SELECT t.EMPLOYEE_ID, to_date(t.REPORTED_DATE) AS work_day, SUM(t.TOTAL_HOURS) AS hours_worked
      FROM hr.V_TIME t

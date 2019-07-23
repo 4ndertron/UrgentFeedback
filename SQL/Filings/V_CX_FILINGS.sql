@@ -53,5 +53,17 @@ WITH T1 AS (
     WHERE C.RECORD_TYPE ILIKE '%TRANSFER%'
 )
 
+/*
+ Required Fields:
+ ----------------
+ Employee
+ Employee ID
+ Business Title
+ Direct Manager
+ Supervisory Org
+
+
+ */
+
 SELECT *
 FROM T1

@@ -5,7 +5,7 @@ WITH w1 AS -- Employee Info
           , wd.WORK_EMAIL_ADDRESS   AS agent_email
           , wd.BUSINESS_TITLE
      FROM hr.T_EMPLOYEE wd
-     WHERE wd.MGR_ID_4 = '101769'
+     WHERE wd.MGR_ID_5 = '101769'
        AND wd.TERMINATED = 0
        AND wd.BUSINESS_TITLE NOT LIKE '%Supervisor%'
        AND wd.BUSINESS_TITLE NOT LIKE '%Project%')
