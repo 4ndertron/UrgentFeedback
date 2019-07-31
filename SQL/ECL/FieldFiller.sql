@@ -10,8 +10,8 @@ SELECT *
 FROM T1
 
 /*
- TODO: Fields needed
-    ----------------
+    Fields needed
+    -------------
     Signer | Contract
     Co-signer | Contract
     Office | Project

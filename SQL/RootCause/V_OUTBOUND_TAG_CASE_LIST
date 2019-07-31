@@ -1,9 +1,6 @@
 /*
  SERVICE/TROUBLESHOOTING Cases
  Inbound/Outbound queue
-
- TODO: Create the query, and add it to the automator, which will populate their workbook.
-
  */
 
 WITH CASE_LIST AS (
@@ -30,7 +27,7 @@ WITH CASE_LIST AS (
     LEFT JOIN
         RPT.T_PROJECT AS P
     ON P.PROJECT_ID = C.PROJECT_ID
-    WHERE C.CREATED_DATE >= DATE_TRUNC('M',DATEADD('MM',-1,CURRENT_DATE))
+    WHERE C.CREATED_DATE >= '2019-06-01' -- Q2 2019
     AND C.RECORD_TYPE IN ('Solar - Troubleshooting', 'Solar - Service')
     AND C.SOLAR_QUEUE IN ('Inbound', 'Outbound')
 )

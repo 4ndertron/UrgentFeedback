@@ -6,8 +6,6 @@ TODO: MSTG Rep:
     Volume graph per rep.
     Ratio graph per rep.
 
-TODO: Split Default into Deceased and Foreclosure.
-
 """
 
 # %% begin code

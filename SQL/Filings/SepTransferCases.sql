@@ -1,8 +1,4 @@
 WITH T1 AS (
-    /*
-    TODO: Fix blanks... Is this where they are?
-        - Check the file that LD returned to try to find the source of the blanks...
-     */
     SELECT P.PROJECT_NUMBER
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER

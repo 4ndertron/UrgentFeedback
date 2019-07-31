@@ -48,7 +48,7 @@ Or they create the termination themselves.
 How do you share the workload, while having visibility.
 Transfer would be a comment. Release would be a task as SF.
 Or take out of Salesforce, into a google sheet.
-TODO: Open In Progress, pull out and into the sheet. Batch by time frames. Noon to 4 is LD. All else is VSLR.
+Open In Progress, pull out and into the sheet. Batch by time frames. Noon to 4 is LD. All else is VSLR.
 Split the batches from LD to filings.
 One tab is LD and one is Filings.
 LD marks an account complete in the bacth.
