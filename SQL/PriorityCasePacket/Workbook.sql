@@ -20,26 +20,28 @@ WITH ERT_CASES AS (
      O Damage Summary
      O Damage cost to resolve
      */
-    SELECT CASE WHEN C.ORIGIN = 'Legal'
-        THEN 'Attorney General'
-        WHEN C.ORIGIN = ''
-        END AS COMPLAINT_SOURCE
+    SELECT CASE
+               WHEN C.ORIGIN = 'Legal'
+                   THEN 'Attorney General'
+               WHEN C.ORIGIN = 'BBB'
+                   THEN 'BBB (Not Active)'
+               WHEN C.ORIGIN = 'News Media'
+                   THEN 'MEDIA'
+        END                                                               AS COMPLAINT_SOURCE
          , P.SERVICE_STATE
-         , P.SERVICE_NAME AS SERVICE_NUMBER
+         , P.SERVICE_NAME                                                 AS SERVICE_NUMBER
          , C.OWNER
-         , CT.FULL_NAME   AS CUSTOMER
-         , C.DESCRIPTION  AS COMPLAINT
-         , ''             AS CURRENT_UPDATE
-         , ''             AS DESIRED_SETTLEMENT
-         , ''             AS RECOMMENDATION
-         , ''             AS RESOLUTION_COST
-         , C.STATUS       AS STATUS
-         , ''             AS CHANNEL
-         , ''             AS SOURCE
-         , ''             AS RISK
---          , '' AS DAMAGE_CASE
---          , '' AS DAMAGE_SUMMARY
---          , '' AS DAMAGE_COST_TO_RESOLVE
+         , CT.FULL_NAME                                                   AS CUSTOMER
+         , C.DESCRIPTION                                                  AS COMPLAINT
+         , IFF(C.STATUS ILIKE '%CLOSE%', 'This is a resolved case', NULL) AS CURRENT_UPDATE
+         , NULL                                                           AS DESIRED_SETTLEMENT
+         , IFF(C.STATUS ILIKE '%CLOSE%', 'NA', NULL)                      AS RECOMMENDATION
+         , NULL                                                           AS RESOLUTION_COST
+         , IFF(C.STATUS ILIKE '%CLOSE%', 'Resolved', NULL)                AS STATUS
+         , NULL                                                           AS CHANNEL
+         , NULL                                                           AS SOURCE
+         , NULL                                                           AS RISK
+         , C.PROJECT_ID
     FROM RPT.T_CASE AS C
              LEFT JOIN
          RPT.T_PROJECT AS P
@@ -56,10 +58,37 @@ WITH ERT_CASES AS (
     SELECT C.CASE_NUMBER
          , C.DESCRIPTION
          , C.SETTLEMENT_AMOUNT
+         , C.PROJECT_ID
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE = 'Solar - Damage'
       AND C.CREATED_DATE >= DATE_TRUNC('Y', CURRENT_DATE)
+      AND C.CLOSED_DATE IS NULL
+)
+
+   , MAIN AS (
+    SELECT ER.COMPLAINT_SOURCE
+         , ER.SERVICE_STATE     AS COMPLAINT_STATE
+         , ER.SERVICE_NUMBER
+         , ER.OWNER             AS CASE_OWNER
+         , ER.CUSTOMER          AS CUSTOMER_NAME
+         , ER.COMPLAINT
+         , ER.CURRENT_UPDATE
+         , ER.DESIRED_SETTLEMENT
+         , ER.RECOMMENDATION
+         , ER.RESOLUTION_COST
+         , ER.STATUS
+         , ER.CHANNEL
+         , ER.SOURCE
+         , ER.RISK
+         , DM.CASE_NUMBER       AS DAMMAGE_CASE
+         , DM.DESCRIPTION       AS DAMAGE_SUMMARY
+         , DM.SETTLEMENT_AMOUNT AS DAMAGE_COST_TO_RESOLVE
+    FROM ERT_CASES AS ER
+             LEFT JOIN
+         DAMAGE_CASES AS DM
+         ON ER.PROJECT_ID = DM.PROJECT_ID
 )
 
 SELECT *
-FROM ERT_CASES
+FROM MAIN
+ORDER BY SERVICE_NUMBER
