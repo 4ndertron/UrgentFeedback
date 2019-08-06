@@ -1,4 +1,9 @@
-WITH T1 AS (
+WITH TWO_Q_AGO AS (
+    /*
+      SELECT
+      DATE_TRUNC('MM', DATEADD('MM', -6, CURRENT_DATE)) AS START_TWO_Q_AGO
+    , LAST_DAY(DATEADD('MM',-4, CURRENT_DATE)) AS END_TWO_Q_AGO
+     */
     SELECT C.CREATED_DATE
          , C.CASE_NUMBER
          , C.STATUS
@@ -11,16 +16,64 @@ WITH T1 AS (
          ON CAD.PROJECT_ID = C.PROJECT_ID
     WHERE C.RECORD_TYPE = 'Solar - Customer Default'
       AND C.PRIMARY_REASON IN ('Customer Deceased', 'Foreclosure')
-      AND C.CREATED_DATE >= '2018-02-01'
-      AND CREATED_DATE < '2019-04-01'
+      AND C.CREATED_DATE BETWEEN
+        DATE_TRUNC('MM', DATEADD('MM', -6, CURRENT_DATE)) AND
+        LAST_DAY(DATEADD('MM', -4, CURRENT_DATE))
       AND C.STATUS ILIKE '%CLOSE%'
       AND C.STATUS NOT ILIKE '%VOID%'
 )
 
-SELECT SUM(CASE WHEN STATUS = 'Closed - Saved' THEN 1 ELSE 0 END)     AS SAVED_CT
-     , SUM(CASE WHEN STATUS = 'Closed - Saved' THEN SYSTEM_VALUE END) AS SAVED_VALUE
-     , SUM(CASE WHEN STATUS = 'Closed' THEN 1 ELSE 0 END)             AS LOST_CT
-     , SUM(CASE WHEN STATUS = 'Closed' THEN SYSTEM_VALUE END)         AS LOST_VALUE
-     , SAVED_VALUE - LOST_VALUE                                       AS NET
-FROM T1
-ORDER BY T1.CREATED_DATE
+   , LAST_Q AS (
+    /*
+     SELECT
+     DATE_TRUNC('MM', DATEADD('MM', -3, CURRENT_DATE)) AS START_LAST_Q
+   , LAST_DAY(DATEADD('MM',-1, CURRENT_DATE)) END_LAST_Q
+     */
+    SELECT C.CREATED_DATE
+         , C.CASE_NUMBER
+         , C.STATUS
+         , C.PRIMARY_REASON
+         , CAD.SYSTEM_SIZE_ACTUAL_KW        AS SYSTEM_SIZE
+         , ROUND(SYSTEM_SIZE * 1000 * 7, 2) AS SYSTEM_VALUE
+    FROM RPT.T_CASE AS C
+             LEFT OUTER JOIN
+         RPT.T_CAD AS CAD
+         ON CAD.PROJECT_ID = C.PROJECT_ID
+    WHERE C.RECORD_TYPE = 'Solar - Customer Default'
+      AND C.PRIMARY_REASON IN ('Customer Deceased', 'Foreclosure')
+      AND C.CREATED_DATE BETWEEN
+        DATE_TRUNC('MM', DATEADD('MM', -3, CURRENT_DATE)) AND
+        LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
+      AND C.STATUS ILIKE '%CLOSE%'
+      AND C.STATUS NOT ILIKE '%VOID%'
+)
+
+, Q2_METRICS AS (
+    SELECT 'Q2' AS METRIC_TIME
+         , SUM(CASE WHEN STATUS = 'Closed - Saved' THEN 1 ELSE 0 END)     AS SAVED_CT
+         , SUM(CASE WHEN STATUS = 'Closed - Saved' THEN SYSTEM_VALUE END) AS SAVED_VALUE
+         , SUM(CASE WHEN STATUS = 'Closed' THEN 1 ELSE 0 END)             AS LOST_CT
+         , SUM(CASE WHEN STATUS = 'Closed' THEN SYSTEM_VALUE END)         AS LOST_VALUE
+         , SAVED_VALUE - LOST_VALUE                                       AS NET_VALUE
+         , SAVED_CT - LOST_CT                                             AS NET_CT
+    FROM TWO_Q_AGO AS Q2
+    ORDER BY Q2.CREATED_DATE
+)
+
+, Q1_METRICS AS (
+    SELECT 'Q1' AS METRIC_TIME
+         , SUM(CASE WHEN STATUS = 'Closed - Saved' THEN 1 ELSE 0 END)     AS SAVED_CT
+         , SUM(CASE WHEN STATUS = 'Closed - Saved' THEN SYSTEM_VALUE END) AS SAVED_VALUE
+         , SUM(CASE WHEN STATUS = 'Closed' THEN 1 ELSE 0 END)             AS LOST_CT
+         , SUM(CASE WHEN STATUS = 'Closed' THEN SYSTEM_VALUE END)         AS LOST_VALUE
+         , SAVED_VALUE - LOST_VALUE                                       AS NET_VALUE
+         , SAVED_CT - LOST_CT                                             AS NET_CT
+    FROM LAST_Q AS Q1
+    ORDER BY Q1.CREATED_DATE
+)
+
+SELECT *
+FROM Q2_METRICS AS Q2
+    FULL JOIN
+    Q1_METRICS AS Q1
+ON Q2.METRIC_TIME = Q1.METRIC_TIME

@@ -34,19 +34,19 @@ WITH T1 AS (
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER(PARTITION BY C.CASE_NUMBER
-                             ORDER BY CC.CREATEDATE),
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+                        ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)
                                                                                                    AS GAP
-         , ROW_NUMBER() OVER(PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                    AS COVERAGE
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                   AS COVERAGE
          , IFF(
             CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
             DATEDIFF(S,
                      CC.CREATEDATE,
-                     NVL(LEAD(CC.CREATEDATE) OVER(
-                              PARTITION BY C.CASE_NUMBER
-                              ORDER BY CC.CREATEDATE
-                             ),
+                     NVL(LEAD(CC.CREATEDATE) OVER (
+                         PARTITION BY C.CASE_NUMBER
+                         ORDER BY CC.CREATEDATE
+                         ),
                          CURRENT_TIMESTAMP())) / (24 * 60 * 60),
             NULL
         )
@@ -237,6 +237,52 @@ WITH T1 AS (
     ORDER BY MONTH_1
 )
 
+   , ER_AGENTS AS (
+    SELECT e.EMPLOYEE_ID
+         , e.FULL_NAME
+         , e.BUSINESS_TITLE
+         , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
+         , e.SUPERVISORY_ORG
+         , TO_DATE(NVL(ea.max_dt, e.HIRE_DATE))                          AS team_start_date
+    FROM hr.T_EMPLOYEE e
+             LEFT OUTER JOIN -- Determine last time each employee WASN'T on target manager's team
+        (SELECT EMPLOYEE_ID
+              , MAX(EXPIRY_DATE) AS max_dt
+         FROM hr.T_EMPLOYEE_ALL
+         WHERE NOT TERMINATED
+           AND (MGR_ID_4 IS DISTINCT FROM '101769' AND MGR_ID_5 IS DISTINCT FROM '101769')
+           -- Placeholder Manager (Tyler Anderson)
+         GROUP BY EMPLOYEE_ID) ea
+                             ON e.employee_id = ea.employee_id
+    WHERE NOT e.TERMINATED
+      AND e.PAY_RATE_TYPE = 'Hourly'
+      AND (e.MGR_ID_6 = '124126' OR e.MGR_ID_6 = '208513')
+)
+
+   , QA AS (
+    SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
+                  , rc.AGENT_DISPLAY_ID       AS agent_evaluated
+                  , rc.TEAM_NAME
+                  , rc.EVALUATION_EVALUATED   AS evaluation_date
+                  , rc.RECORDING_CONTACT_ID   AS contact_id
+                  , rc.EVALUATION_TOTAL_SCORE AS qa_score
+                  , rc.EVALUATOR_DISPLAY_ID   AS evaluator
+                  , rc.EVALUATOR_USER_NAME    AS evaluator_email
+    FROM CALABRIO.T_RECORDING_CONTACT rc
+             LEFT JOIN CALABRIO.T_PERSONS p
+                       ON p.ACD_ID = rc.AGENT_ACD_ID
+    WHERE rc.EVALUATION_EVALUATED BETWEEN
+              DATE_TRUNC('MM', DATEADD('MM', -1, CURRENT_DATE)) AND
+              LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
+)
+   , QA_METRICS AS (
+    SELECT AVG(QA.qa_score) AS AVG_QA
+    FROM ER_AGENTS AS ER
+             LEFT JOIN
+         QA
+         ON QA.agent_badge = ER.EMPLOYEE_ID
+)
+
    , AVERAGE_CLOSED AS (
     SELECT AVG(NET) AS AVERAGE_NET
     FROM T6
@@ -266,4 +312,5 @@ SELECT *
 FROM AVERAGE_CLOSED,
      AGENT_WIP,
      CLOSED_AGE,
-     CLOSED_10_DAYS
+     CLOSED_10_DAYS,
+     QA_METRICS

@@ -41,6 +41,52 @@ WITH CASE_TABLE AS (
     ORDER BY C.PROJECT_ID
 )
 
+   , DEFAULT_AGENTS AS (
+    SELECT e.EMPLOYEE_ID
+         , e.FULL_NAME
+         , e.BUSINESS_TITLE
+         , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
+         , e.SUPERVISORY_ORG
+         , TO_DATE(NVL(ea.max_dt, e.HIRE_DATE))                          AS team_start_date
+    FROM hr.T_EMPLOYEE e
+             LEFT OUTER JOIN -- Determine last time each employee WASN'T on target manager's team
+        (SELECT EMPLOYEE_ID
+              , MAX(EXPIRY_DATE) AS max_dt
+         FROM hr.T_EMPLOYEE_ALL
+         WHERE NOT TERMINATED
+           AND MGR_ID_6 <> '67600'
+           -- Placeholder Manager (Tyler Anderson)
+         GROUP BY EMPLOYEE_ID) ea
+                             ON e.employee_id = ea.employee_id
+    WHERE NOT e.TERMINATED
+      AND e.PAY_RATE_TYPE = 'Hourly'
+      AND e.MGR_ID_6 = '67600'
+)
+
+   , QA AS (
+    SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
+                  , rc.AGENT_DISPLAY_ID       AS agent_evaluated
+                  , rc.TEAM_NAME
+                  , rc.EVALUATION_EVALUATED   AS evaluation_date
+                  , rc.RECORDING_CONTACT_ID   AS contact_id
+                  , rc.EVALUATION_TOTAL_SCORE AS qa_score
+                  , rc.EVALUATOR_DISPLAY_ID   AS evaluator
+                  , rc.EVALUATOR_USER_NAME    AS evaluator_email
+    FROM CALABRIO.T_RECORDING_CONTACT rc
+             LEFT JOIN CALABRIO.T_PERSONS p
+                       ON p.ACD_ID = rc.AGENT_ACD_ID
+    WHERE rc.EVALUATION_EVALUATED BETWEEN
+              DATE_TRUNC('MM', DATEADD('MM', -1, CURRENT_DATE)) AND
+              LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
+)
+
+   , QA_METRICS AS (
+    SELECT AVG(QA.qa_score) AS AVG_QA
+    FROM DEFAULT_AGENTS AS D
+             LEFT JOIN QA
+                       ON QA.agent_badge = D.EMPLOYEE_ID
+)
+
    , CASE_HISTORY_TABLE AS (
     SELECT CT.*
          , CH.CREATEDDATE
@@ -148,8 +194,8 @@ WITH CASE_TABLE AS (
    , CLOSED_CASES AS (
     SELECT ROUND(AVG(OUTFLOW), 0) AS AVERAGE_MONTHLY_CLOSED
     FROM ION
-    WHERE MONTH1 BETWEEN DATEADD('MM', -3, DATE_TRUNC('MM', CURRENT_DATE()))
-              AND DATE_TRUNC('MM', CURRENT_DATE())
+    WHERE MONTH1 BETWEEN DATEADD('MM', -3, DATE_TRUNC('MM', CURRENT_DATE))
+              AND DATE_TRUNC('MM', CURRENT_DATE)
 )
 
    , GAP AS (
@@ -178,4 +224,5 @@ SELECT *
 FROM CLOSED_CASES,
      GAP,
      SAVED,
-     LOST
+     LOST,
+     QA_METRICS

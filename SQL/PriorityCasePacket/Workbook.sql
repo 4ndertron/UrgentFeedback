@@ -1,33 +1,5 @@
 WITH ERT_CASES AS (
-    /*
-     Required Fields:
-     ----------------
-     X Complaint Source
-     X Complaint State
-     X Service Number
-     X Case Owner
-     X Customer Name
-     X Complaint
-     X Current Update
-     X Desired Settlement
-     X Recommendation
-     X Resolution Cost
-     X Status
-     X Channel
-     X Source
-     X Risk
-     O Damage Case
-     O Damage Summary
-     O Damage cost to resolve
-     */
-    SELECT CASE
-               WHEN C.ORIGIN = 'Legal'
-                   THEN 'Attorney General'
-               WHEN C.ORIGIN = 'BBB'
-                   THEN 'BBB (Not Active)'
-               WHEN C.ORIGIN = 'News Media'
-                   THEN 'MEDIA'
-        END                                                               AS COMPLAINT_SOURCE
+    SELECT C.ORIGIN                                                       AS COMPLAINT_SOURCE
          , P.SERVICE_STATE
          , P.SERVICE_NAME                                                 AS SERVICE_NUMBER
          , C.OWNER
@@ -51,7 +23,9 @@ WITH ERT_CASES AS (
          ON CT.CONTACT_ID = C.CONTACT_ID
     WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
       AND C.CREATED_DATE >= DATE_TRUNC('Y', CURRENT_DATE)
-      AND C.ORIGIN IN ('News Media', 'Legal', 'BBB')
+      AND C.ORIGIN IN
+          ('Legal', 'Online Review', 'CEO Promise', 'Social Media', 'Executive', 'BBB',
+           'News Media')
 )
 
    , DAMAGE_CASES AS (
