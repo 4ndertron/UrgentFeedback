@@ -283,43 +283,6 @@ WITH CASE_TABLE AS (
          WHERE MASTER_BUCKET IS NOT NULL
      ),
 
---      DAILY_WIP AS (
---          SELECT D.DT
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1)
---                             THEN 1 END)                                           AS ALL_WIP
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND
---                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
---                              SW.STATUS_NAME = 'Cancellation Approval' THEN 1 END) AS CANCELLATION_WIP
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND
---                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
---                              SW.STATUS_NAME = 'Completed'
---                             THEN 1 END)                                           AS COMPLETED_WIP
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND
---                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
---                              SW.STATUS_NAME = 'Needs Audit & Assigned'
---                             THEN 1 END)                                           AS NEEDS_AUDIT_WIP
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND
---                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
---                              SW.STATUS_NAME = 'Third-Party/Letters'
---                             THEN 1 END)                                           AS TPC_LETTERS_WIP
---               , SUM(CASE
---                         WHEN TO_DATE(WIP_START) <= D.DT AND
---                              (TO_DATE(WIP_END) >= D.DT OR WIP_END IS NULL OR WIP_KPI = 1) AND
---                              SW.STATUS_NAME = 'Working to Cure'
---                             THEN 1 END)                                           AS CURING_WIP
---          FROM SOLUTIONS_WORKBOOK AS SW
---             , RPT.T_DATES AS D
---          WHERE D.DT BETWEEN DATEADD('y', -1, DATE_TRUNC('MM', CURRENT_DATE())) AND CURRENT_DATE()
---          AND MASTER_BUCKET IN ('CORP-Default','D1','D2','D4','D5','CORP-No Case')
---          GROUP BY D.DT
---          ORDER BY D.DT
---      )
-
      DAILY_WIP AS (
          SELECT DISTINCT STATUS_NAME
                        , COUNT(STATUS_NAME) AS TOTS
@@ -332,16 +295,6 @@ WITH CASE_TABLE AS (
          GROUP BY STATUS_NAME
          ORDER BY TOTS DESC
      )
-
--- SELECT DT
---      , CANCELLATION_WIP
---      , COMPLETED_WIP
---      , NEEDS_AUDIT_WIP
---      , TPC_LETTERS_WIP
---      , CURING_WIP
---      , ALL_WIP
--- FROM DAILY_WIP AS DW
--- WHERE DW.DT = LAST_DAY(DATEADD('MM', -1, CURRENT_DATE()))
 
 SELECT *
 FROM DAILY_WIP
