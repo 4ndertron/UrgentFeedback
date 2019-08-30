@@ -1,18 +1,22 @@
 WITH ERT_CASES AS (
-    SELECT C.ORIGIN                                                       AS COMPLAINT_SOURCE
+    SELECT C.ORIGIN                                        AS COMPLAINT_SOURCE
          , P.SERVICE_STATE
-         , P.SERVICE_NAME                                                 AS SERVICE_NUMBER
+         , P.SERVICE_NAME                                  AS SERVICE_NUMBER
          , C.OWNER
-         , CT.FULL_NAME                                                   AS CUSTOMER
-         , C.DESCRIPTION                                                  AS COMPLAINT
-         , IFF(C.STATUS ILIKE '%CLOSE%', 'This is a resolved case', NULL) AS CURRENT_UPDATE
-         , NULL                                                           AS DESIRED_SETTLEMENT
-         , IFF(C.STATUS ILIKE '%CLOSE%', 'NA', NULL)                      AS RECOMMENDATION
-         , NULL                                                           AS RESOLUTION_COST
-         , IFF(C.STATUS ILIKE '%CLOSE%', 'Resolved', NULL)                AS STATUS
-         , NULL                                                           AS CHANNEL
-         , NULL                                                           AS SOURCE
-         , NULL                                                           AS RISK
+         , CT.FULL_NAME                                    AS CUSTOMER
+         , C.DESCRIPTION                                   AS COMPLAINT
+         , C.LATEST_COMMENT
+         , CASE
+               WHEN C.STATUS ILIKE '%CLOSE%' THEN 'This is a resolved case'
+               WHEN C.STATUS NOT ILIKE '%CLOSE%' THEN C.LATEST_COMMENT
+        END                                                AS CURRENT_UPDATE
+         , NULL                                            AS DESIRED_SETTLEMENT
+         , IFF(C.STATUS ILIKE '%CLOSE%', 'NA', NULL)       AS RECOMMENDATION
+         , NULL                                            AS RESOLUTION_COST
+         , IFF(C.STATUS ILIKE '%CLOSE%', 'Resolved', NULL) AS STATUS
+         , NULL                                            AS CHANNEL
+         , NULL                                            AS SOURCE
+         , NULL                                            AS RISK
          , C.PROJECT_ID
     FROM RPT.T_CASE AS C
              LEFT JOIN

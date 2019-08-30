@@ -1,15 +1,15 @@
 WITH WORK_TABLE AS (
-    select distinct u.name                          names
-                  , c.project_id
+    SELECT DISTINCT U.NAME                          NAMES
+                  , C.PROJECT_ID
                   , P.SOLAR_BILLING_ACCOUNT_NUMBER
                   , LD.AGE
-                  , date_trunc(day, s.createdate)   created_date
+                  , DATE_TRUNC(DAY, S.CREATEDATE)   CREATED_DATE
                   , DATE_TRUNC(D, C.CLOSED_DATE) AS CLOSED_DATE
-    from rpt.v_sf_casecomment s
-             inner join rpt.v_sf_user u
-                        on u.id = s.createdbyid
-             inner join rpt.t_case c
-                        on s.parentid = c.case_id
+    FROM RPT.V_SF_CASECOMMENT S
+             INNER JOIN RPT.V_SF_USER U
+                        ON U.ID = S.CREATEDBYID
+             INNER JOIN RPT.T_CASE C
+                        ON S.PARENTID = C.CASE_ID
              INNER JOIN RPT.T_PROJECT AS P
                         ON P.PROJECT_ID = C.PROJECT_ID
              INNER JOIN LD.T_DAILY_DATA_EXTRACT AS LD
@@ -27,17 +27,6 @@ WITH WORK_TABLE AS (
     FROM HR.T_EMPLOYEE AS HR
     WHERE HR.MGR_ID_5 = 101769
       AND NOT TERMINATED
-)
-
-   , DELINQUENT_ACCOUNTS AS (
-       /*
-        Not in use
-        */
-    SELECT BILLING_ACCOUNT
-         , AGE
-         , AGE_GROUP
-    FROM LD.T_DAILY_DATA_EXTRACT AS LD
---     WHERE LD.AGE > 30
 )
 
    , T1 AS (
@@ -64,7 +53,7 @@ WITH WORK_TABLE AS (
    , AGENT_DELINQUENT_COVERAGE AS (
     SELECT D.DT
          , FULL_NAME
-         , COUNT(CASE WHEN created_date = D.DT THEN 1 END) AS COVERAGE
+         , COUNT(CASE WHEN created_date = D.DT THEN 1 END) AS UPDATES
     FROM T1
        , RPT.T_DATES AS D
     WHERE SUPERVISOR_NAME_1 = 'Brittany Percival'
@@ -90,7 +79,7 @@ WITH WORK_TABLE AS (
 
    , COMPLETE_TABLE AS (
     SELECT LAST_DAY(DT)  AS MONTH
-         , SUM(COVERAGE) AS CASES_WORKED
+         , SUM(UPDATES) AS CASES_WORKED
     FROM AGENT_DELINQUENT_COVERAGE
     GROUP BY LAST_DAY(DT)
     ORDER BY MONTH

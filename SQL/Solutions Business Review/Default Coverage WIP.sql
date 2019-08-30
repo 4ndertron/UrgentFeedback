@@ -139,10 +139,6 @@ WITH CASE_TABLE AS (
     ORDER BY D.DT
 )
 
-   /*
-    TODO: QA Scores, play with CALABRIO.T_CONTACTS and CALABRIO.T_PERSONS to make a table.
-    */
-
    , FINAL_WIP AS (
     SELECT DW.*
     FROM DAILY_WIP AS DW

@@ -1,0 +1,43 @@
+WITH LEGAL_CASES AS (
+    SELECT C.CASE_NUMBER
+         , C.CREATED_DATE
+         , C.CLOSED_DATE
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
+      AND C.ORIGIN IN ('Legal', 'News Media', 'BBB', 'AG', 'CSLB')
+
+      AND C.CLOSED_DATE BETWEEN
+    DATE_TRUNC('MM', DATEADD('MM', -13, CURRENT_DATE)) AND
+    LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
+--         DATE_TRUNC('Y', CURRENT_DATE) AND
+--     '2019-07-01'
+
+--       AND (C.CREATED_DATE BETWEEN
+--                DATE_TRUNC('MM', DATEADD('MM', -13, CURRENT_DATE)) AND
+--                LAST_DAY(DATEADD('MM', -13, CURRENT_DATE))
+--         OR
+--            C.CREATED_DATE BETWEEN
+--                DATE_TRUNC('MM', DATEADD('MM', -1, CURRENT_DATE)) AND
+--                LAST_DAY(DATEADD('MM', -1, CURRENT_DATE)))
+)
+
+   , ORIGINS AS (
+    SELECT DISTINCT ORIGIN
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
+)
+
+-- SELECT *
+-- FROM ORIGINS
+-- order by 1
+
+, MONTHLY_TOTAL AS (
+    SELECT DATE_TRUNC('MM', CLOSED_DATE) AS MONTH1
+         , COUNT(*) AS TOTAL
+    FROM LEGAL_CASES
+    GROUP BY MONTH1
+    ORDER BY 1
+)
+
+SELECT SUM(TOTAL)
+FROM MONTHLY_TOTAL

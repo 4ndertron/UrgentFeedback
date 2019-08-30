@@ -9,8 +9,8 @@ WITH cases_raw as (
                to_date(ca.executive_resolutions_accepted))                                 as executive_resolutions_accepted
          , DATEDIFF(s, ca.created_date, NVL(ca.executive_resolutions_accepted, current_timestamp())) / (24 * 60 * 60)
         - (DATEDIFF(wk, ca.created_date, ca.executive_resolutions_accepted) * 2)
-        - (CASE WHEN DAYNAME(ca.created_date) = 'Sun' THEN 1 ELSE 0 END)
-        - (CASE WHEN DAYNAME(ca.executive_resolutions_accepted) = 'Sat' THEN 1 ELSE 0 END)
+        - (IFF(DAYNAME(ca.created_date) = 'Sun', 1, 0))
+        - (IFF(DAYNAME(ca.executive_resolutions_accepted) = 'Sat', 1, 0))
                                                                                            as SLA -- integrate V_Dates to account for hollidays
          , CASE WHEN ca.executive_resolutions_accepted <= current_timestamp() THEN SLA END as TAT
     FROM rpt.T_Case ca

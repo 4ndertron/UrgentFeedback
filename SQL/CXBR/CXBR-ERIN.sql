@@ -14,10 +14,13 @@ WITH CORE_TABLE AS (
     FROM RPT.T_dates AS D,
          RPT.T_CASE AS c,
          RPT.T_PROJECT AS P
-    WHERE D.DT BETWEEN DATEADD('y', -2, DATE_TRUNC('MM', CURRENT_DATE()))
-        AND CURRENT_DATE()
+    WHERE D.DT BETWEEN DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE))
+        AND LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
       AND c.RECORD_TYPE = 'Solar - Customer Escalation'
       AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+      AND C.SUBJECT NOT ILIKE '%COMP%'
+      AND C.SUBJECT NOT ILIKE '%NPS%'
+--       AND C.SUBJECT NOT ILIKE '%VIP%'
       AND C.STATUS != 'In Dispute'
       AND P.PROJECT_ID = C.PROJECT_ID
     GROUP BY MONTH_1
@@ -37,7 +40,7 @@ WITH CORE_TABLE AS (
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Social Media' THEN PRIORITY_CREATED END)         AS SOCIAL
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Credit Dispute' THEN PRIORITY_CREATED END)       AS CREDIT
          , SUM(CASE WHEN PRIORITY_BUCKET = 'Internal' THEN PRIORITY_CREATED END)             AS INTERNAL
-         , EXECUTIVE + LEGAL                                                                 AS OVERVIEW_TOTAL
+--          , EXECUTIVE + LEGAL                                                                 AS OVERVIEW_TOTAL
     FROM CORE_TABLE AS CT
     GROUP BY MONTH_1
     ORDER BY MONTH_1

@@ -24,7 +24,7 @@ WITH projects_raw AS
                          WHEN ca.solar_queue = 'Outbound' AND pa2.case_id IS NOT NULL
                              THEN 'Compensation Review, ' END) ||
                     (CASE WHEN ca.solar_queue = 'Outbound' AND pa3.case_id IS NOT NULL THEN 'System Damage, ' END) ||
-                    (CASE WHEN ca.solar_queue = 'Tier II' AND pa4.case_id IS NOT NULL THEN 'Service Billing, ' END) ||
+                    (CASE WHEN ca.solar_queue = 'Tier II' AND pa4.case_id IS NOT NULL THEN 'Service Report Card - Billing, ' END) ||
                     (CASE WHEN ca.solar_queue = 'Tier II' AND pa5.case_id IS NOT NULL THEN 'Sales Promise, ' END) ||
                     (CASE WHEN ca.solar_queue = 'Tier II' AND pa6.case_id IS NULL THEN 'Performance Analysis, ' END) ||
                     (CASE WHEN ca.solar_queue = 'Outbound' AND pa6.case_id IS NULL THEN 'General, ' END)

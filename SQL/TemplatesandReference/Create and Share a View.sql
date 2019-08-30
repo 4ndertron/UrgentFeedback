@@ -21,7 +21,7 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
            AND e.MGR_ID_6 = '67600'
             -- Placeholder Manager (Tyler Anderson)
         )
-       , cases AS -- Active Escalation Cases | Closed > Today - 90
+       , cases AS -- Active Escalation Cases | Closed > Today - 30
         (SELECT c.project_id
               , c.OWNER_EMPLOYEE_ID
               , c.OWNER
@@ -34,7 +34,7 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
          WHERE c.RECORD_TYPE = 'Solar - Customer Default'
            AND C.SUBJECT NOT ILIKE '%D3%'
            AND C.PRIMARY_REASON = 'Foreclosure'
-           AND (c.CLOSED_DATE >= current_date - 90 OR c.CLOSED_DATE IS NULL))
+           AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
        , CASES_METRICS AS (
         SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER) AS rn
              , ca.OWNER
@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
              , e.direct_manager
              , e.SUPERVISORY_ORG
              , sum(CASE
-                       WHEN ca.closed_date >= CURRENT_DATE - 90 AND
+                       WHEN ca.closed_date >= CURRENT_DATE - 30 AND
                             CA.STATUS = 'Closed - Saved'
                            THEN 1 END)                                     AS closed
              , round(avg(CASE
@@ -69,7 +69,7 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
          FROM CALABRIO.T_RECORDING_CONTACT rc
                   LEFT JOIN CALABRIO.T_PERSONS p
                             ON p.ACD_ID = rc.AGENT_ACD_ID
-         WHERE rc.EVALUATION_EVALUATED >= current_date - 90)
+         WHERE rc.EVALUATION_EVALUATED >= current_date - 30)
        , QA_METRICS AS (
         SELECT row_number() OVER (PARTITION BY E.FULL_NAME ORDER BY E.FULL_NAME) AS rn
              , e.FULL_NAME

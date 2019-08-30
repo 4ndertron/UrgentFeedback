@@ -19,7 +19,7 @@ WITH employees AS -- Team Specific Members
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
     )
-   , cases AS -- Active Escalation Cases | Closed > Today - 90
+   , cases AS -- Active Escalation Cases | Closed > Today - 30
     (SELECT c.project_id
           , c.OWNER_EMPLOYEE_ID
           , c.OWNER
@@ -32,7 +32,7 @@ WITH employees AS -- Team Specific Members
      WHERE c.RECORD_TYPE = 'Solar - Customer Escalation'
        AND c.STATUS != 'In Dispute'
        AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-       AND (c.CLOSED_DATE >= current_date - 90 OR c.CLOSED_DATE IS NULL))
+       AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
    , CASES_METRICS AS (
     SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)   AS rn
          , ca.OWNER
@@ -40,7 +40,7 @@ WITH employees AS -- Team Specific Members
          , e.BUSINESS_TITLE
          , e.direct_manager
          , e.SUPERVISORY_ORG
-         , sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 90 THEN 1 END) AS closed
+         , sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 30 THEN 1 END) AS closed
          , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)              AS wip_count
          , round(avg(CASE
                          WHEN ca.CLOSED_DATE IS NULL
@@ -69,7 +69,7 @@ WITH employees AS -- Team Specific Members
      FROM CALABRIO.T_RECORDING_CONTACT rc
               LEFT JOIN CALABRIO.T_PERSONS p
                         ON p.ACD_ID = rc.AGENT_ACD_ID
-     WHERE rc.EVALUATION_EVALUATED >= current_date - 90)
+     WHERE rc.EVALUATION_EVALUATED >= current_date - 30)
    , QA_METRICS AS (
     SELECT row_number() OVER (PARTITION BY E.FULL_NAME ORDER BY E.FULL_NAME) AS rn
          , e.FULL_NAME

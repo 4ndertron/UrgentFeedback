@@ -72,7 +72,7 @@ WITH ENTIRE_HISTORY AS (
     ORDER BY MONTH_1
 )
 
-   , WIP_TABLE AS (
+   , DAY_WIP_TABLE AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN CT.TEAM_START_DATE <= D.DT AND
@@ -98,7 +98,7 @@ WITH ENTIRE_HISTORY AS (
          , MONTH_AVG                                         AS MONTH_AVG_HEADCOUNT
          , ROUND((ATTRITION / MONTH_AVG_HEADCOUNT) * 100, 2) AS ATTRITION_RATE
          , WIP                                               AS ACTIVE_HEADCOUNT
-    FROM WIP_TABLE AS WT
+    FROM DAY_WIP_TABLE AS WT
              INNER JOIN
          ION_TABLE AS IT
          ON IT.MONTH_1 = WT.DT
@@ -107,5 +107,6 @@ WITH ENTIRE_HISTORY AS (
 )
 
 SELECT *
-FROM ENTIRE_HISTORY
-WHERE FULL_NAME = 'Robert Anderson'
+FROM DAY_WIP_TABLE
+WHERE DT = DATE_TRUNC('MM', DT)
+ORDER BY 1

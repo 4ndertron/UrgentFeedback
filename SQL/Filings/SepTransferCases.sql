@@ -16,7 +16,7 @@ WITH T1 AS (
          ----------------------------------------------------------
          , S.SERVICE_ADDRESS
          , S.SERVICE_CITY
-         , NVL(S.SERVICE_COUNTY, SD.AVALARA_SHIPPING_COUNTY) AS SERVICE_COUNTY -- 157
+         , NVL(S.SERVICE_COUNTY, SD.AVALARA_SHIPPING_COUNTY)                                   AS SERVICE_COUNTY -- 157
 --          , S.SERVICE_COUNTY -- 158
          , S.SERVICE_STATE
          , S.SERVICE_ZIP_CODE
@@ -37,6 +37,7 @@ WITH T1 AS (
          , TO_DATE(P.INSTALLATION_COMPLETE)                                                    AS INSTALLATION_DATE
          , CN.RECORD_TYPE                                                                      AS CONTRACT_TYPE
          , LDD.TOTAL_CURRENT_AMOUNT_DUE
+         , C.CLOSED_DATE
     FROM RPT.T_CASE AS C
              LEFT JOIN
          RPT.T_PROJECT AS P
@@ -56,9 +57,9 @@ WITH T1 AS (
              LEFT JOIN
          RPT.T_CONTRACT AS CN
          ON CN.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
-    LEFT JOIN
-        RPT.V_SF_ORDER AS SD
-    ON SD.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
+             LEFT JOIN
+         RPT.V_SF_ORDER AS SD
+         ON SD.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
     WHERE C.RECORD_TYPE = 'Solar - Transfer'
       AND C.CREATED_DATE >= '2018-09-01'
 --       AND C.CLOSED_DATE < '2019-05-15' -- < 289
@@ -66,7 +67,8 @@ WITH T1 AS (
 --       AND C.CLOSED_DATE BETWEEN '2019-05-22' AND '2019-05-28' -- 290
 --       AND C.CLOSED_DATE BETWEEN '2019-05-29' AND '2019-06-05' -- 291
 --       AND C.CLOSED_DATE BETWEEN '2019-06-26' AND '2019-07-02' -- 295
---       AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
+--       AND C.CLOSED_DATE BETWEEN '2019-08-07' AND '2019-08-13' -- 301
+      AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
       AND C.STATUS = 'Closed - Processed'
       AND S.SERVICE_STATUS != 'Solar - Transfer'
     ORDER BY TOTAL_CURRENT_AMOUNT_DUE DESC
@@ -74,24 +76,41 @@ WITH T1 AS (
            , ESCALATION_BOOL
 )
 
-SELECT SERVICE_NAME
-     , PROJECT_NUMBER
-     , CUSTOMER_1_First
-     , Customer_1_Middle
-     , CUSTOMER_1_LAST
-     , CUSTOMER_1_SUFFIX
-     , CUSTOMER_2_First
-     , Customer_2_Middle
-     , CUSTOMER_2_LAST_NAME
-     , CUSTOMER_2_SUFFIX_NAME
-     , SERVICE_ADDRESS
-     , SERVICE_CITY
-     , SERVICE_COUNTY
-     , SERVICE_STATE
-     , SERVICE_ZIP_CODE
-     , TRANSACTION_DATE
-     , TERMINATION_DATE
-     , INSTALLATION_DATE
-     , CONTRACT_TYPE
-FROM T1
-WHERE SERVICE_COUNTY IS NULL
+   , ION AS (
+    SELECT DATE_TRUNC('MM', D.DT)                                   AS MONTH1
+         , COUNT(CASE WHEN TO_DATE(CLOSED_DATE) = D.DT THEN 1 END) AS ACCOUNT_TOTAL
+    FROM RPT.T_DATES AS D,
+         T1
+    WHERE D.DT BETWEEN
+              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+              LAST_DAY(DATEADD('MM', -1, CURRENT_DATE))
+    GROUP BY MONTH1
+    ORDER BY MONTH1
+)
+
+   , WB_LIST AS (
+    SELECT SERVICE_NAME
+         , PROJECT_NUMBER
+         , CUSTOMER_1_First
+         , Customer_1_Middle
+         , CUSTOMER_1_LAST
+         , CUSTOMER_1_SUFFIX
+         , CUSTOMER_2_First
+         , Customer_2_Middle
+         , CUSTOMER_2_LAST_NAME
+         , CUSTOMER_2_SUFFIX_NAME
+         , SERVICE_ADDRESS
+         , SERVICE_CITY
+         , SERVICE_COUNTY
+         , SERVICE_STATE
+         , SERVICE_ZIP_CODE
+         , TRANSACTION_DATE
+         , TERMINATION_DATE
+         , INSTALLATION_DATE
+         , CONTRACT_TYPE
+    FROM T1
+    WHERE SERVICE_COUNTY IS NULL
+)
+
+SELECT *
+FROM WB_LIST
