@@ -112,13 +112,6 @@ WITH PROJECTS_RAW AS (
          , CASE_BUCKET
          , CREATED_DATE
          , CLOSED_DATE
-         , COUNT(DISTINCT PROJECT_ID)
-                 OVER (PARTITION BY MONTH(CREATED_DATE), STATE_NAME, CASE_BUCKET
-                     ORDER BY CREATED_DATE
-                     --                      RANGE BETWEEN
---                          UNBOUNDED PRECEDING AND
---                          CURRENT ROW
-                     ) AS UNIQUE_ACCOUNTS
     FROM (
              SELECT STATE_NAME
                   , PROJECT_ID
@@ -172,7 +165,12 @@ WITH PROJECTS_RAW AS (
                      WHEN C.CREATED_DATE <= D.DT AND
                           (C.CLOSED_DATE > D.DT OR
                            C.CLOSED_DATE IS NULL)
-                         THEN 1 END) AS ACTIVE_CASES
+                         THEN 1 END)                       AS ACTIVE_CASES
+         , COUNT(DISTINCT (CASE
+                               WHEN C.CREATED_DATE <= D.DT AND
+                                    (C.CLOSED_DATE > D.DT OR
+                                     C.CLOSED_DATE IS NULL)
+                                   THEN C.PROJECT_ID END)) AS DISTINCT_ACTIVE_ACCOUNTS
     FROM CASES_OVERALL AS C
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN
@@ -192,6 +190,7 @@ WITH PROJECTS_RAW AS (
          , DWT.STATE_NAME
          , DWT.CASE_BUCKET
          , DWT.ACTIVE_CASES
+         , DWT.DISTINCT_ACTIVE_ACCOUNTS
     FROM DAY_WIP_TABLE AS DWT
     WHERE DWT.DT = LAST_DAY(DWT.DT)
        OR DWT.DT = CURRENT_DATE
@@ -201,14 +200,22 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASE_ION AS (
-    SELECT LAST_DAY(D.DT)                                  AS MONTH
-         , YEAR(MONTH)                                     AS YEAR
+    SELECT LAST_DAY(D.DT)                                     AS MONTH
+         , YEAR(MONTH)                                        AS YEAR
          , CO.STATE_NAME
          , CO.CASE_BUCKET
-         , CO.UNIQUE_ACCOUNTS
-         , COUNT(CASE WHEN CREATED_DATE = D.DT THEN 1 END) AS CASE_INFLOW
-         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)  AS CASE_OUTFLOW
-         , CASE_INFLOW - CASE_OUTFLOW                      AS CASE_NET
+         , COUNT(CASE
+                     WHEN CREATED_DATE = D.DT
+                         THEN 1 END)                          AS CASE_INFLOW
+         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)     AS CASE_OUTFLOW
+         , CASE_INFLOW - CASE_OUTFLOW                         AS CASE_NET
+         , COUNT(DISTINCT (CASE
+                               WHEN CREATED_DATE = D.DT
+                                   THEN CO.PROJECT_ID END))   AS DISTINCT_ACCOUNT_INFLOW
+         , COUNT(DISTINCT (CASE
+                               WHEN CLOSED_DATE = D.DT
+                                   THEN CO.PROJECT_ID END))   AS DISTINCT_ACCOUNT_OUTFLOW
+         , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW AS DISTINCT_ACCOUNT_NET
     FROM CASES_OVERALL AS CO
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN
@@ -217,7 +224,6 @@ WITH PROJECTS_RAW AS (
     GROUP BY MONTH
            , CO.STATE_NAME
            , CO.CASE_BUCKET
-           , CO.UNIQUE_ACCOUNTS
     ORDER BY CO.STATE_NAME
            , CO.CASE_BUCKET
            , MONTH
@@ -231,7 +237,11 @@ WITH PROJECTS_RAW AS (
          , ION.CASE_INFLOW
          , ION.CASE_OUTFLOW
          , ION.CASE_NET
+         , ION.DISTINCT_ACCOUNT_INFLOW
+         , ION.DISTINCT_ACCOUNT_OUTFLOW
+         , ION.DISTINCT_ACCOUNT_NET
          , WIP.ACTIVE_CASES
+         , WIP.DISTINCT_ACTIVE_ACCOUNTS
     FROM CASE_ION AS ION
              INNER JOIN MONTH_WIP_TABLE AS WIP
                         ON WIP.MONTH = ION.MONTH AND
@@ -245,7 +255,7 @@ WITH PROJECTS_RAW AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM CASES_OVERALL
+    FROM CASES_TROUBLESHOOTING
 )
 
 SELECT *
