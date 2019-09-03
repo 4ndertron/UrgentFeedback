@@ -157,42 +157,11 @@ WITH PROJECTS_RAW AS (
          )
 )
 
-   , DAY_WIP_TABLE AS (
-    SELECT D.DT
-         , C.STATE_NAME
-         , C.CASE_BUCKET
-         , COUNT(CASE
-                     WHEN C.CREATED_DATE <= D.DT AND
-                          (C.CLOSED_DATE >= D.DT OR
-                           C.CLOSED_DATE IS NULL)
-                         THEN 1 END) AS ACTIVE_WIP
-    FROM CASES_OVERALL AS C
-       , RPT.T_DATES AS D
-    WHERE D.DT BETWEEN
-              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
-    GROUP BY D.DT
-           , C.STATE_NAME
-           , C.CASE_BUCKET
-    ORDER BY C.STATE_NAME
-           , C.CASE_BUCKET
-           , D.DT
-)
-
-   , MONTH_WIP_TABLE AS (
-    SELECT DWT.DT      AS MONTH
-         , YEAR(MONTH) AS YEAR
-         , DWT.STATE_NAME
-         , DWT.CASE_BUCKET
-         , DWT.ACTIVE_WIP
-    FROM DAY_WIP_TABLE AS DWT
-    WHERE DWT.DT = LAST_DAY(DWT.DT)
-       OR DWT.DT = CURRENT_DATE
-    ORDER BY DWT.STATE_NAME
-           , DWT.CASE_BUCKET
-           , MONTH
+   , UNIQUE_TABLE AS (
+    SELECT DISTINCT CO.PROJECT_ID
+                  , CO.STATE_NAME
+    FROM CASES_OVERALL AS CO
 )
 
 SELECT *
-FROM MONTH_WIP_TABLE
-;
+FROM UNIQUE_TABLE

@@ -5,7 +5,7 @@
 -- 2018-07-16 | Landon | Changed JOIN between payments and projects to INNER instead of LEFT.
 -- 2018-07-13 | Landon | Added criterion that requires payment_amount to be non-null (requested by Tyler Anderson).
 -- 2018-08-22 | Mack   | Added criterion that requires fee_type to be not one of 'Sales Incentive', 'Sales Promise', or 'Sales Referral'.
--- 2018-08-22 | Mack   | Re-ordered join criteria to go back through Case then Service to get the correct Solar Report Card - Billing Account Number
+-- 2018-08-22 | Mack   | Re-ordered join criteria to go back through Case then Service to get the correct Solar Report Card - Billing Information.sql Account Number
 -- 2018-09-22 | Mack   | Updated to use Snowflake
 -- 2018-12-14 | Mack   | Updated for automation through Automator
 -- 2019-02-28 | Robert | Added the Service Number, Full Address, and Customer Full Name fields to the report to fill out the check request formstack easier (requested by Tyler and Alfonso).
