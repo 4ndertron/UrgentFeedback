@@ -100,5 +100,3 @@ WITH employees AS -- Team Specific Members
     )
 SELECT *
 FROM main
-
-

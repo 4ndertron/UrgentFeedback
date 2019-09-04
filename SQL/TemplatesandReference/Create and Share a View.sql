@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Create the view
+CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_ER_T1 AS ( -- Create the view
     WITH employees AS -- Team Specific Members
         (SELECT e.EMPLOYEE_ID
               , e.FULL_NAME
@@ -12,45 +12,48 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
                    , MAX(EXPIRY_DATE) AS max_dt
               FROM hr.T_EMPLOYEE_ALL
               WHERE NOT TERMINATED
-                AND MGR_ID_6 <> '67600'
+                AND (MGR_ID_4 IS DISTINCT FROM '101769' AND MGR_ID_5 IS DISTINCT FROM '101769')
                 -- Placeholder Manager (Tyler Anderson)
               GROUP BY EMPLOYEE_ID) ea
                                   ON e.employee_id = ea.employee_id
          WHERE NOT e.TERMINATED
            AND e.PAY_RATE_TYPE = 'Hourly'
-           AND e.MGR_ID_6 = '67600'
-            -- Placeholder Manager (Tyler Anderson)
+           AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
+           AND direct_manager ILIKE '%ALFO%'
+           AND E.EMPLOYEE_ID NOT IN (204095)
         )
        , cases AS -- Active Escalation Cases | Closed > Today - 30
         (SELECT c.project_id
               , c.OWNER_EMPLOYEE_ID
               , c.OWNER
               , c.STATUS
-              , c.CREATED_DATE
+              , c.EXECUTIVE_RESOLUTIONS_ACCEPTED
               , c.CLOSED_DATE
          FROM rpt.T_CASE c
                   LEFT JOIN rpt.T_PROJECT p
                             ON p.PROJECT_ID = c.PROJECT_ID
-         WHERE c.RECORD_TYPE = 'Solar - Customer Default'
-           AND C.SUBJECT NOT ILIKE '%D3%'
-           AND C.PRIMARY_REASON = 'Foreclosure'
+         WHERE c.RECORD_TYPE = 'Solar - Customer Escalation'
+           AND c.STATUS != 'In Dispute'
+           AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
            AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
        , CASES_METRICS AS (
-        SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER) AS rn
+        SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)   AS rn
              , ca.OWNER
              , ca.OWNER_EMPLOYEE_ID
              , e.BUSINESS_TITLE
              , e.direct_manager
              , e.SUPERVISORY_ORG
-             , sum(CASE
-                       WHEN ca.closed_date >= CURRENT_DATE - 30 AND
-                            CA.STATUS = 'Closed - Saved'
-                           THEN 1 END)                                     AS closed
+             , sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 30 THEN 1 END) AS closed
+             , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)              AS wip_count
              , round(avg(CASE
                              WHEN ca.CLOSED_DATE IS NULL
-                                 THEN datediff('m', ca.CREATED_DATE, current_timestamp) / 1440
-            END), 2)                                                       AS avg_wip_cycle
-
+                                 THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) / 1440
+            END), 2)                                                         AS avg_wip_cycle
+             , round(median(CASE
+                                WHEN ca.CLOSED_DATE IS NULL
+                                    THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) /
+                                         1440
+            END), 2)                                                         AS med_wip_cycle
         FROM employees e
                  INNER JOIN cases ca
                             ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
@@ -97,9 +100,10 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT_FORECLOSURE AS ( -- Crea
                              ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
                   LEFT JOIN QA_METRICS as qa
                             ON qa.EMPLOYEE_ID = e.EMPLOYEE_ID
+         ORDER BY EMPLOYEE_ID
         )
     SELECT *
-    FROM main
+    FROM main m
 );
 
 GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT TO GENERAL_REPORTING_R -- Share the view
