@@ -48,6 +48,7 @@ WITH PROJECTS_RAW AS (
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
+       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 )
 
    , CASES_DAMAGE AS (
