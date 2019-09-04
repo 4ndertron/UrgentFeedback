@@ -18,6 +18,7 @@ WITH employees AS -- Team Specific Members
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND e.MGR_ID_6 = '67600'
+       AND E.BUSINESS_TITLE ILIKE '%DEFAULT MANAGER%'
         -- Placeholder Manager (Tyler Anderson)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 30
@@ -88,9 +89,9 @@ WITH employees AS -- Team Specific Members
     (SELECT E.EMPLOYEE_ID
           , E.FULL_NAME
           , E.TEAM_START_DATE
-          , ca.closed AS EFFECTIVENESS
+          , ca.closed        AS EFFECTIVENESS
           , ca.avg_wip_cycle AS EFFICIENCY
-          , qa.avg_qa_score AS QUALITY
+          , qa.avg_qa_score  AS QUALITY
      FROM employees e
               INNER JOIN CASES_METRICS ca
                          ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID

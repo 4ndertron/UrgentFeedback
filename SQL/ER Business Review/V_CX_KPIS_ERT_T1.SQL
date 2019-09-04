@@ -18,6 +18,8 @@ WITH employees AS -- Team Specific Members
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
+      AND direct_manager ILIKE '%ALFO%'
+      AND E.EMPLOYEE_ID NOT IN (204095)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 30
     (SELECT c.project_id
@@ -97,7 +99,6 @@ WITH employees AS -- Team Specific Members
                          ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
               LEFT JOIN QA_METRICS as qa
                         ON qa.EMPLOYEE_ID = e.EMPLOYEE_ID
-     WHERE E.direct_manager ILIKE 'ALFONSO%'
      ORDER BY EMPLOYEE_ID
     )
 SELECT *
