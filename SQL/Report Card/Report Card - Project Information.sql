@@ -66,6 +66,10 @@ WITH PROJECT_DAILY_STATUS AS (
 )
 
    , PROJECT_METRICS AS (
+       /*
+        I lost focus on the scope of the metrics.
+        TODO: Create separate WIP and ION Tables to represent the system status and billing buckets.
+        */
     SELECT METER_READ_MONTH
          , SERVICE_STATE
          , STATUS_BUCKET
@@ -73,8 +77,13 @@ WITH PROJECT_DAILY_STATUS AS (
          , COUNT(STATUS_BUCKET)  STATUS_BUCKET_COUNT
          , COUNT(BILLING_BUCKET) BILLING_BUCKET_COUNT
     FROM PROJECT_COMBO
-    GROUP BY METER_READ_MONTH, SERVICE_STATE
+    GROUP BY METER_READ_MONTH
+           , SERVICE_STATE
+           , STATUS_BUCKET
+           , BILLING_BUCKET
     ORDER BY SERVICE_STATE
+           , STATUS_BUCKET
+           , BILLING_BUCKET
            , METER_READ_MONTH
 )
 
