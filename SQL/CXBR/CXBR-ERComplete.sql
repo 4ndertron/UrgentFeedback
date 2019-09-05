@@ -323,6 +323,7 @@ WITH CASE_TABLE AS (
    , GAP_MONTH_TABLE AS (
     SELECT IFF(LAST_DAY(DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY((DT))) AS MONTH
          , ROUND(AVG(AVG_DAY_GAP), 2)                                     AS AVG_GAP
+         , ROUND(MAX(AVG_DAY_GAP), 2)                                     AS MAX_MONTH_GAP
     FROM GAP_DAY_TABLE AS GDT
     GROUP BY MONTH
     ORDER BY MONTH
@@ -358,8 +359,16 @@ WITH CASE_TABLE AS (
                          WHEN TO_DATE(CREATED_DATE) <= D.DT AND
                               (TO_DATE(CLOSED_DATE) > D.DT OR
                                CLOSED_DATE IS NULL)
+                             AND STATUS1 NOT ILIKE '%DISPUTE%'
                              THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
         END), 2)                                                              AS AVG_OPEN_AGE
+         , MAX(CASE
+                   WHEN TO_DATE(CREATED_DATE) <= D.DT AND
+                        (TO_DATE(CLOSED_DATE) > D.DT OR
+                         CLOSED_DATE IS NULL)
+                       AND STATUS1 NOT ILIKE '%DISPUTE%'
+                       THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
+        END)                                                                  AS MAX_MONTH_AGE
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT AND CUSTOMER_TEMPERATURE != 'Escalated'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
@@ -391,7 +400,9 @@ WITH CASE_TABLE AS (
          , ION.TOTAL_CLOSED
          , ION.AVERAGE_CLOSED
          , ION.AVG_OPEN_AGE
+         , ION.MAX_MONTH_AGE
          , GAP_MONTH_TABLE.AVG_GAP
+         , GAP_MONTH_TABLE.MAX_MONTH_GAP
          , UPDATES_MONTH.AVG_DAY_UPDATES
          , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES
          , CASE_MONTH_WIP.ACTIVE_AGENTS
