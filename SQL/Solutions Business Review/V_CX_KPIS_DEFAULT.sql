@@ -48,6 +48,7 @@ WITH employees AS -- Team Specific Members
                        THEN 1 END)                                     AS closed
          , round(avg(CASE
                          WHEN ca.CLOSED_DATE IS NULL
+                             AND CA.STATUS ILIKE '%PENDING CUSTOMER ACTION%'
                              THEN datediff('m', ca.CREATED_DATE, current_timestamp) / 1440
         END), 2)                                                       AS avg_wip_cycle
 
