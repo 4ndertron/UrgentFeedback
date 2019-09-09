@@ -10,8 +10,8 @@ WITH CASE_TABLE AS (
          , ANY_VALUE(CAD.SYSTEM_SIZE)                      AS SYSTEM_SIZE
          , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2) AS SYSTEM_VALUE
          , ANY_VALUE(C.STATUS)                             AS STATUS2
-         , ANY_VALUE(C.CREATED_DATE)                       AS CREATED_DATE1
-         , ANY_VALUE(C.CLOSED_DATE)                        AS CLOSED_DATE1
+         , TO_DATE(ANY_VALUE(C.CREATED_DATE))              AS CREATED_DATE1
+         , TO_DATE(ANY_VALUE(C.CLOSED_DATE))               AS CLOSED_DATE1
          , ANY_VALUE(C.RECORD_TYPE)                        AS RECORD_TYPE1
          , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)       AS SOLAR_BILLING_ACCOUNT_NUMBER1
          , CASE
@@ -47,23 +47,31 @@ WITH CASE_TABLE AS (
 
    , CASE_HISTORY_TABLE AS (
     SELECT CT.*
-         , CC.CREATEDATE
-         , USR.NAME AS COMMENT_CREATE_BY
+         , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               CT.CREATED_DATE1)                            AS PREVIOUS_COMMENT_DATE
+         , CC.CREATEDATE                                    AS CURRENT_COMMENT_DATE
+         , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               NVL(CT.CLOSED_DATE1,
+                   CURRENT_DATE))                           AS NEXT_COMMENT_DATE
+         , USR.NAME                                         AS COMMENT_CREATE_BY
          , HR.BUSINESS_TITLE
          , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER
         ORDER BY CC.CREATEDATE),
                            CT.CREATED_DATE1),
                     CC.CREATEDATE
                ) / (24 * 60 * 60)
-                    AS GAP
+                                                            AS LAG_GAP
+         , DATEDIFF(s, CC.CREATEDATE,
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+                        CT.CREATED_DATE1)) / (24 * 60 * 60) AS LEAD_GAP
     FROM CASE_TABLE AS CT
-             LEFT OUTER JOIN
-         RPT.V_SF_CASECOMMENT AS CC
-         ON CC.PARENTID = CT.CASE_ID
+             LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
+                             ON CC.PARENTID = CT.CASE_ID
              LEFT JOIN RPT.V_SF_USER AS USR
                        ON USR.ID = CC.CREATEDBYID
              LEFT JOIN HR.T_EMPLOYEE AS HR
                        ON HR.EMPLOYEE_ID = USR.EMPLOYEE_ID__C
+    WHERE CC.CREATEDATE <= NVL(CT.CLOSED_DATE1, CURRENT_DATE)
     ORDER BY CASE_NUMBER, CC.CREATEDATE
 )
 
@@ -86,7 +94,7 @@ WITH CASE_TABLE AS (
                WHEN STATUS1 IN ('Pending Customer Action') AND
                     DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal') THEN 'Working with Customer'
         END                                                                             AS STATUS_BUCKET
-         , AVG(GAP)                                                                     AS AVERAGE_GAP
+         , AVG(LAG_GAP)                                                                 AS AVERAGE_GAP
     FROM CASE_HISTORY_TABLE
     GROUP BY SOLAR_BILLING_ACCOUNT_NUMBER1
            , CASE_NUMBER
@@ -94,13 +102,17 @@ WITH CASE_TABLE AS (
            , CASE_NUMBER
 )
 
-
    , GAP_LIST AS (
     SELECT CHT.CASE_NUMBER
-         , TO_DATE(CHT.CREATEDATE)                      AS COMMENT_DATE
+         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)           AS PREVIOUS_COMMENT_DATE
+         , TO_DATE(CHT.CURRENT_COMMENT_DATE)            AS CURRENT_COMMENT_DATE
+         , TO_DATE(CHT.NEXT_COMMENT_DATE)               AS NEXT_COMMENT_DATE
+         , DATEDIFF(dd,
+                    TO_DATE(CHT.CURRENT_COMMENT_DATE),
+                    TO_DATE(CHT.NEXT_COMMENT_DATE))     AS LEAD_GAP
          , ANY_VALUE(CHT.COMMENT_CREATE_BY)             AS COMMENT_CREATED_BY_NAME
          , ANY_VALUE(CHT.BUSINESS_TITLE)                AS BUSINESS_TITLE
-         , MAX(CHT.GAP)                                 AS MAIN_GAP
+         , MAX(CHT.LAG_GAP)                             AS MAIN_GAP
          , ANY_VALUE(CHT.CREATED_DATE1)                 AS CREATED_DATE
          , ANY_VALUE(CHT.CLOSED_DATE1)                  AS CLOSED_DATE
          , ANY_VALUE(CHT.STATUS2)                       AS STATUS
@@ -111,12 +123,22 @@ WITH CASE_TABLE AS (
          , ANY_VALUE(CHT.SUBJECT1)                      AS SUBJECT
          , ANY_VALUE(CHT.SYSTEM_SIZE)                   AS SYSTEM_SIZE
          , ANY_VALUE(CHT.SYSTEM_VALUE)                  AS SYSTEM_VALUE
+         , D.DT
+         , ROW_NUMBER()
+            OVER (PARTITION BY CHT.CASE_NUMBER
+                , TO_DATE(CHT.CURRENT_COMMENT_DATE)
+                ORDER BY D.DT)                          AS ACTIVE_COMMENT_AGE
     FROM CASE_HISTORY_TABLE AS CHT
+             INNER JOIN RPT.T_DATES AS D
+                        ON D.DT BETWEEN CHT.CURRENT_COMMENT_DATE AND CHT.NEXT_COMMENT_DATE
     WHERE CHT.STATUS2 IN ('Pending Customer Action')
       AND CHT.DEFAULT_BUCKET NOT IN ('MBW', 'Pending Legal')
-    GROUP BY CASE_NUMBER, COMMENT_DATE
+    GROUP BY CASE_NUMBER,
+             CURRENT_COMMENT_DATE,
+             PREVIOUS_COMMENT_DATE,
+             NEXT_COMMENT_DATE,
+             D.DT
 )
-
 
    , DEFAULT_AGENTS AS (
     SELECT EMPLOYEE_ID
@@ -264,24 +286,10 @@ WITH CASE_TABLE AS (
     ORDER BY D.DT
 )
 
-   , GAP_DAY_TABLE AS (
-    SELECT D.DT
-         , AVG(CASE
-                   WHEN TO_DATE(GL.COMMENT_DATE) = D.DT
-                       THEN GL.MAIN_GAP END) AS AVG_DAY_GAP
-    FROM RPT.T_DATES AS D
-       , GAP_LIST AS GL
-    WHERE D.DT BETWEEN
-              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
-    GROUP BY D.DT
-    ORDER BY D.DT
-)
-
    , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(GL.COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(GL.CURRENT_COMMENT_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
@@ -331,10 +339,18 @@ WITH CASE_TABLE AS (
 )
 
    , GAP_MONTH_TABLE AS (
-    SELECT IFF(LAST_DAY(DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY((DT))) AS MONTH
-         , ROUND(AVG(AVG_DAY_GAP), 2)                                     AS AVG_GAP
-         , ROUND(MAX(AVG_DAY_GAP), 2)                                     AS MAX_MONTH_GAP
-    FROM GAP_DAY_TABLE AS GDT
+    SELECT IFF(LAST_DAY(D.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(D.DT)) AS MONTH
+         , AVG(CASE
+                   WHEN GL.DT = MONTH
+                       THEN GL.ACTIVE_COMMENT_AGE END)                      AS AVG_GAP
+         , MAX(CASE
+                   WHEN GL.DT = MONTH
+                       THEN GL.ACTIVE_COMMENT_AGE END)                      AS MAX_GAP
+    FROM GAP_LIST AS GL
+       , RPT.T_DATES AS D
+    WHERE D.DT BETWEEN
+              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+              CURRENT_DATE
     GROUP BY MONTH
     ORDER BY MONTH
 )
@@ -417,12 +433,17 @@ WITH CASE_TABLE AS (
  */
 
    , TEST_RESULTS AS (
-    SELECT *
-    FROM COVERAGE
-    ORDER BY 1
+    SELECT DISTINCT
+    STATUS2
+    FROM CASE_HISTORY_TABLE
 )
 
    , MAIN AS (
+    /*
+     Last run duration:
+     1m 3s
+     ┑(￣Д ￣)┍
+     */
     SELECT ION.MONTH1
          , ION.TOTAL_CREATED
          , ION.AVERAGE_CREATED
@@ -431,7 +452,7 @@ WITH CASE_TABLE AS (
          , ION.AVG_OPEN_AGE
          , ION.MAX_MONTH_AGE
          , GAP_MONTH_TABLE.AVG_GAP
-         , GAP_MONTH_TABLE.MAX_MONTH_GAP
+         , GAP_MONTH_TABLE.MAX_GAP
          , UPDATES_MONTH.AVG_DAY_UPDATES
          , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES
          , CASE_MONTH_WIP.ACTIVE_AGENTS
