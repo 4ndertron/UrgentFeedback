@@ -190,6 +190,46 @@ WITH CASE_TABLE AS (
              D.DT
 )
 
+   , DAY_GAP_LIST AS (
+    SELECT CHT.CASE_NUMBER
+         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)           AS PREVIOUS_COMMENT_DATE
+         , TO_DATE(CHT.CURRENT_COMMENT_DATE)            AS CURRENT_COMMENT_DATE
+         , TO_DATE(CHT.NEXT_COMMENT_DATE)               AS NEXT_COMMENT_DATE
+         , DATEDIFF(dd,
+                    TO_DATE(CHT.CURRENT_COMMENT_DATE),
+                    TO_DATE(CHT.NEXT_COMMENT_DATE))     AS LEAD_GAP
+         , ANY_VALUE(CHT.COMMENT_CREATE_BY)             AS COMMENT_CREATED_BY_NAME
+         , ANY_VALUE(CHT.BUSINESS_TITLE)                AS BUSINESS_TITLE
+         , MAX(CHT.LAG_GAP)                             AS MAIN_GAP
+         , ANY_VALUE(CHT.CREATED_DATE1)                 AS CREATED_DATE
+         , ANY_VALUE(CHT.CLOSED_DATE1)                  AS CLOSED_DATE
+         , ANY_VALUE(CHT.STATUS2)                       AS STATUS
+         , ANY_VALUE(CHT.RECORD_TYPE1)                  AS RECORD_TYPE
+         , ANY_VALUE(CHT.SOLAR_BILLING_ACCOUNT_NUMBER1) AS BILLING_ACCOUNTS
+         , ANY_VALUE(CHT.CASE_ID)                       AS CASE_ID
+         , ANY_VALUE(CHT.PROJECT_ID)                    AS PROJECT_ID
+         , ANY_VALUE(CHT.SUBJECT1)                      AS SUBJECT
+         , ANY_VALUE(CHT.SYSTEM_SIZE)                   AS SYSTEM_SIZE
+         , ANY_VALUE(CHT.SYSTEM_VALUE)                  AS SYSTEM_VALUE
+         , ANY_VALUE(CHT.CUSTOMER_TEMPERATURE)          AS CUSTOMER_TEMPERATURE
+         , D.DT
+         , ROW_NUMBER()
+            OVER (PARTITION BY CHT.CASE_NUMBER
+                , TO_DATE(CHT.CURRENT_COMMENT_DATE)
+                ORDER BY D.DT)                          AS ACTIVE_COMMENT_AGE
+    FROM CASE_HISTORY_TABLE AS CHT
+             INNER JOIN RPT.T_DATES AS D
+                        ON D.DT BETWEEN CHT.CURRENT_COMMENT_DATE AND CHT.NEXT_COMMENT_DATE
+    WHERE STATUS2 NOT ILIKE '%DISPUTE%'
+      AND COMMENT_CREATE_BY NOT ILIKE '%OB AZE%'
+      AND COMMENT_CREATE_BY NOT ILIKE '%NSO CON%'
+    GROUP BY CASE_NUMBER,
+             CURRENT_COMMENT_DATE,
+             PREVIOUS_COMMENT_DATE,
+             NEXT_COMMENT_DATE,
+             D.DT
+)
+
    , QA_CALABRIO AS (
     SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
                   , rc.AGENT_DISPLAY_ID       AS agent_evaluated
@@ -283,11 +323,11 @@ WITH CASE_TABLE AS (
    , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(GL.CURRENT_COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
-    FROM GAP_LIST AS GL
+    FROM CASE_HISTORY_TABLE AS CHT
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -392,6 +432,10 @@ WITH CASE_TABLE AS (
                            WHEN TO_DATE(CLOSED_DATE) = D.DT AND CUSTOMER_TEMPERATURE != 'Escalated'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
                  2)                                                           AS AVERAGE_CLOSED_WON_CASES
+
+         , ROUND(SUM(CASE
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT
+                             THEN FC.SYSTEM_VALUE END), 2)                    AS TOTAL_SAVED
          , DW.ACTIVE_AGENTS
     FROM FULL_CASE AS FC
        , RPT.T_DATES AS D

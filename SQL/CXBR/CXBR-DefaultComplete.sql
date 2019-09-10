@@ -289,11 +289,11 @@ WITH CASE_TABLE AS (
    , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(GL.CURRENT_COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
-    FROM GAP_LIST AS GL
+    FROM CASE_HISTORY_TABLE AS CHT
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -433,16 +433,15 @@ WITH CASE_TABLE AS (
  */
 
    , TEST_RESULTS AS (
-    SELECT DISTINCT
-    STATUS2
+    SELECT DISTINCT STATUS2
     FROM CASE_HISTORY_TABLE
 )
 
    , MAIN AS (
     /*
      Last run duration:
-     1m 3s
-     ┑(￣Д ￣)┍
+     13s 660ms
+     ( •̀ ω •́ )y
      */
     SELECT ION.MONTH1
          , ION.TOTAL_CREATED
@@ -456,6 +455,7 @@ WITH CASE_TABLE AS (
          , UPDATES_MONTH.AVG_DAY_UPDATES
          , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES
          , CASE_MONTH_WIP.ACTIVE_AGENTS
+         , ION.TOTAL_AMOUNT_SAVED
     FROM ION
        , CASE_MONTH_WIP
        , GAP_MONTH_TABLE
