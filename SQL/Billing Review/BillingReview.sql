@@ -5,5 +5,5 @@
  MSTG the Sheet on the system id. Grab the system id in the project. Map the two together, and see what's there. Take those out of the workbook...???
  Wait for tyson to send the new list... That will be the deadline of this new filtering view.
 
- Finish the Report Card - Billing Information.sql Review Objectives document.
+ Finish the Report Card - Billing Summary.sql Review Objectives document.
  */

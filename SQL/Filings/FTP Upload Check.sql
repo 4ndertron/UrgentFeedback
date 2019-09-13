@@ -1,0 +1,24 @@
+WITH FIRST_ITERATION AS (
+    /*
+     Last run time:
+     4s 124ms
+
+     total count:
+     9078
+     */
+    SELECT *
+    FROM RPT.T_ATTACHMENT AS A
+    WHERE A.UPLOADED_BY_NAME ILIKE '%LD FTP Sync%'
+      AND (A.ATTACHMENT_NAME ILIKE '%PUC%'
+        OR A.ATTACHMENT_NAME ILIKE '%UCC%')
+      AND A.CREATED_DATE >= DATE_TRUNC('Y', CURRENT_DATE)
+)
+
+, SECOND_ITERATION AS (
+    SELECT *
+    FROM RPT.T_ATTACHMENT AS A
+    WHERE A.DOCUMENT_TYPE = 'County Recordings'
+)
+
+SELECT *
+FROM SECOND_ITERATION

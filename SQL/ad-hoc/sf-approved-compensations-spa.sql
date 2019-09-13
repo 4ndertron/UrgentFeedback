@@ -4,7 +4,7 @@
 -- 2018-07-16 | Landon | Adjusted compensations queries so that pre-PTO accounts are moved from the non-SPA list to the SPA list.
 -- 2018-07-16 | Landon | Changed JOIN between payments and projects to INNER instead of LEFT.
 -- 2018-08-22 | Mack   | Added criterion that includes payments where the fee_type is one of 'Sales Incentive', 'Sales Promise', or 'Sales Referral'.
--- 2018-08-22 | Mack   | Re-ordered join criteria to go back through Case then Service to get the correct Solar Report Card - Billing Information.sql Account Number
+-- 2018-08-22 | Mack   | Re-ordered join criteria to go back through Case then Service to get the correct Solar Report Card - Billing Summary.sql Account Number
 -- 2018-09-22 | Mack   | Updated to work with Snowflake
 -- 2019-02-28 | Robert | Added the Service Number, Full Address, and Customer Full Name fields to the report to fill out the check request formstack easier (requested by Tyler and Alfonso).
 -- =================================================================================================================================================================================

@@ -1,5 +1,7 @@
 WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
+         , PROJECT_NAME                   AS PROJECT_NUMBER
+         , SERVICE_NAME                   AS SERVICE_NUMBER
          , NVL(SERVICE_STATE, '[blank]')  AS STATE_NAME
          , TO_DATE(INSTALLATION_COMPLETE) AS INSTALL_DATE
          , TO_DATE(CANCELLATION_DATE)     AS CANCELLATION_DATE
@@ -10,14 +12,24 @@ WITH PROJECTS_RAW AS (
    , CASES_SERVICE AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Service' END AS CASE_BUCKET
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'CX' END      AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE)   AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)    AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Service'
       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 )
@@ -25,49 +37,89 @@ WITH PROJECTS_RAW AS (
    , CASES_REMOVAL_REINSTALL AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Panel Removal' END AS CASE_BUCKET
+
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'CX' END            AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE)         AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)          AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Panel Removal'
 )
 
    , CASES_TROUBLESHOOTING AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Troubleshooting' END AS CASE_BUCKET
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
+                   THEN 'CX'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.SOLAR_QUEUE NOT IN ('Outbound', 'Tier II')
+                   THEN 'SPC' END             AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE)           AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)            AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
-       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
+      AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 )
 
    , CASES_DAMAGE AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Damage' END AS CASE_BUCKET
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   THEN 'Damage' END AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE)  AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)   AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE IN ('Solar Damage Resolutions', 'Home Damage')
 )
 
    , CASES_ESCALATION AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
@@ -81,12 +133,25 @@ WITH PROJECTS_RAW AS (
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
                    AND CA.ORIGIN NOT IN ('BBB', 'Legal', 'News Media')
                    THEN 'ERT'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
+                   THEN 'General Escalation'
         END                         AS CASE_BUCKET
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   THEN 'ERT'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
+                   THEN 'CX'
+        END                         AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE) AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)  AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Customer Escalation'
       AND CA.SUBJECT NOT ILIKE '%VIP%'
       AND CA.SUBJECT NOT ILIKE '%NPS%'
@@ -96,64 +161,50 @@ WITH PROJECTS_RAW AS (
    , CASES_DEFAULT AS (
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
+         , PR.PROJECT_NUMBER
+         , PR.SERVICE_NUMBER
+         , CA.CASE_NUMBER
+         , CA.OWNER AS CASE_OWNER
+         , CT.FULL_NAME AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Default' END AS CASE_BUCKET
+         , CASE
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.SUBJECT ILIKE '%D3%'
+                   THEN 'Collections'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.SUBJECT NOT ILIKE '%D3%'
+                   THEN 'Default' END AS ORG_BUCKET
          , TO_DATE(CA.CREATED_DATE)   AS CREATED_DATE
          , TO_DATE(CA.CLOSED_DATE)    AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Customer Default'
 )
 
    , CASES_OVERALL AS (
-    SELECT STATE_NAME
-         , PROJECT_ID
-         , CASE_BUCKET
-         , CREATED_DATE
-         , CLOSED_DATE
+    SELECT *
     FROM (
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_SERVICE
              UNION ALL
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_REMOVAL_REINSTALL
              UNION ALL
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_TROUBLESHOOTING
              UNION ALL
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_DAMAGE
              UNION ALL
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_ESCALATION
              UNION ALL
-             SELECT STATE_NAME
-                  , PROJECT_ID
-                  , CREATED_DATE
-                  , CLOSED_DATE
-                  , CASE_BUCKET
+             SELECT *
              FROM CASES_DEFAULT
          )
 )
@@ -161,6 +212,7 @@ WITH PROJECTS_RAW AS (
    , DAY_WIP_TABLE AS (
     SELECT D.DT
          , C.STATE_NAME
+         , C.ORG_BUCKET
          , C.CASE_BUCKET
          , COUNT(CASE
                      WHEN C.CREATED_DATE <= D.DT AND
@@ -178,9 +230,11 @@ WITH PROJECTS_RAW AS (
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
     GROUP BY D.DT
+           , C.ORG_BUCKET
            , C.STATE_NAME
            , C.CASE_BUCKET
     ORDER BY C.STATE_NAME
+           , C.ORG_BUCKET
            , C.CASE_BUCKET
            , D.DT
 )
@@ -189,34 +243,36 @@ WITH PROJECTS_RAW AS (
     SELECT DWT.DT      AS MONTH
          , YEAR(MONTH) AS YEAR
          , DWT.STATE_NAME
+         , DWT.ORG_BUCKET
          , DWT.CASE_BUCKET
          , DWT.ACTIVE_CASES
          , DWT.DISTINCT_ACTIVE_ACCOUNTS
     FROM DAY_WIP_TABLE AS DWT
-    WHERE DWT.DT = LAST_DAY(DWT.DT)
-       OR DWT.DT = CURRENT_DATE
+    WHERE DAY(DT) = DAY(CURRENT_DATE)
     ORDER BY DWT.STATE_NAME
+           , DWT.ORG_BUCKET
            , DWT.CASE_BUCKET
            , MONTH
 )
 
    , CASE_ION AS (
-    SELECT LAST_DAY(D.DT)                                     AS MONTH
-         , YEAR(MONTH)                                        AS YEAR
+    SELECT DATE_TRUNC('MM', TO_DATE(D.DT)) + DAY(CURRENT_DATE) - 1 AS MONTH
+         , YEAR(MONTH)                                             AS YEAR
          , CO.STATE_NAME
+         , CO.ORG_BUCKET
          , CO.CASE_BUCKET
          , COUNT(CASE
                      WHEN CREATED_DATE = D.DT
-                         THEN 1 END)                          AS CASE_INFLOW
-         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)     AS CASE_OUTFLOW
-         , CASE_INFLOW - CASE_OUTFLOW                         AS CASE_NET
+                         THEN 1 END)                               AS CASE_INFLOW
+         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)          AS CASE_OUTFLOW
+         , CASE_INFLOW - CASE_OUTFLOW                              AS CASE_NET
          , COUNT(DISTINCT (CASE
                                WHEN CREATED_DATE = D.DT
-                                   THEN CO.PROJECT_ID END))   AS DISTINCT_ACCOUNT_INFLOW
+                                   THEN CO.PROJECT_ID END))        AS DISTINCT_ACCOUNT_INFLOW
          , COUNT(DISTINCT (CASE
                                WHEN CLOSED_DATE = D.DT
-                                   THEN CO.PROJECT_ID END))   AS DISTINCT_ACCOUNT_OUTFLOW
-         , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW AS DISTINCT_ACCOUNT_NET
+                                   THEN CO.PROJECT_ID END))        AS DISTINCT_ACCOUNT_OUTFLOW
+         , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW      AS DISTINCT_ACCOUNT_NET
     FROM CASES_OVERALL AS CO
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN
@@ -224,8 +280,10 @@ WITH PROJECTS_RAW AS (
               CURRENT_DATE
     GROUP BY MONTH
            , CO.STATE_NAME
+           , CO.ORG_BUCKET
            , CO.CASE_BUCKET
     ORDER BY CO.STATE_NAME
+           , CO.ORG_BUCKET
            , CO.CASE_BUCKET
            , MONTH
 )
@@ -235,6 +293,7 @@ WITH PROJECTS_RAW AS (
          , ION.YEAR
          , ION.STATE_NAME
          , ION.CASE_BUCKET
+         , ION.ORG_BUCKET
          , ION.CASE_INFLOW
          , ION.CASE_OUTFLOW
          , ION.CASE_NET
@@ -248,6 +307,7 @@ WITH PROJECTS_RAW AS (
                         ON WIP.MONTH = ION.MONTH AND
                            WIP.STATE_NAME = ION.STATE_NAME AND
                            WIP.CASE_BUCKET = ION.CASE_BUCKET AND
+                           WIP.ORG_BUCKET = ION.ORG_BUCKET AND
                            WIP.YEAR = ION.YEAR
     ORDER BY ION.STATE_NAME
            , ION.CASE_BUCKET
@@ -256,7 +316,8 @@ WITH PROJECTS_RAW AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM CASES_TROUBLESHOOTING
+    FROM CASES_OVERALL
+    LIMIT 100
 )
 
 SELECT *

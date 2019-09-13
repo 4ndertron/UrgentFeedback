@@ -1,4 +1,4 @@
-SELECT * FROM d_post_install.t_auto_tasks WHERE NAMEX ILIKE '%CX PERFORMANCE%';
+SELECT * FROM d_post_install.t_auto_tasks WHERE NAMEX ILIKE '%ROOT%';
 
 --*****!!!!! ALWAYS BEGIN THE SESSION BEFORE UPDATING THE TABLE !!!!!*****--
 BEGIN;
