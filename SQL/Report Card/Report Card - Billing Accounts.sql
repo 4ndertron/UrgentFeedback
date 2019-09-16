@@ -1,5 +1,7 @@
 WITH BILLING_TABLE AS (
     SELECT B.PROJECT_ID
+         , P.PROJECT_NAME                                                       AS PROJECT_NUMBER
+         , P.SERVICE_NAME                                                       AS SERVICE_NUMBER
          , P.SERVICE_STATE
          , DATE_TRUNC('MM', TO_DATE(B.METER_READ_DATE)) + DAY(CURRENT_DATE) - 1 AS METER_READ_MONTH
          , B.BILLED_EST_FLAG

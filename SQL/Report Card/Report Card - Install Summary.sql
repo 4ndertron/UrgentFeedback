@@ -1,6 +1,9 @@
 WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
          , NVL(SERVICE_STATE, '[blank]')              AS STATE_NAME
+         , CASE
+               WHEN INSTALLATION_COMPLETE IS NOT NULL
+                   THEN 'ACE' END                     AS ORG_BUCKET
          , TO_DATE(INSTALLATION_COMPLETE)             AS INSTALLATION_DATE
          , TO_DATE(CANCELLATION_DATE)                 AS CANCELLATION_DATE
          , TO_DATE(NVL(IN_SERVICE_DATE, PTO_AWARDED)) AS IN_SERVICE_DATE
@@ -11,6 +14,7 @@ WITH PROJECTS_RAW AS (
    , I_DAY_WIP AS (
     SELECT D.DT
          , STATE_NAME
+         , ORG_BUCKET
          , COUNT(CASE
                      WHEN PR.INSTALLATION_DATE <= D.DT AND
                           (PR.CANCELLATION_DATE >= D.DT OR
@@ -28,7 +32,9 @@ WITH PROJECTS_RAW AS (
               CURRENT_DATE
     GROUP BY D.DT
            , STATE_NAME
+           , ORG_BUCKET
     ORDER BY STATE_NAME
+           , ORG_BUCKET
            , D.DT
 )
 
@@ -36,11 +42,14 @@ WITH PROJECTS_RAW AS (
     SELECT IW.DT       AS MONTH
          , YEAR(MONTH) AS YEAR
          , IW.STATE_NAME
+         , IW.ORG_BUCKET
          , IW.ACTIVE_INSTALLS
          , IW.ACTIVE_PRE_PTO
     FROM I_DAY_WIP IW
     WHERE DAY(DT) = DAY(CURRENT_DATE)
-    ORDER BY STATE_NAME, DT
+    ORDER BY STATE_NAME
+           , ORG_BUCKET
+           , DT
 )
 
 
@@ -48,6 +57,7 @@ WITH PROJECTS_RAW AS (
     SELECT DATE_TRUNC('MM', TO_DATE(D.DT)) + DAY(CURRENT_DATE) - 1 AS MONTH
          , YEAR(MONTH)                                             AS YEAR
          , PR.STATE_NAME
+         , PR.ORG_BUCKET
          , COUNT(CASE WHEN PR.INSTALLATION_DATE = D.DT THEN 1 END) AS INSTALL_INFLOW
          , COUNT(CASE WHEN PR.CANCELLATION_DATE = D.DT THEN 1 END) AS INSTALLATION_OUTFLOW
          , INSTALL_INFLOW - INSTALLATION_OUTFLOW                   AS INSTALLATION_NET
@@ -60,7 +70,9 @@ WITH PROJECTS_RAW AS (
               CURRENT_DATE
     GROUP BY MONTH
            , STATE_NAME
+           , ORG_BUCKET
     ORDER BY STATE_NAME
+           , ORG_BUCKET
            , MONTH
 )
 
@@ -68,6 +80,7 @@ WITH PROJECTS_RAW AS (
     SELECT ION.MONTH
          , ION.YEAR
          , ION.STATE_NAME
+         , ION.ORG_BUCKET
          , ION.INSTALL_INFLOW
          , ION.INSTALLATION_OUTFLOW
          , ION.INSTALLATION_NET
@@ -79,6 +92,7 @@ WITH PROJECTS_RAW AS (
              INNER JOIN I_MONTH_WIP AS WIP
                         ON WIP.MONTH = ION.MONTH
                             AND WIP.STATE_NAME = ION.STATE_NAME
+                            AND WIP.ORG_BUCKET = ION.ORG_BUCKET
                             AND WIP.YEAR = ION.YEAR
     ORDER BY ION.STATE_NAME
            , ION.MONTH

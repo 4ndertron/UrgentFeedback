@@ -2,6 +2,9 @@ WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
          , PROJECT_NAME                               AS PROJECT_NUMBER
          , SERVICE_NAME                               AS SERVICE_NUMBER
+         , CASE
+               WHEN INSTALLATION_COMPLETE IS NOT NULL
+                   THEN 'ACE' END                     AS ORG_BUCKET
          , NVL(SERVICE_STATE, '[blank]')              AS STATE_NAME
          , TO_DATE(INSTALLATION_COMPLETE)             AS INSTALLATION_DATE
          , TO_DATE(CANCELLATION_DATE)                 AS CANCELLATION_DATE

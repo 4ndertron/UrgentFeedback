@@ -65,27 +65,31 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER                           AS CASE_OWNER
-         , CT.FULL_NAME                       AS CUSTOMER_NAME
+         , CA.OWNER                 AS CASE_OWNER
+         , CT.FULL_NAME             AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Troubleshooting' END AS CASE_BUCKET
+                   THEN 'Troubleshooting'
+        END                         AS CASE_BUCKET
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
                    THEN 'CX'
                WHEN CA.CREATED_DATE IS NOT NULL
-                   AND CA.SOLAR_QUEUE NOT IN ('Outbound', 'Tier II')
-                   THEN 'SPC' END             AS ORG_BUCKET
-         , TO_DATE(CA.CREATED_DATE)           AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)            AS CLOSED_DATE
+                   AND (CA.SOLAR_QUEUE NOT IN ('Outbound', 'Tier II') OR
+                        CA.SOLAR_QUEUE IS NULL)
+                   THEN 'SPC'
+        END                         AS ORG_BUCKET
+         , TO_DATE(CA.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)  AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
              LEFT JOIN RPT.T_CONTACT AS CT
                        ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
-      AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
+--        AND CA.ORIGIN IS NOT NULL
+--       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 )
 
    , CASES_DAMAGE AS (
@@ -123,15 +127,27 @@ WITH PROJECTS_RAW AS (
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-                   AND CA.ORIGIN IN ('Legal', 'News Media')
-                   THEN 'Legal, News Media'
+                   AND CA.ORIGIN IN ('Legal')
+                   THEN 'Legal'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('News Media')
+                   THEN 'News Media'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('Social Media')
+                   THEN 'Social Media'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('Online Review')
+                   THEN 'Online Review'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
                    AND CA.ORIGIN IN ('BBB')
                    THEN 'BBB'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-                   AND CA.ORIGIN NOT IN ('BBB', 'Legal', 'News Media')
+                   AND CA.ORIGIN NOT IN ('BBB', 'Legal', 'News Media', 'Online Review', 'Social Media')
                    THEN 'ERT'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL

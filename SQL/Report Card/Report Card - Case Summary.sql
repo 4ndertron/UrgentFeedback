@@ -15,8 +15,8 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                   AS CASE_OWNER
+         , CT.FULL_NAME               AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Service' END AS CASE_BUCKET
@@ -40,8 +40,8 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                         AS CASE_OWNER
+         , CT.FULL_NAME                     AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Panel Removal' END AS CASE_BUCKET
@@ -65,27 +65,30 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                 AS CASE_OWNER
+         , CT.FULL_NAME             AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
-                   THEN 'Troubleshooting' END AS CASE_BUCKET
+                   THEN 'Troubleshooting'
+        END                         AS CASE_BUCKET
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
                    THEN 'CX'
                WHEN CA.CREATED_DATE IS NOT NULL
-                   AND CA.SOLAR_QUEUE NOT IN ('Outbound', 'Tier II')
-                   THEN 'SPC' END             AS ORG_BUCKET
-         , TO_DATE(CA.CREATED_DATE)           AS CREATED_DATE
-         , TO_DATE(CA.CLOSED_DATE)            AS CLOSED_DATE
+                   AND (CA.SOLAR_QUEUE NOT IN ('Outbound', 'Tier II') OR
+                        CA.SOLAR_QUEUE IS NULL)
+                   THEN 'SPC'
+        END                         AS ORG_BUCKET
+         , TO_DATE(CA.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(CA.CLOSED_DATE)  AS CLOSED_DATE
     FROM RPT.T_CASE CA
              INNER JOIN PROJECTS_RAW AS PR
                         ON CA.PROJECT_ID = PR.PROJECT_ID
              LEFT JOIN RPT.T_CONTACT AS CT
                        ON CT.CONTACT_ID = CA.CONTACT_ID
     WHERE CA.RECORD_TYPE = 'Solar - Troubleshooting'
-      AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
+--       AND CA.SOLAR_QUEUE IN ('Outbound', 'Tier II')
 )
 
    , CASES_DAMAGE AS (
@@ -94,8 +97,8 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                  AS CASE_OWNER
+         , CT.FULL_NAME              AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Damage' END AS CASE_BUCKET
@@ -118,20 +121,32 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                 AS CASE_OWNER
+         , CT.FULL_NAME             AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-                   AND CA.ORIGIN IN ('Legal', 'News Media')
-                   THEN 'Legal, News Media'
+                   AND CA.ORIGIN IN ('Legal')
+                   THEN 'Legal'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('News Media')
+                   THEN 'News Media'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('Social Media')
+                   THEN 'Social Media'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('Online Review')
+                   THEN 'Online Review'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
                    AND CA.ORIGIN IN ('BBB')
                    THEN 'BBB'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-                   AND CA.ORIGIN NOT IN ('BBB', 'Legal', 'News Media')
+                   AND CA.ORIGIN NOT IN ('BBB', 'Legal', 'News Media', 'Online Review', 'Social Media')
                    THEN 'ERT'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
@@ -164,8 +179,8 @@ WITH PROJECTS_RAW AS (
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
          , CA.CASE_NUMBER
-         , CA.OWNER AS CASE_OWNER
-         , CT.FULL_NAME AS CUSTOMER_NAME
+         , CA.OWNER                   AS CASE_OWNER
+         , CT.FULL_NAME               AS CUSTOMER_NAME
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    THEN 'Default' END AS CASE_BUCKET
@@ -209,7 +224,7 @@ WITH PROJECTS_RAW AS (
          )
 )
 
-   , DAY_WIP_TABLE AS (
+   , CASE_DAY_WIP AS (
     SELECT D.DT
          , C.STATE_NAME
          , C.ORG_BUCKET
@@ -239,19 +254,42 @@ WITH PROJECTS_RAW AS (
            , D.DT
 )
 
+   , INSTALL_DAY_WIP AS (
+    SELECT D.DT
+         , P.STATE_NAME
+         , COUNT(CASE
+                     WHEN P.INSTALL_DATE <= D.DT AND
+                          (P.CANCELLATION_DATE > D.DT OR
+                           P.CANCELLATION_DATE IS NULL)
+                         THEN 1 END) AS CASE_ACTIVE_INSTALLS
+    FROM PROJECTS_RAW AS P
+       , RPT.T_DATES AS D
+    WHERE D.DT BETWEEN
+              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+              CURRENT_DATE
+    GROUP BY D.DT
+           , P.STATE_NAME
+    ORDER BY P.STATE_NAME
+           , D.DT
+)
+
    , MONTH_WIP_TABLE AS (
-    SELECT DWT.DT      AS MONTH
+    SELECT CDW.DT      AS MONTH
          , YEAR(MONTH) AS YEAR
-         , DWT.STATE_NAME
-         , DWT.ORG_BUCKET
-         , DWT.CASE_BUCKET
-         , DWT.ACTIVE_CASES
-         , DWT.DISTINCT_ACTIVE_ACCOUNTS
-    FROM DAY_WIP_TABLE AS DWT
-    WHERE DAY(DT) = DAY(CURRENT_DATE)
-    ORDER BY DWT.STATE_NAME
-           , DWT.ORG_BUCKET
-           , DWT.CASE_BUCKET
+         , CDW.STATE_NAME
+         , CDW.ORG_BUCKET
+         , CDW.CASE_BUCKET
+         , CDW.ACTIVE_CASES
+         , CDW.DISTINCT_ACTIVE_ACCOUNTS
+         , IDW.CASE_ACTIVE_INSTALLS
+--          , CDW.ACTIVE_CASES / IDW.CASE_ACTIVE_INSTALLS AS CASE_WIP_RATIO
+    FROM CASE_DAY_WIP AS CDW
+             INNER JOIN INSTALL_DAY_WIP AS IDW
+                        ON IDW.DT = CDW.DT AND IDW.STATE_NAME = CDW.STATE_NAME
+    WHERE DAY(CDW.DT) = DAY(CURRENT_DATE)
+    ORDER BY CDW.STATE_NAME
+           , CDW.ORG_BUCKET
+           , CDW.CASE_BUCKET
            , MONTH
 )
 
@@ -292,8 +330,8 @@ WITH PROJECTS_RAW AS (
     SELECT ION.MONTH
          , ION.YEAR
          , ION.STATE_NAME
-         , ION.CASE_BUCKET
          , ION.ORG_BUCKET
+         , ION.CASE_BUCKET
          , ION.CASE_INFLOW
          , ION.CASE_OUTFLOW
          , ION.CASE_NET
@@ -302,6 +340,7 @@ WITH PROJECTS_RAW AS (
          , ION.DISTINCT_ACCOUNT_NET
          , WIP.ACTIVE_CASES
          , WIP.DISTINCT_ACTIVE_ACCOUNTS
+         , WIP.CASE_ACTIVE_INSTALLS
     FROM CASE_ION AS ION
              INNER JOIN MONTH_WIP_TABLE AS WIP
                         ON WIP.MONTH = ION.MONTH AND
@@ -315,11 +354,11 @@ WITH PROJECTS_RAW AS (
 )
 
    , TEST_RESULTS AS (
-    SELECT *
+    SELECT DISTINCT CASE_BUCKET, ORG_BUCKET
     FROM CASES_OVERALL
-    LIMIT 100
+--     LIMIT 100
 )
 
 SELECT *
-FROM TEST_RESULTS
+FROM METRIC_MERGE
 ;
