@@ -92,6 +92,11 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_DAMAGE AS (
+       /*
+        TODO: Split the total bucket by Origin...?
+        TODO: And how many of them also have an ERT Case.
+        TODO: Talk with Landon on how the Damage Case subcategories are reported.
+        */
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
@@ -174,6 +179,10 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_DEFAULT AS (
+       /*
+        TODO: Breakout by Foreclosure and Default, and I guess the D1,2,4,5, Deceased...
+        TODO: Use the standard breakpoints in the other reports... CXBR?
+        */
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
@@ -355,10 +364,11 @@ WITH PROJECTS_RAW AS (
 
    , TEST_RESULTS AS (
     SELECT DISTINCT CASE_BUCKET, ORG_BUCKET
-    FROM CASES_OVERALL
+    FROM METRIC_MERGE
+       WHERE STATE_NAME = 'NY'
 --     LIMIT 100
 )
 
 SELECT *
-FROM METRIC_MERGE
+FROM TEST_RESULTS
 ;
