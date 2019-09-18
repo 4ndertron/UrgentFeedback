@@ -27,7 +27,7 @@ WITH CASE_LIST AS (
     LEFT JOIN
         RPT.T_PROJECT AS P
     ON P.PROJECT_ID = C.PROJECT_ID
-    WHERE C.CREATED_DATE >= '2019-06-01' -- Q2 2019
+    WHERE C.CREATED_DATE >= '2019-08-26' -- Q2 2019
     AND C.RECORD_TYPE IN ('Solar - Troubleshooting', 'Solar - Service')
     AND C.SOLAR_QUEUE IN ('Inbound', 'Outbound')
 )
