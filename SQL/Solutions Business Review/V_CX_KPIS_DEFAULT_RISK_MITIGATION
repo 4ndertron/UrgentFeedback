@@ -18,7 +18,8 @@ WITH employees AS -- Team Specific Members
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND e.MGR_ID_6 = '67600'
-       AND E.BUSINESS_TITLE ILIKE '%DEFAULT MANAGER%'
+       AND E.BUSINESS_TITLE NOT ILIKE '%DEFAULT MANAGER%'
+       AND E.EMPLOYEE_ID NOT IN (209513, 202105, 210230)
         -- Placeholder Manager (Tyler Anderson)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 30
@@ -31,9 +32,15 @@ WITH employees AS -- Team Specific Members
      FROM rpt.T_CASE c
               LEFT JOIN rpt.T_PROJECT p
                         ON p.PROJECT_ID = c.PROJECT_ID
-     WHERE c.RECORD_TYPE = 'Solar - Customer Default'
-       AND C.SUBJECT NOT ILIKE '%D3%'
-       AND C.PRIMARY_REASON = 'Foreclosure'
+     WHERE (
+             (c.RECORD_TYPE IN
+              ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
+               'Solar Damage Resolutions', 'Solar - Customer Escalation', 'Solar - Troubleshooting')
+                 AND C.SOLAR_QUEUE = 'Dispute/Evasion')
+             OR
+             (C.RECORD_TYPE = 'Solar - Customer Default'
+                 AND C.PRIMARY_REASON IN ('Foreclosure', 'Deceased'))
+         )
        AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
    , CASES_METRICS AS (
     SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER) AS rn
@@ -43,8 +50,7 @@ WITH employees AS -- Team Specific Members
          , e.direct_manager
          , e.SUPERVISORY_ORG
          , sum(CASE
-                   WHEN ca.closed_date >= CURRENT_DATE - 30 AND
-                        CA.STATUS = 'Closed - Saved'
+                   WHEN ca.closed_date >= CURRENT_DATE - 30
                        THEN 1 END)                                     AS closed
          , round(avg(CASE
                          WHEN ca.CLOSED_DATE IS NULL
@@ -100,5 +106,3 @@ WITH employees AS -- Team Specific Members
     )
 SELECT *
 FROM main
-
-
