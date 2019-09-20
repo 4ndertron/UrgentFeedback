@@ -18,8 +18,8 @@ WITH employees AS -- Team Specific Members
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
-      AND direct_manager ILIKE '%JACO%'
-      AND E.EMPLOYEE_ID NOT IN (210521, 202038, 119688, 213011)
+       AND direct_manager ILIKE '%JACO%'
+       AND E.EMPLOYEE_ID NOT IN (210521, 202038, 119688, 213011)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 30
     (SELECT c.project_id
@@ -27,13 +27,19 @@ WITH employees AS -- Team Specific Members
           , c.OWNER
           , c.STATUS
           , c.EXECUTIVE_RESOLUTIONS_ACCEPTED
+          , c.CREATED_DATE
           , c.CLOSED_DATE
      FROM rpt.T_CASE c
               LEFT JOIN rpt.T_PROJECT p
                         ON p.PROJECT_ID = c.PROJECT_ID
-     WHERE c.RECORD_TYPE = 'Solar - Customer Escalation'
-       AND c.STATUS != 'In Dispute'
-       AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+     WHERE ((c.RECORD_TYPE = 'Solar - Customer Escalation'
+         AND c.STATUS != 'In Dispute'
+         AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL)
+         OR (C.RECORD_TYPE = 'Solar - Transfer'
+             AND C.PRIMARY_REASON = 'Relocation'
+             AND C.OWNER_EMPLOYEE_ID IN ('210140'))
+         OR (C.RECORD_TYPE = 'Solar - Cancellation'
+             AND C.OWNER_EMPLOYEE_ID IN ('107938', '118087', '208517', '210140')))
        AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
    , CASES_METRICS AS (
     SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)   AS rn
@@ -46,12 +52,13 @@ WITH employees AS -- Team Specific Members
          , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)              AS wip_count
          , round(avg(CASE
                          WHEN ca.CLOSED_DATE IS NULL
-                             THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) / 1440
+                             THEN datediff('m', nvl(ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, ca.CREATED_DATE),
+                                           current_timestamp) / 1440
         END), 2)                                                         AS avg_wip_cycle
          , round(median(CASE
                             WHEN ca.CLOSED_DATE IS NULL
-                                THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) /
-                                     1440
+                             THEN datediff('m', nvl(ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, ca.CREATED_DATE),
+                                           current_timestamp) / 1440
         END), 2)                                                         AS med_wip_cycle
     FROM employees e
              INNER JOIN cases ca

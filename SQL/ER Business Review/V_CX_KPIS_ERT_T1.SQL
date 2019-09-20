@@ -18,8 +18,8 @@ WITH employees AS -- Team Specific Members
      WHERE NOT e.TERMINATED
        AND e.PAY_RATE_TYPE = 'Hourly'
        AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
-      AND direct_manager ILIKE '%ALFO%'
-      AND E.EMPLOYEE_ID NOT IN (204095)
+       AND direct_manager ILIKE '%ALFO%'
+       AND E.EMPLOYEE_ID NOT IN (204095)
     )
    , cases AS -- Active Escalation Cases | Closed > Today - 30
     (SELECT c.project_id
@@ -31,9 +31,14 @@ WITH employees AS -- Team Specific Members
      FROM rpt.T_CASE c
               LEFT JOIN rpt.T_PROJECT p
                         ON p.PROJECT_ID = c.PROJECT_ID
-     WHERE c.RECORD_TYPE = 'Solar - Customer Escalation'
-       AND c.STATUS != 'In Dispute'
-       AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+     WHERE ((c.RECORD_TYPE = 'Solar - Customer Escalation'
+         AND c.STATUS != 'In Dispute'
+         AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL)
+         OR (C.RECORD_TYPE = 'Solar - Service'
+             AND C.OWNER_EMPLOYEE_ID NOT IN ('210463'))
+         OR (C.RECORD_TYPE = 'Solar - Cancellation'
+             AND C.OWNER_EMPLOYEE_ID IN
+                 ('121126', '207396', '208297', '208853', '209336', '209990', '211343', '213132', '214556')))
        AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
    , CASES_METRICS AS (
     SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)   AS rn
