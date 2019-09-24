@@ -1,0 +1,33 @@
+WITH WO_LIST AS (
+    SELECT WO.PROJECT_ID
+         , TO_DATE(WO.SCHEDULED_ON) AS          SCHEDULED_ON
+         , TO_DATE(WO.APPOINTMENT_WINDOW_START) APPOINTMENT_ON
+    FROM RPT.T_WORKORDER AS WO
+    WHERE WO.DISPATCH_CODE = 'Solar-Home Visit-Paperwork'
+      AND WO.SCHEDULED_ON IS NOT NULL
+)
+
+   , TEST_CTE AS (
+    SELECT *
+    FROM WO_LIST
+)
+
+   , TREND AS (
+    SELECT LAST_DAY(D.DT) AS MONTH
+         , COUNT(CASE
+                     WHEN WO.SCHEDULED_ON = D.DT
+                         THEN 1 END) AS SCHEDULED_COUNT
+         , COUNT(CASE
+                     WHEN WO.APPOINTMENT_ON = D.DT
+                         THEN 1 END) AS APPOINTMENT_COUNT
+    FROM RPT.T_DATES AS D
+       , WO_LIST AS WO
+    WHERE D.DT BETWEEN
+              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+              LAST_DAY(CURRENT_DATE)
+       GROUP BY MONTH
+       ORDER BY MONTH
+)
+
+SELECT *
+FROM TREND

@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_ER_T1 AS ( -- Create the view
+CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT AS ( -- Create the view
     WITH employees AS -- Team Specific Members
         (SELECT e.EMPLOYEE_ID
               , e.FULL_NAME
@@ -12,56 +12,47 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_ER_T1 AS ( -- Create the view
                    , MAX(EXPIRY_DATE) AS max_dt
               FROM hr.T_EMPLOYEE_ALL
               WHERE NOT TERMINATED
-                AND (MGR_ID_4 IS DISTINCT FROM '101769' AND MGR_ID_5 IS DISTINCT FROM '101769')
+                AND MGR_ID_6 <> '67600'
                 -- Placeholder Manager (Tyler Anderson)
               GROUP BY EMPLOYEE_ID) ea
                                   ON e.employee_id = ea.employee_id
          WHERE NOT e.TERMINATED
            AND e.PAY_RATE_TYPE = 'Hourly'
-           AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
-           AND direct_manager ILIKE '%ALFO%'
-           AND E.EMPLOYEE_ID NOT IN (204095)
+           AND e.MGR_ID_6 = '67600'
+           AND E.BUSINESS_TITLE ILIKE '%DEFAULT MANAGER%'
+            -- Placeholder Manager (Tyler Anderson)
         )
        , cases AS -- Active Escalation Cases | Closed > Today - 30
         (SELECT c.project_id
               , c.OWNER_EMPLOYEE_ID
               , c.OWNER
               , c.STATUS
-              , c.RECORD_TYPE
-              , c.EXECUTIVE_RESOLUTIONS_ACCEPTED
               , c.CREATED_DATE
               , c.CLOSED_DATE
          FROM rpt.T_CASE c
                   LEFT JOIN rpt.T_PROJECT p
                             ON p.PROJECT_ID = c.PROJECT_ID
-         WHERE ((c.RECORD_TYPE = 'Solar - Customer Escalation'
-             AND c.STATUS != 'In Dispute'
-             AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL)
-             OR (C.RECORD_TYPE = 'Solar - Service'
-                 AND C.OWNER_EMPLOYEE_ID IN ('210463'))
-             OR (C.RECORD_TYPE = 'Solar - Cancellation'
-                 AND C.OWNER_EMPLOYEE_ID IN
-                     ('121126', '207396', '208297', '208853', '209336', '209990', '211343', '213132', '214556')))
+         WHERE c.RECORD_TYPE = 'Solar - Customer Default'
+           AND C.SUBJECT NOT ILIKE '%D3%'
+           AND C.PRIMARY_REASON NOT IN ('Foreclosure', 'Customer Deceased')
            AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
        , CASES_METRICS AS (
-        SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)           AS rn
+        SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER) AS rn
              , ca.OWNER
              , ca.OWNER_EMPLOYEE_ID
              , e.BUSINESS_TITLE
              , e.direct_manager
              , e.SUPERVISORY_ORG
-             , nvl(sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 30 THEN 1 END), 0) AS closed
-             , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)                      AS wip_count
+             , sum(CASE
+                       WHEN ca.closed_date >= CURRENT_DATE - 30
+                           THEN 1 END)                                     AS closed
              , round(avg(CASE
                              WHEN ca.CLOSED_DATE IS NULL
-                                 THEN datediff('m', nvl(ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, ca.created_date),
-                                               current_timestamp) / 1440
-            END), 2)                                                                 AS avg_wip_cycle
-             , round(median(CASE
-                                WHEN ca.CLOSED_DATE IS NULL
-                                    THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) /
-                                         1440
-            END), 2)                                                                 AS med_wip_cycle
+                                 AND (CA.STATUS ILIKE '%PENDING CUSTOMER ACTION%' OR
+                                      CA.STATUS ILIKE '%PENDING CORPORATE ACTION%')
+                                 THEN datediff('m', ca.CREATED_DATE, current_timestamp) / 1440
+            END), 2)                                                       AS avg_wip_cycle
+
         FROM employees e
                  INNER JOIN cases ca
                             ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
@@ -108,10 +99,9 @@ CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_ER_T1 AS ( -- Create the view
                              ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
                   LEFT JOIN QA_METRICS as qa
                             ON qa.EMPLOYEE_ID = e.EMPLOYEE_ID
-         ORDER BY EMPLOYEE_ID
         )
     SELECT *
-    FROM main m
+    FROM main
 );
 
 GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT TO GENERAL_REPORTING_R -- Share the view

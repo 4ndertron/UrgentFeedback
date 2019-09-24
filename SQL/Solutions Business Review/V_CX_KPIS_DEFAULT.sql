@@ -43,8 +43,7 @@ WITH employees AS -- Team Specific Members
          , e.direct_manager
          , e.SUPERVISORY_ORG
          , sum(CASE
-                   WHEN ca.closed_date >= CURRENT_DATE - 30 AND
-                        CA.STATUS = 'Closed - Saved'
+                   WHEN ca.closed_date >= CURRENT_DATE - 30
                        THEN 1 END)                                     AS closed
          , round(avg(CASE
                          WHEN ca.CLOSED_DATE IS NULL
