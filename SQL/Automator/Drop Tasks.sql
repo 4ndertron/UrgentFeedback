@@ -6,10 +6,10 @@ BEGIN;
 -- ================
 -- 2: Insert Task 1
 -- ================
--- DELETE
-SELECT ID, NAMEX, OWNERX
+DELETE
+-- SELECT ID, NAMEX, OWNERX
 FROM AUTOMATOR.T_AUTO_TASKS
-WHERE ID IN (1032, 1031, 960, 959, 958, 942, 941, 940, 939, 938, 937, 933, 931, 929, 875)
+WHERE ID IN (1031, 960, 959, 958, 942, 941, 940, 939, 938, 937, 933, 931, 929, 875)
 ;
 
 -- ========================
@@ -27,7 +27,7 @@ SELECT ID
      , run_requested
 FROM automator.t_auto_tasks
 WHERE OWNERX = 'Robert'
-  AND OPERATIONAL IN ('Non-Operational', 'Disabled')
+--   AND OPERATIONAL IN ('Non-Operational', 'Disabled')
 ORDER BY id DESC
 LIMIT 50
 ;

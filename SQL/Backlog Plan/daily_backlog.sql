@@ -33,6 +33,14 @@ WITH ER_CASES AS (
       AND C.SUBJECT NOT ILIKE '%NPS%'
 )
 
+   , ANNUAL_REVIEW AS (
+       /*
+        TODO: inflow = 12 months after the resolution accepted date
+        TODO: outflow = case closed date.
+        */
+       SELECT ''
+    )
+
    , DEFAULT_CASES AS (
     SELECT C.PROJECT_ID
          , C.CASE_NUMBER
