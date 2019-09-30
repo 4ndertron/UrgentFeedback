@@ -34,12 +34,23 @@ WITH ER_CASES AS (
 )
 
    , ANNUAL_REVIEW AS (
-       /*
-        TODO: inflow = 12 months after the resolution accepted date
-        TODO: outflow = case closed date.
-        */
-       SELECT ''
-    )
+    /*
+     TODO: inflow = 12 months after the resolution accepted date
+        The Resolution Accepted date is not in the warehouse right now.
+     TODO: outflow = case closed date.
+     */
+    SELECT C.PROJECT_ID
+         , C.CASE_NUMBER
+         , C.STATUS
+         , C.DESCRIPTION
+         , C.CREATED_DATE AS CREATED_DATE
+         , C.CLOSED_DATE
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
+      AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
+      AND C.DEPARTMENT = 'Executive Resolutions'
+      AND C.SOLAR_QUEUE = 'Advocate Response'
+)
 
    , DEFAULT_CASES AS (
     SELECT C.PROJECT_ID
@@ -166,12 +177,7 @@ WITH ER_CASES AS (
            , D.DT
 )
 
-   , MAIN AS (
-    SELECT *
-    FROM DAY_METRICS
-)
-
-   , TEST_CTE AS (
+   , ACTIVE_DEFAULT_BUCKET AS (
     SELECT CASE
                WHEN CO.DESCRIPTION ILIKE '%MBW%'
                    THEN 'TPC'
@@ -186,5 +192,15 @@ WITH ER_CASES AS (
     GROUP BY DEFAULT_BUCKET
 )
 
+   , MAIN AS (
+    SELECT *
+    FROM DAY_METRICS
+)
+
+   , TEST_CTE AS (
+    SELECT *
+    FROM ANNUAL_REVIEW
+)
+
 SELECT *
-FROM MAIN
+FROM TEST_CTE
