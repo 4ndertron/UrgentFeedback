@@ -155,6 +155,7 @@ WITH PROJECTS_RAW AS (
                    THEN 'ERT'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
+                   AND CA.SOLAR_QUEUE != 'Advocate Response'
                    THEN 'General Escalation'
         END                         AS CASE_BUCKET
          , CASE
@@ -370,5 +371,5 @@ WITH PROJECTS_RAW AS (
 )
 
 SELECT *
-FROM TEST_RESULTS
+FROM METRIC_MERGE
 ;

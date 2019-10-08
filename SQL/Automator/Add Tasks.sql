@@ -3,6 +3,8 @@
 -- ====================================================================================
 BEGIN;
 
+USE ROLE AUTOMATOR_SUPER_R;
+
 -- ================
 -- 2: Insert Task 1
 -- ================
@@ -92,7 +94,6 @@ LIMIT 50
 ;
 
 -- =============================
--- 4: Rollback or Commit Changes
--- =============================
+-- 4: Rollback or Commit Changes-- =============================
 ROLLBACK; -- If it don't look good.
 COMMIT; -- If it do.

@@ -1,91 +1,111 @@
 /*
  Start core tables
  */
-WITH CASE_TABLE AS (
+WITH ESCALATION_CASES AS (
     SELECT C.CASE_NUMBER
-         , ANY_VALUE(C.CASE_ID)                            AS CASE_ID
+         , C.CASE_ID
          , C.PROJECT_ID
-         , ANY_VALUE(LDD.AGE)                              AS AGE_FOR_CASE
-         , ANY_VALUE(C.SUBJECT)                            AS SUBJECT1
-         , ANY_VALUE(CAD.SYSTEM_SIZE)                      AS SYSTEM_SIZE
-         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2) AS SYSTEM_VALUE
-         , ANY_VALUE(C.STATUS)                             AS STATUS2
-         , ANY_VALUE(C.CUSTOMER_TEMPERATURE)               AS CUSTOMER_TEMPERATURE
-         , TO_DATE(ANY_VALUE(C.CREATED_DATE))              AS CREATED_DATE1
-         , TO_DATE(ANY_VALUE(C.CLOSED_DATE))               AS CLOSED_DATE1
-         , ANY_VALUE(C.RECORD_TYPE)                        AS RECORD_TYPE1
-         , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)       AS SOLAR_BILLING_ACCOUNT_NUMBER1
+         , C.SUBJECT
+         , C.STATUS
+         , C.CUSTOMER_TEMPERATURE
+         , TO_DATE(C.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(C.CLOSED_DATE)  AS CLOSED_DATE
+         , C.RECORD_TYPE
     FROM RPT.T_CASE AS C
-             LEFT JOIN
-         RPT.T_SERVICE AS S
-         ON C.SERVICE_ID = S.SERVICE_ID
-
-             LEFT JOIN
-         RPT.T_SYSTEM_DETAILS_SNAP AS CAD
-         ON CAD.SERVICE_ID = C.SERVICE_ID
-
-             LEFT JOIN
-         LD.T_DAILY_DATA_EXTRACT AS LDD
-         ON LDD.BILLING_ACCOUNT = S.SOLAR_BILLING_ACCOUNT_NUMBER
     WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
       AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
       AND C.SUBJECT NOT ILIKE '%VIP%'
       AND C.SUBJECT NOT ILIKE '%NPS%'
       AND C.SUBJECT NOT ILIKE '%COMP%'
-    GROUP BY C.PROJECT_ID
-           , C.CASE_NUMBER
     ORDER BY C.PROJECT_ID
 )
 
+   , SYSTEM_DAMAGE_CASES AS (
+    SELECT C.CASE_NUMBER
+         , C.CASE_ID
+         , C.PROJECT_ID
+         , C.SUBJECT
+         , C.STATUS
+         , C.CUSTOMER_TEMPERATURE
+         , TO_DATE(C.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(C.CLOSED_DATE)  AS CLOSED_DATE
+         , C.RECORD_TYPE
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Service'
+      AND C.PRIMARY_REASON = 'System Damage'
+)
+
+   , RELOCATION_CASES AS (
+    SELECT C.CASE_NUMBER
+         , C.CASE_ID
+         , C.PROJECT_ID
+         , C.SUBJECT
+         , C.STATUS
+         , C.CUSTOMER_TEMPERATURE
+         , TO_DATE(C.CREATED_DATE) AS CREATED_DATE
+         , TO_DATE(C.CLOSED_DATE)  AS CLOSED_DATE
+         , C.RECORD_TYPE
+    FROM RPT.T_CASE AS C
+    WHERE C.RECORD_TYPE = 'Solar - Transfer'
+      AND C.PRIMARY_REASON = 'Relocation'
+      AND C.OWNER_EMPLOYEE_ID IN ('210140')
+)
+
+   , CASES_OVERALL AS (
+    SELECT *
+    FROM (
+                 (SELECT * FROM ESCALATION_CASES)
+                 UNION
+                 (SELECT * FROM RELOCATION_CASES)
+                 UNION
+                 (SELECT * FROM SYSTEM_DAMAGE_CASES)
+         ) AS C
+)
+
    , CASE_HISTORY_TABLE AS (
-    SELECT CT.*
-         , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               CT.CREATED_DATE1)                            AS PREVIOUS_COMMENT_DATE
-         , CC.CREATEDATE                                    AS CURRENT_COMMENT_DATE
-         , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               NVL(CT.CLOSED_DATE1,
-                   CURRENT_DATE))                           AS NEXT_COMMENT_DATE
-         , USR.NAME                                         AS COMMENT_CREATE_BY
+    SELECT CO.*
+         , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               CO.CREATED_DATE)                            AS PREVIOUS_COMMENT_DATE
+         , CC.CREATEDATE                                   AS CURRENT_COMMENT_DATE
+         , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               NVL(CO.CLOSED_DATE,
+                   CURRENT_DATE))                          AS NEXT_COMMENT_DATE
+         , USR.NAME                                        AS COMMENT_CREATE_BY
          , HR.BUSINESS_TITLE
-         , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER
+         , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER
         ORDER BY CC.CREATEDATE),
-                           CT.CREATED_DATE1),
+                           CO.CREATED_DATE),
                     CC.CREATEDATE
                ) / (24 * 60 * 60)
-                                                            AS LAG_GAP
+                                                           AS LAG_GAP
          , DATEDIFF(s, CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
-                        CT.CREATED_DATE1)) / (24 * 60 * 60) AS LEAD_GAP
-    FROM CASE_TABLE AS CT
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
+                        CO.CREATED_DATE)) / (24 * 60 * 60) AS LEAD_GAP
+    FROM CASES_OVERALL AS CO
              LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
-                             ON CC.PARENTID = CT.CASE_ID
+                             ON CC.PARENTID = CO.CASE_ID
              LEFT JOIN RPT.V_SF_USER AS USR
                        ON USR.ID = CC.CREATEDBYID
              LEFT JOIN HR.T_EMPLOYEE AS HR
                        ON HR.EMPLOYEE_ID = USR.EMPLOYEE_ID__C
-    WHERE CC.CREATEDATE <= NVL(CT.CLOSED_DATE1, CURRENT_DATE)
+    WHERE CC.CREATEDATE <= NVL(CO.CLOSED_DATE, CURRENT_DATE)
     ORDER BY CASE_NUMBER, CC.CREATEDATE
 )
 
    , FULL_CASE AS (
     SELECT CASE_NUMBER
-         , ANY_VALUE(SUBJECT1)                                                          AS SUBJECT
-         , ANY_VALUE(SYSTEM_SIZE)                                                       AS SYSTEM_SIZE
-         , ANY_VALUE(SYSTEM_VALUE)                                                      AS SYSTEM_VALUE
-         , ANY_VALUE(STATUS2)                                                           AS STATUS1
-         , ANY_VALUE(CUSTOMER_TEMPERATURE)                                              AS CUSTOMER_TEMPERATURE
-         , ANY_VALUE(AGE_FOR_CASE)                                                      AS AGE_FOR_CASE
-         , ANY_VALUE(CREATED_DATE1)                                                     AS CREATED_DATE
-         , ANY_VALUE(CLOSED_DATE1)                                                      AS CLOSED_DATE
-         , ANY_VALUE(RECORD_TYPE1)                                                      AS RECORD_TYPE1
-         , DATEDIFF(dd, TO_DATE(CREATED_DATE), NVL(TO_DATE(CLOSED_DATE), CURRENT_DATE)) AS CASE_AGE
-         , SOLAR_BILLING_ACCOUNT_NUMBER1
-         , AVG(LAG_GAP)                                                                 AS AVERAGE_GAP
+         , ANY_VALUE(SUBJECT)                                           AS SUBJECT
+         , ANY_VALUE(STATUS)                                            AS STATUS
+         , ANY_VALUE(CUSTOMER_TEMPERATURE)                              AS CUSTOMER_TEMPERATURE
+         , ANY_VALUE(CREATED_DATE)                                      AS CREATED_DATE
+         , ANY_VALUE(CLOSED_DATE)                                       AS CLOSED_DATE
+         , ANY_VALUE(RECORD_TYPE)                                       AS RECORD_TYPE
+         , DATEDIFF(dd, TO_DATE(ANY_VALUE(CREATED_DATE)),
+                    NVL(TO_DATE(ANY_VALUE(CLOSED_DATE)), CURRENT_DATE)) AS CASE_AGE
+         , AVG(LAG_GAP)                                                 AS AVERAGE_GAP
     FROM CASE_HISTORY_TABLE
-    GROUP BY SOLAR_BILLING_ACCOUNT_NUMBER1
-           , CASE_NUMBER
-    ORDER BY SOLAR_BILLING_ACCOUNT_NUMBER1
-           , CASE_NUMBER
+    GROUP BY CASE_NUMBER
+    ORDER BY CASE_NUMBER
 )
 
    , ER_AGENTS AS (
@@ -146,41 +166,39 @@ WITH CASE_TABLE AS (
          ) AS ENTIRE_HISTORY
     WHERE DIRECTOR_ORG
       AND TEAM_END_DATE1 >= TEAM_START_DATE
-      AND (ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%OB AZEV%' OR ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%ALFONSO C%')
+      AND (ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%OB AZEV%'
+        OR ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%ALFONSO C%')
     GROUP BY EMPLOYEE_ID, DIRECTOR_ORG
 )
 
    , GAP_LIST AS (
     SELECT CHT.CASE_NUMBER
-         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)           AS PREVIOUS_COMMENT_DATE
-         , TO_DATE(CHT.CURRENT_COMMENT_DATE)            AS CURRENT_COMMENT_DATE
-         , TO_DATE(CHT.NEXT_COMMENT_DATE)               AS NEXT_COMMENT_DATE
+         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)       AS PREVIOUS_COMMENT_DATE
+         , TO_DATE(CHT.CURRENT_COMMENT_DATE)        AS CURRENT_COMMENT_DATE
+         , TO_DATE(CHT.NEXT_COMMENT_DATE)           AS NEXT_COMMENT_DATE
          , DATEDIFF(dd,
                     TO_DATE(CHT.CURRENT_COMMENT_DATE),
-                    TO_DATE(CHT.NEXT_COMMENT_DATE))     AS LEAD_GAP
-         , ANY_VALUE(CHT.COMMENT_CREATE_BY)             AS COMMENT_CREATED_BY_NAME
-         , ANY_VALUE(CHT.BUSINESS_TITLE)                AS BUSINESS_TITLE
-         , MAX(CHT.LAG_GAP)                             AS MAIN_GAP
-         , ANY_VALUE(CHT.CREATED_DATE1)                 AS CREATED_DATE
-         , ANY_VALUE(CHT.CLOSED_DATE1)                  AS CLOSED_DATE
-         , ANY_VALUE(CHT.STATUS2)                       AS STATUS
-         , ANY_VALUE(CHT.RECORD_TYPE1)                  AS RECORD_TYPE
-         , ANY_VALUE(CHT.SOLAR_BILLING_ACCOUNT_NUMBER1) AS BILLING_ACCOUNTS
-         , ANY_VALUE(CHT.CASE_ID)                       AS CASE_ID
-         , ANY_VALUE(CHT.PROJECT_ID)                    AS PROJECT_ID
-         , ANY_VALUE(CHT.SUBJECT1)                      AS SUBJECT
-         , ANY_VALUE(CHT.SYSTEM_SIZE)                   AS SYSTEM_SIZE
-         , ANY_VALUE(CHT.SYSTEM_VALUE)                  AS SYSTEM_VALUE
-         , ANY_VALUE(CHT.CUSTOMER_TEMPERATURE)          AS CUSTOMER_TEMPERATURE
+                    TO_DATE(CHT.NEXT_COMMENT_DATE)) AS LEAD_GAP
+         , ANY_VALUE(CHT.COMMENT_CREATE_BY)         AS COMMENT_CREATED_BY_NAME
+         , ANY_VALUE(CHT.BUSINESS_TITLE)            AS BUSINESS_TITLE
+         , MAX(CHT.LAG_GAP)                         AS MAIN_GAP
+         , ANY_VALUE(CHT.CREATED_DATE)              AS CREATED_DATE
+         , ANY_VALUE(CHT.CLOSED_DATE)               AS CLOSED_DATE
+         , ANY_VALUE(CHT.STATUS)                    AS STATUS
+         , ANY_VALUE(CHT.RECORD_TYPE)               AS RECORD_TYPE
+         , ANY_VALUE(CHT.CASE_ID)                   AS CASE_ID
+         , ANY_VALUE(CHT.PROJECT_ID)                AS PROJECT_ID
+         , ANY_VALUE(CHT.SUBJECT)                   AS SUBJECT
+         , ANY_VALUE(CHT.CUSTOMER_TEMPERATURE)      AS CUSTOMER_TEMPERATURE
          , D.DT
          , ROW_NUMBER()
             OVER (PARTITION BY CHT.CASE_NUMBER
                 , TO_DATE(CHT.CURRENT_COMMENT_DATE)
-                ORDER BY D.DT)                          AS ACTIVE_COMMENT_AGE
+                ORDER BY D.DT)                      AS ACTIVE_COMMENT_AGE
     FROM CASE_HISTORY_TABLE AS CHT
              INNER JOIN RPT.T_DATES AS D
                         ON D.DT BETWEEN CHT.CURRENT_COMMENT_DATE AND CHT.NEXT_COMMENT_DATE
-    WHERE STATUS2 NOT ILIKE '%DISPUTE%'
+    WHERE STATUS NOT ILIKE '%DISPUTE%'
       AND COMMENT_CREATE_BY NOT ILIKE '%OB AZE%'
       AND COMMENT_CREATE_BY NOT ILIKE '%NSO CON%'
     GROUP BY CASE_NUMBER,
@@ -192,35 +210,32 @@ WITH CASE_TABLE AS (
 
    , DAY_GAP_LIST AS (
     SELECT CHT.CASE_NUMBER
-         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)           AS PREVIOUS_COMMENT_DATE
-         , TO_DATE(CHT.CURRENT_COMMENT_DATE)            AS CURRENT_COMMENT_DATE
-         , TO_DATE(CHT.NEXT_COMMENT_DATE)               AS NEXT_COMMENT_DATE
+         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)       AS PREVIOUS_COMMENT_DATE
+         , TO_DATE(CHT.CURRENT_COMMENT_DATE)        AS CURRENT_COMMENT_DATE
+         , TO_DATE(CHT.NEXT_COMMENT_DATE)           AS NEXT_COMMENT_DATE
          , DATEDIFF(dd,
                     TO_DATE(CHT.CURRENT_COMMENT_DATE),
-                    TO_DATE(CHT.NEXT_COMMENT_DATE))     AS LEAD_GAP
-         , ANY_VALUE(CHT.COMMENT_CREATE_BY)             AS COMMENT_CREATED_BY_NAME
-         , ANY_VALUE(CHT.BUSINESS_TITLE)                AS BUSINESS_TITLE
-         , MAX(CHT.LAG_GAP)                             AS MAIN_GAP
-         , ANY_VALUE(CHT.CREATED_DATE1)                 AS CREATED_DATE
-         , ANY_VALUE(CHT.CLOSED_DATE1)                  AS CLOSED_DATE
-         , ANY_VALUE(CHT.STATUS2)                       AS STATUS
-         , ANY_VALUE(CHT.RECORD_TYPE1)                  AS RECORD_TYPE
-         , ANY_VALUE(CHT.SOLAR_BILLING_ACCOUNT_NUMBER1) AS BILLING_ACCOUNTS
-         , ANY_VALUE(CHT.CASE_ID)                       AS CASE_ID
-         , ANY_VALUE(CHT.PROJECT_ID)                    AS PROJECT_ID
-         , ANY_VALUE(CHT.SUBJECT1)                      AS SUBJECT
-         , ANY_VALUE(CHT.SYSTEM_SIZE)                   AS SYSTEM_SIZE
-         , ANY_VALUE(CHT.SYSTEM_VALUE)                  AS SYSTEM_VALUE
-         , ANY_VALUE(CHT.CUSTOMER_TEMPERATURE)          AS CUSTOMER_TEMPERATURE
+                    TO_DATE(CHT.NEXT_COMMENT_DATE)) AS LEAD_GAP
+         , ANY_VALUE(CHT.COMMENT_CREATE_BY)         AS COMMENT_CREATED_BY_NAME
+         , ANY_VALUE(CHT.BUSINESS_TITLE)            AS BUSINESS_TITLE
+         , MAX(CHT.LAG_GAP)                         AS MAIN_GAP
+         , ANY_VALUE(CHT.CREATED_DATE)              AS CREATED_DATE
+         , ANY_VALUE(CHT.CLOSED_DATE)               AS CLOSED_DATE
+         , ANY_VALUE(CHT.STATUS)                    AS STATUS
+         , ANY_VALUE(CHT.RECORD_TYPE)               AS RECORD_TYPE
+         , ANY_VALUE(CHT.CASE_ID)                   AS CASE_ID
+         , ANY_VALUE(CHT.PROJECT_ID)                AS PROJECT_ID
+         , ANY_VALUE(CHT.SUBJECT)                   AS SUBJECT
+         , ANY_VALUE(CHT.CUSTOMER_TEMPERATURE)      AS CUSTOMER_TEMPERATURE
          , D.DT
          , ROW_NUMBER()
             OVER (PARTITION BY CHT.CASE_NUMBER
                 , TO_DATE(CHT.CURRENT_COMMENT_DATE)
-                ORDER BY D.DT)                          AS ACTIVE_COMMENT_AGE
+                ORDER BY D.DT)                      AS ACTIVE_COMMENT_AGE
     FROM CASE_HISTORY_TABLE AS CHT
              INNER JOIN RPT.T_DATES AS D
                         ON D.DT BETWEEN CHT.CURRENT_COMMENT_DATE AND CHT.NEXT_COMMENT_DATE
-    WHERE STATUS2 NOT ILIKE '%DISPUTE%'
+    WHERE STATUS NOT ILIKE '%DISPUTE%'
       AND COMMENT_CREATE_BY NOT ILIKE '%OB AZE%'
       AND COMMENT_CREATE_BY NOT ILIKE '%NSO CON%'
     GROUP BY CASE_NUMBER,
@@ -418,24 +433,24 @@ WITH CASE_TABLE AS (
                          WHEN TO_DATE(CREATED_DATE) <= D.DT AND
                               (TO_DATE(CLOSED_DATE) > D.DT OR
                                CLOSED_DATE IS NULL)
-                             AND STATUS1 NOT ILIKE '%DISPUTE%'
+                             AND STATUS NOT ILIKE '%DISPUTE%'
                              THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
         END), 2)                                                              AS AVG_OPEN_AGE
+         , ROUND(AVG(CASE
+                         WHEN TO_DATE(CLOSED_DATE) >= DATEADD(DAY, -7, CURRENT_DATE)
+                             THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), TO_DATE(FC.CLOSED_DATE))
+        END), 2)                                                              AS AVG_7_DAY_CLOSED_AGE
          , MAX(CASE
                    WHEN TO_DATE(CREATED_DATE) <= D.DT AND
                         (TO_DATE(CLOSED_DATE) > D.DT OR
                          CLOSED_DATE IS NULL)
-                       AND STATUS1 NOT ILIKE '%DISPUTE%'
+                       AND STATUS NOT ILIKE '%DISPUTE%'
                        THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
         END)                                                                  AS MAX_MONTH_AGE
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT AND CUSTOMER_TEMPERATURE != 'Escalated'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
                  2)                                                           AS AVERAGE_CLOSED_WON_CASES
-
-         , ROUND(SUM(CASE
-                         WHEN TO_DATE(CLOSED_DATE) = D.DT
-                             THEN FC.SYSTEM_VALUE END), 2)                    AS TOTAL_SAVED
          , DW.ACTIVE_AGENTS
     FROM FULL_CASE AS FC
        , RPT.T_DATES AS D
@@ -463,22 +478,22 @@ WITH CASE_TABLE AS (
 )
 
    , TEST_RESULTS AS (
-    SELECT *
-    FROM FIND_CASE_BY_GAP
+    SELECT AVG(DATEDIFF(DAY, TO_DATE(FC.CREATED_DATE), TO_DATE(FC.CLOSED_DATE))) AS AGE
+    FROM FULL_CASE AS FC
+    WHERE TO_DATE(FC.CLOSED_DATE) BETWEEN
+              DATEADD(DAY, -7, CURRENT_DATE) AND
+              DATEADD(DAY, -1, CURRENT_DATE)
 )
 
    , MAIN AS (
     SELECT ION.MONTH1
-         , ION.TOTAL_CREATED
-         , ION.AVERAGE_CREATED
-         , ION.TOTAL_CLOSED
-         , ION.AVERAGE_CLOSED
-         , ION.AVG_OPEN_AGE
-         , ION.MAX_MONTH_AGE
-         , GAP_MONTH_TABLE.AVG_GAP
-         , GAP_MONTH_TABLE.MAX_GAP
-         , UPDATES_MONTH.AVG_DAY_UPDATES
-         , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES
+         , ION.TOTAL_CREATED -- KPI 1
+         , ION.TOTAL_CLOSED -- KPI 1
+         , ION.AVG_OPEN_AGE -- KPI 1
+         , CASE_MONTH_WIP.CASE_ACTIVE_WIP -- KPI 2
+         , GAP_MONTH_TABLE.AVG_GAP -- KPI 3
+         -- CLOSED WON VS CLOSED LOST -- KPI 4 DNE Need Salesforce Updates
+         -- HIGH RISK STATES -- KPI 5 On a different query.
          , CASE_MONTH_WIP.ACTIVE_AGENTS
     FROM ION
        , CASE_MONTH_WIP

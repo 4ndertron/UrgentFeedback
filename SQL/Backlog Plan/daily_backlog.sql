@@ -198,9 +198,12 @@ WITH ER_CASES AS (
 )
 
    , TEST_CTE AS (
-    SELECT *
-    FROM ANNUAL_REVIEW
+    SELECT co.*
+    , datediff(day,to_date(CREATED_DATE), current_date) as age
+    FROM CASES_OVERALl as co
+       where CASE_BUCKET ilike '%tier%'
+       and CLOSED_DATE is null
 )
 
 SELECT *
-FROM TEST_CTE
+FROM MAIN

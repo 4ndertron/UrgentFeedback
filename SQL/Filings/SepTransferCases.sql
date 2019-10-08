@@ -1,5 +1,5 @@
 WITH T1 AS (
-    SELECT P.PROJECT_NUMBER
+    SELECT P.PROJECT_NAME
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER
          , CT.FIRST_NAME                                                                       AS CUSTOMER_1_First
@@ -34,7 +34,7 @@ WITH T1 AS (
                    THEN TRUE END                                                               AS TS_BOOL
          , TO_DATE(CN.TRANSACTION_DATE)                                                        AS TRANSACTION_DATE
          , DATEADD('MM', 246, TO_DATE(P.INSTALLATION_COMPLETE))                                AS TERMINATION_DATE
-         , TO_DATE(P.INSTALLATION_COMPLETE)                                                    AS INSTALLATION_DATE
+         , TO_DATE(P.INSTALLATION_COMPLETE)                                                    AS INSTALL_DATE
          , CN.RECORD_TYPE                                                                      AS CONTRACT_TYPE
          , LDD.TOTAL_CURRENT_AMOUNT_DUE
          , C.CLOSED_DATE
@@ -80,7 +80,7 @@ WITH T1 AS (
 )
 
    , ION AS (
-    SELECT DATE_TRUNC('MM', D.DT)                                   AS MONTH1
+    SELECT DATE_TRUNC('MM', D.DT)                                  AS MONTH1
          , COUNT(CASE WHEN TO_DATE(CLOSED_DATE) = D.DT THEN 1 END) AS ACCOUNT_TOTAL
     FROM RPT.T_DATES AS D,
          T1
@@ -93,23 +93,23 @@ WITH T1 AS (
 
    , WB_LIST AS (
     SELECT SERVICE_NAME
-         , PROJECT_NUMBER
+         , PROJECT_NAME
          , CUSTOMER_1_First
          , Customer_1_Middle
-         , CUSTOMER_1_LAST
          , CUSTOMER_1_SUFFIX
+         , CUSTOMER_1_LAST
          , CUSTOMER_2_First
          , Customer_2_Middle
-         , CUSTOMER_2_LAST_NAME
          , CUSTOMER_2_SUFFIX_NAME
+         , CUSTOMER_2_LAST_NAME
          , SERVICE_ADDRESS
          , SERVICE_CITY
          , SERVICE_COUNTY
          , SERVICE_STATE
          , SERVICE_ZIP_CODE
+         , INSTALL_DATE
          , TRANSACTION_DATE
          , TERMINATION_DATE
-         , INSTALLATION_DATE
          , CONTRACT_TYPE
     FROM T1
     WHERE SERVICE_COUNTY IS NULL

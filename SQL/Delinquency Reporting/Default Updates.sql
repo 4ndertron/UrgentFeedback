@@ -1,4 +1,24 @@
-WITH CASES AS (
+WITH AGENTS AS (
+    SELECT E.FULL_NAME
+         , E.EMPLOYEE_ID
+         , E.BUSINESS_TITLE
+         , E.SUPERVISORY_ORG
+    FROM HR.T_EMPLOYEE AS E
+    WHERE E.SUPERVISOR_BADGE_ID_1 = '67600'
+      AND E.EMPLOYEE_ID NOT IN ('209513')
+      AND NOT TERMINATED
+)
+
+   , TIMEFRAME AS (
+    SELECT D.DT
+         , DAYOFWEEK(D.DT) AS DAY
+    FROM RPT.T_DATES AS D
+    WHERE D.DT BETWEEN
+              DATEADD(DD, -30, CURRENT_DATE) AND
+              DATEADD(DD, -1, CURRENT_DATE)
+)
+
+   , CASES AS (
     SELECT P.SOLAR_BILLING_ACCOUNT_NUMBER                                  AS BILLING_ACCOUNT
          , LD.COLLECTION_CODE
          , LD.COLLECTION_DATE
@@ -224,7 +244,9 @@ WITH CASES AS (
 )
 
    , EVENTS AS (
-    SELECT *
+    SELECT C.*
+         , T.DT
+         , A.EMPLOYEE_ID
     FROM (
                  (SELECT * FROM CASES)
                  UNION
@@ -234,122 +256,24 @@ WITH CASES AS (
                  UNION
                  (SELECT * FROM CASE_HISTORY)
          ) AS C
-    WHERE TO_DATE(C.CREATED_DATE) = (SELECT IFF(DAYOFWEEK(CURRENT_DATE) = 1,
-                                                DATEADD(DAY, -3, CURRENT_DATE),
-                                                DATEADD(DAY, -1, CURRENT_DATE)))
+             LEFT OUTER JOIN TIMEFRAME AS T
+                             ON T.DT = TO_DATE(C.CREATED_DATE)
+             LEFT OUTER JOIN AGENTS AS A
+                             ON A.FULL_NAME = C.CREATED_BY
     ORDER BY BILLING_ACCOUNT
            , CREATED_DATE
 )
 
-   , OWNERSHIP_PARSE AS (
-    SELECT LD.BILLING_ACCOUNT
-         , LD.TOTAL_DELINQUENT_AMOUNT_DUE
-         , C.CASE_NUMBER
-         , C.RECORD_TYPE
-         , C.CREATED_DATE
-         , C.CLOSED_DATE
-         , CASE
-               WHEN C.RECORD_TYPE = 'Solar - Cancellation'
-                   AND C.OWNER_EMPLOYEE_ID IN
-                       ('121126', '207396', '208297', '208853', '209336', '209990', '211343', '213132', '214556')
-                   THEN 'ERT'
-               WHEN C.RECORD_TYPE = 'Solar - Customer Escalation'
-                   AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-                   THEN 'ERT'
-               WHEN C.RECORD_TYPE = 'Solar - Service'
-                   AND C.PRIMARY_REASON ILIKE '%SYSTEM DAMAGE%'
-                   THEN 'ERT'
-               WHEN C.RECORD_TYPE = 'Solar - Customer Default'
-                   AND C.SUBJECT ILIKE '%D3%'
-                   THEN 'Collections'
-               WHEN C.RECORD_TYPE = 'Solar - Customer Default'
-                   AND C.SUBJECT NOT ILIKE '%D3%'
-                   THEN 'Default'
-               WHEN C.RECORD_TYPE = 'Solar - Customer Escalation'
-                   AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
-                   THEN 'CX'
-               WHEN C.RECORD_TYPE = 'Solar - Service'
-                   AND C.PRIMARY_REASON NOT ILIKE '%SYSTEM DAMAGE%'
-                   THEN 'CX'
-               WHEN C.RECORD_TYPE = 'Solar - Panel Removal'
-                   THEN 'CX'
-               WHEN C.RECORD_TYPE = 'Solar - Transfer'
-                   THEN 'CX'
-               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting'
-                   AND C.SOLAR_QUEUE IN ('Tier II', 'Outbound')
-                   THEN 'CX'
-               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting'
-                   AND C.SOLAR_QUEUE NOT IN ('Inbound', 'Tier II')
-                   THEN 'SPC'
-               WHEN C.RECORD_TYPE = 'Solar - Troubleshooting'
-                   AND C.SOLAR_QUEUE IS NULL
-                   THEN 'SPC'
-               WHEN C.RECORD_TYPE = 'Solar Damage Resolutions'
-                   THEN 'Damage'
-               ELSE 'No Owner'
-        END                              AS ORG_OWNER
-         , CASE
-               WHEN ORG_OWNER = 'ERT'
-                   THEN 1
-               WHEN ORG_OWNER = 'Collections'
-                   THEN 2
-               WHEN ORG_OWNER = 'Default'
-                   THEN 3
-               WHEN ORG_OWNER = 'Damage'
-                   THEN 4
-               WHEN ORG_OWNER = 'Transfers'
-                   THEN 5
-               WHEN ORG_OWNER = 'CX'
-                   THEN 6
-               WHEN ORG_OWNER = 'SPC'
-                   THEN 7
-               ELSE 8 END                AS ORG_PRIORITY
-         , ROW_NUMBER()
-            OVER (
-                PARTITION BY LD.BILLING_ACCOUNT
-                ORDER BY C.CREATED_DATE) AS CASE_COUNT
-    FROM LD.T_DAILY_DATA_EXTRACT AS LD
-             LEFT OUTER JOIN RPT.T_PROJECT AS P
-                             ON P.SOLAR_BILLING_ACCOUNT_NUMBER = LD.BILLING_ACCOUNT
-             LEFT OUTER JOIN RPT.T_CASE AS C
-                             ON C.PROJECT_ID = P.PROJECT_ID
-    WHERE LD.TOTAL_DELINQUENT_AMOUNT_DUE > 0
-    ORDER BY BILLING_ACCOUNT
-           , ORG_PRIORITY
---            , C.CREATED_DATE
-)
-
-   , OWNERSHIP_COMPILE AS (
-    SELECT BILLING_ACCOUNT
-         , ORG_OWNER
-         , ORG_PRIORITY
-         , ROW_NUMBER() OVER (PARTITION BY BILLING_ACCOUNT ORDER BY ORG_PRIORITY) AS RN
-    FROM OWNERSHIP_PARSE
-    WHERE (CLOSED_DATE IS NULL AND ORG_PRIORITY < 8)
-       OR (ORG_PRIORITY = 8)
-    GROUP BY BILLING_ACCOUNT
-           , ORG_OWNER
-           , ORG_PRIORITY
-    ORDER BY BILLING_ACCOUNT
-           , ORG_PRIORITY
-)
-
-   , DELINQUENT_OWNERS AS (
-    SELECT BILLING_ACCOUNT
-         , ORG_OWNER
-         , ORG_PRIORITY
-    FROM OWNERSHIP_COMPILE
-    WHERE RN = 1
-)
-
    , MAIN AS (
-    SELECT E.*
-         , DO.ORG_OWNER
-         , DO.ORG_PRIORITY
+    SELECT E.CREATED_BY
+         , E.EMPLOYEE_ID
+         , E.DT
+         , COUNT(CASE WHEN TO_DATE(E.CREATED_DATE) = E.DT THEN 1 END) AS UPDATES
     FROM EVENTS AS E
-             LEFT OUTER JOIN DELINQUENT_OWNERS AS DO
-                             ON DO.BILLING_ACCOUNT = E.BILLING_ACCOUNT
-    ORDER BY E.AGE_BUCKET
+    WHERE DT IS NOT NULL
+      AND EMPLOYEE_ID IS NOT NULL
+    GROUP BY E.CREATED_BY, E.EMPLOYEE_ID, E.DT
+    ORDER BY E.CREATED_BY, E.DT
 )
 
 SELECT *

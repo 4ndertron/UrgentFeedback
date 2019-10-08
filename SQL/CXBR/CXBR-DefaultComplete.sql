@@ -1,7 +1,7 @@
 /*
  Start core tables
  */
-WITH CASE_TABLE AS (
+WITH DEFAULT_CASES AS (
     SELECT C.CASE_NUMBER
          , ANY_VALUE(C.CASE_ID)                            AS CASE_ID
          , C.PROJECT_ID
@@ -38,8 +38,15 @@ WITH CASE_TABLE AS (
              LEFT JOIN
          LD.T_DAILY_DATA_EXTRACT AS LDD
          ON LDD.BILLING_ACCOUNT = S.SOLAR_BILLING_ACCOUNT_NUMBER
-    WHERE C.RECORD_TYPE = 'Solar - Customer Default'
-      AND C.SUBJECT NOT LIKE '%D3%'
+    WHERE (
+                  (C.RECORD_TYPE = 'Solar - Customer Default'
+                      AND C.SUBJECT NOT ILIKE '%D3%')
+                  OR
+                  (C.RECORD_TYPE IN
+                   ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
+                    'Solar Damage Resolutions', 'Solar - Customer Escalation', 'Solar - Troubleshooting')
+                      AND C.SOLAR_QUEUE = 'Dispute/Evasion')
+              )
     GROUP BY C.PROJECT_ID
            , C.CASE_NUMBER
     ORDER BY C.PROJECT_ID
@@ -64,7 +71,7 @@ WITH CASE_TABLE AS (
          , DATEDIFF(s, CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
                         CT.CREATED_DATE1)) / (24 * 60 * 60) AS LEAD_GAP
-    FROM CASE_TABLE AS CT
+    FROM DEFAULT_CASES AS CT
              LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
                              ON CC.PARENTID = CT.CASE_ID
              LEFT JOIN RPT.V_SF_USER AS USR
@@ -92,8 +99,9 @@ WITH CASE_TABLE AS (
                WHEN STATUS1 IN ('In Progress') AND DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal')
                    THEN 'P4/P5/DRA Letters'
                WHEN STATUS1 IN ('Pending Customer Action') AND
-                    DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal') THEN 'Working with Customer'
-        END                                                                             AS STATUS_BUCKET
+                    DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal') AND
+                    ANY_VALUE(CASE_HISTORY_TABLE.RECORD_TYPE1) = 'Solar - Customer Default'
+                   THEN 'Working with Customer' END                                     AS STATUS_BUCKET
          , AVG(LAG_GAP)                                                                 AS AVERAGE_GAP
     FROM CASE_HISTORY_TABLE
     GROUP BY SOLAR_BILLING_ACCOUNT_NUMBER1
@@ -308,14 +316,19 @@ WITH CASE_TABLE AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          STATUS_BUCKET = 'Working with Customer' AND
                           (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
                          THEN 1 END) AS CASE_ACTIVE_WIP
+         , COUNT(CASE
+                     WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
+                         THEN 1 END) AS CASE_TOTAL_WIP
     FROM RPT.T_DATES AS D
        , FULL_CASE AS FC
     WHERE D.DT BETWEEN
-        DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-        CURRENT_DATE
-      AND STATUS_BUCKET = 'Working with Customer'
+              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+              CURRENT_DATE
+--       AND STATUS_BUCKET = 'Working with Customer'
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -328,14 +341,14 @@ WITH CASE_TABLE AS (
  */
    , CASE_MONTH_WIP AS (
     SELECT CW.DT
-         , ROUND(CW.CASE_ACTIVE_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
+         , ROUND(CW.CASE_TOTAL_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
          , CW.CASE_ACTIVE_WIP
+         , CW.CASE_TOTAL_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE (CW.DT = LAST_DAY(CW.DT) OR CW.DT = CURRENT_DATE)
       AND DW.DT = CW.DT
---     GROUP BY CW.DT, DW.ACTIVE_AGENTS
 )
 
    , GAP_MONTH_TABLE AS (
@@ -373,6 +386,11 @@ WITH CASE_TABLE AS (
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT
                                THEN 1 END), 2)                                AS TOTAL_CLOSED
+         , ROUND(COUNT(CASE
+                           WHEN TO_DATE(CLOSED_DATE) = D.DT
+                               AND STATUS1 = 'Closed - Saved'
+                               THEN 1 END), 2)                                AS TOTAL_CLOSED_WON
+         , ROUND(TOTAL_CLOSED_WON / TOTAL_CLOSED, 4)                          AS CLOSED_WON_RATIO
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CREATED_DATE) = D.DT
                                THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CREATED
@@ -422,8 +440,8 @@ WITH CASE_TABLE AS (
    , COVERAGE AS (
     SELECT MONTH
          , U.TOTAL_UPDATES
-         , C.CASE_ACTIVE_WIP
-         , ROUND(U.TOTAL_UPDATES / C.CASE_ACTIVE_WIP, 2) AS X_COVERAGE
+         , C.CASE_TOTAL_WIP
+         , ROUND(U.TOTAL_UPDATES / C.CASE_TOTAL_WIP, 2) AS X_COVERAGE
     FROM UPDATES_MONTH AS U
        , CASE_MONTH_WIP AS C
     WHERE C.DT = U.MONTH
@@ -445,35 +463,34 @@ WITH CASE_TABLE AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM FIND_CASE_BY_GAP
+    FROM COVERAGE
+    ORDER BY MONTH
 )
 
    , MAIN AS (
     /*
      Last run duration:
-     13s 660ms
+     7 s 783 ms
      ( •̀ ω •́ )y
      */
     SELECT ION.MONTH1
-         , ION.TOTAL_CREATED
-         , ION.AVERAGE_CREATED
-         , ION.TOTAL_CLOSED
-         , ION.AVERAGE_CLOSED
-         , ION.AVG_OPEN_AGE
-         , ION.MAX_MONTH_AGE
-         , GAP_MONTH_TABLE.AVG_GAP
-         , GAP_MONTH_TABLE.MAX_GAP
-         , UPDATES_MONTH.AVG_DAY_UPDATES
-         , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES
-         , CASE_MONTH_WIP.ACTIVE_AGENTS
-         , ION.TOTAL_AMOUNT_SAVED
+         , ION.TOTAL_CREATED             -- Metric 1
+         , ION.TOTAL_CLOSED              -- Metric 1
+         , CASE_MONTH_WIP.CASE_TOTAL_WIP -- Metric 2
+         , COVERAGE.TOTAL_UPDATES        -- Information
+         , COVERAGE.X_COVERAGE           -- Metric 3
+         , ION.CLOSED_WON_RATIO          -- Metric 4
+         , ION.TOTAL_AMOUNT_SAVED        -- Metric 5
+         , CASE_MONTH_WIP.ACTIVE_AGENTS  -- Indirect Reference Point
     FROM ION
        , CASE_MONTH_WIP
        , GAP_MONTH_TABLE
        , UPDATES_MONTH
+       , COVERAGE
     WHERE CASE_MONTH_WIP.DT = ION.MONTH1
       AND GAP_MONTH_TABLE.MONTH = ION.MONTH1
       AND UPDATES_MONTH.MONTH = ION.MONTH1
+      AND COVERAGE.MONTH = ION.MONTH1
     ORDER BY ION.MONTH1
 )
 

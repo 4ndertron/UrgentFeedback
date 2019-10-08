@@ -34,9 +34,6 @@ WITH ALL_INSTALLS AS (
          RPT.T_CONTACT AS CNT
          ON CON.COSIGNER_CONTACT_ID = CNT.CONTACT_ID
     WHERE P.INSTALLATION_COMPLETE IS NOT NULL
-        /*
-         todo: Add homebuilder accounts that have PPA/Lease AND Escrow Date
-         */
       AND P.INSTALLATION_COMPLETE >= '2013-11-02'
       AND CON.RECORD_TYPE NOT IN ('Solar Loan', 'Solar Cash')
       AND (P.SALES_OFFICE != 'Homebuilder Corporate' OR
