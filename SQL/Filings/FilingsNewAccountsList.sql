@@ -41,7 +41,7 @@ WITH ALL_INSTALLS AS (
 )
 
 /*
- The following CTE's are part of the Summary querie
+ The following CTE's are part of the Summary query
  */
 
    , TIMEFRAME_CALCULATION AS (

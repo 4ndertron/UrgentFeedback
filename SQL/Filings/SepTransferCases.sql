@@ -2,6 +2,7 @@ WITH T1 AS (
     SELECT P.PROJECT_NAME
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER
+         , ROUND(DATEDIFF('D', '2013-11-02', P.INSTALLATION_COMPLETE) / 7, 0)                  AS WEEK_BATCH
          , CT.FIRST_NAME                                                                       AS CUSTOMER_1_First
          , ''                                                                                  AS Customer_1_Middle
          ----------------------------------------------------------
@@ -111,6 +112,7 @@ WITH T1 AS (
          , TRANSACTION_DATE
          , TERMINATION_DATE
          , CONTRACT_TYPE
+         , WEEK_BATCH
     FROM T1
     WHERE SERVICE_COUNTY IS NULL
 )
