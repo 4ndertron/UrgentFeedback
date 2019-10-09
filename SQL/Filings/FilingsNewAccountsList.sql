@@ -23,6 +23,7 @@ WITH ALL_INSTALLS AS (
          , DATEADD('MM', 246, TO_DATE(INSTALL_DATE))                                           AS TERMINATION_DATE
          , CON.RECORD_TYPE                                                                     AS CONTRACT_TYPE
          , ROUND(DATEDIFF('D', '2013-11-02', INSTALL_DATE) / 7, 0)                             AS WEEK_BATCH
+         , 'New Accounts'                                                                      AS BATCH_TYPE
     FROM RPT.T_PROJECT AS P
              LEFT JOIN
          RPT.T_CONTRACT AS CON
@@ -85,16 +86,11 @@ WITH ALL_INSTALLS AS (
 )
 
    , FINAL AS (
-    SELECT BATCH_NUMBER
-         , TIMEFRAME
-         , INSTALLS_DURING_TIMEFRAME
-         , PUC_INSTALLS_DURING_TIMEFRAME
-         , UCC_INSTALLS_DURING_TIMEFRAME
-    FROM BATCHES
-    WHERE DT >= DATE_TRUNC('Y', CURRENT_DATE())
+    SELECT *
+    FROM ALL_INSTALLS
+    WHERE INSTALL_DATE >= '2018-12-26'
+    ORDER BY INSTALL_DATE DESC
 )
 
 SELECT *
-FROM ALL_INSTALLS
-WHERE INSTALL_DATE >= '2018-12-26'
-ORDER BY INSTALL_DATE DESC
+FROM FINAL

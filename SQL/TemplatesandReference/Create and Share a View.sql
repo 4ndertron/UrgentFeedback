@@ -1,107 +1,98 @@
-CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT AS ( -- Create the view
-    WITH employees AS -- Team Specific Members
-        (SELECT e.EMPLOYEE_ID
-              , e.FULL_NAME
-              , e.BUSINESS_TITLE
-              , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
-              , e.SUPERVISORY_ORG
-              , TO_DATE(NVL(ea.max_dt, e.HIRE_DATE))                          AS team_start_date
-         FROM hr.T_EMPLOYEE e
-                  LEFT OUTER JOIN -- Determine last time each employee WASN'T on target manager's team
-             (SELECT EMPLOYEE_ID
-                   , MAX(EXPIRY_DATE) AS max_dt
-              FROM hr.T_EMPLOYEE_ALL
-              WHERE NOT TERMINATED
-                AND MGR_ID_6 <> '67600'
-                -- Placeholder Manager (Tyler Anderson)
-              GROUP BY EMPLOYEE_ID) ea
-                                  ON e.employee_id = ea.employee_id
-         WHERE NOT e.TERMINATED
-           AND e.PAY_RATE_TYPE = 'Hourly'
-           AND e.MGR_ID_6 = '67600'
-           AND E.BUSINESS_TITLE ILIKE '%DEFAULT MANAGER%'
-            -- Placeholder Manager (Tyler Anderson)
-        )
-       , cases AS -- Active Escalation Cases | Closed > Today - 30
-        (SELECT c.project_id
-              , c.OWNER_EMPLOYEE_ID
-              , c.OWNER
-              , c.STATUS
-              , c.CREATED_DATE
-              , c.CLOSED_DATE
-         FROM rpt.T_CASE c
-                  LEFT JOIN rpt.T_PROJECT p
-                            ON p.PROJECT_ID = c.PROJECT_ID
-         WHERE c.RECORD_TYPE = 'Solar - Customer Default'
-           AND C.SUBJECT NOT ILIKE '%D3%'
-           AND C.PRIMARY_REASON NOT IN ('Foreclosure', 'Customer Deceased')
-           AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
-       , CASES_METRICS AS (
-        SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER) AS rn
-             , ca.OWNER
-             , ca.OWNER_EMPLOYEE_ID
-             , e.BUSINESS_TITLE
-             , e.direct_manager
-             , e.SUPERVISORY_ORG
-             , sum(CASE
-                       WHEN ca.closed_date >= CURRENT_DATE - 30
-                           THEN 1 END)                                     AS closed
-             , round(avg(CASE
-                             WHEN ca.CLOSED_DATE IS NULL
-                                 AND (CA.STATUS ILIKE '%PENDING CUSTOMER ACTION%' OR
-                                      CA.STATUS ILIKE '%PENDING CORPORATE ACTION%')
-                                 THEN datediff('m', ca.CREATED_DATE, current_timestamp) / 1440
-            END), 2)                                                       AS avg_wip_cycle
-
-        FROM employees e
-                 INNER JOIN cases ca
-                            ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
-                                AND NVL(ca.CLOSED_DATE, current_timestamp) >= e.team_start_date
-        GROUP BY ca.OWNER, ca.OWNER_EMPLOYEE_ID, e.BUSINESS_TITLE, e.direct_manager, e.SUPERVISORY_ORG
-    )
-       , qa AS -- Calabrio QA Scores
-        (SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
-                       , rc.AGENT_DISPLAY_ID       AS agent_evaluated
-                       , rc.TEAM_NAME
-                       , rc.EVALUATION_EVALUATED   AS evaluation_date
-                       , rc.RECORDING_CONTACT_ID   AS contact_id
-                       , rc.EVALUATION_TOTAL_SCORE AS qa_score
-                       , rc.EVALUATOR_DISPLAY_ID   AS evaluator
-                       , rc.EVALUATOR_USER_NAME    AS evaluator_email
-         FROM CALABRIO.T_RECORDING_CONTACT rc
-                  LEFT JOIN CALABRIO.T_PERSONS p
-                            ON p.ACD_ID = rc.AGENT_ACD_ID
-         WHERE rc.EVALUATION_EVALUATED >= current_date - 30)
-       , QA_METRICS AS (
-        SELECT row_number() OVER (PARTITION BY E.FULL_NAME ORDER BY E.FULL_NAME) AS rn
-             , e.FULL_NAME
-             , e.EMPLOYEE_ID
-             , e.BUSINESS_TITLE
-             , e.DIRECT_MANAGER
-             , e.SUPERVISORY_ORG
-             , round(avg(qa.QA_SCORE), 2)                                        AS avg_qa_score
-             , round(median(qa.QA_SCORE), 2)                                     AS med_qa_score
-        FROM employees e
-                 LEFT JOIN qa
-                           ON qa.agent_badge = e.EMPLOYEE_ID
-                               AND qa.evaluation_date >= e.team_start_date
-        GROUP BY e.full_name, e.employee_id, e.BUSINESS_TITLE, e.direct_manager, e.SUPERVISORY_ORG
-    )
-       , main AS -- Joins | Aggregations
-        (SELECT E.EMPLOYEE_ID
-              , E.FULL_NAME
-              , E.TEAM_START_DATE
-              , ca.closed        AS EFFECTIVENESS
-              , ca.avg_wip_cycle AS EFFICIENCY
-              , qa.avg_qa_score  AS QUALITY
-         FROM employees e
-                  INNER JOIN CASES_METRICS ca
-                             ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
-                  LEFT JOIN QA_METRICS as qa
-                            ON qa.EMPLOYEE_ID = e.EMPLOYEE_ID
-        )
-    SELECT *
-    FROM main
+CREATE OR REPLACE VIEW D_POST_INSTALL.V_FILINGS_BATCH_ACCOUNT_LIST AS ( -- Create the view
+    select *
+    from (
+             SELECT P.SERVICE_NAME
+                  , P.PROJECT_NAME
+                  , CT.FIRST_NAME                                                                      AS CUSTOMER_1_First
+                  , ''                                                                                 AS Customer_1_Middle
+                  ----------------------------------------------------------
+                  , REVERSE(REGEXP_SUBSTR(REVERSE(CT.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1,
+                                          'ie'))                                                       AS CUSTOMER_1_SUFFIX
+                  , TRIM(REPLACE(CT.LAST_NAME, NVL(CUSTOMER_1_SUFFIX, '')))                            AS CUSTOMER_1_LAST
+                  ----------------------------------------------------------
+                  , CNT.FIRST_NAME                                                                     AS CUSTOMER_2_First
+                  , ''                                                                                 AS Customer_2_Middle
+                  ----------------------------------------------------------
+                  , REVERSE(REGEXP_SUBSTR(REVERSE(CNT.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1,
+                                          'ie'))                                                       AS CUSTOMER_2_SUFFIX_NAME
+                  , TRIM(REPLACE(CNT.LAST_NAME, NVL(CUSTOMER_2_SUFFIX_NAME, '')))                      AS CUSTOMER_2_LAST_NAME
+                  ----------------------------------------------------------
+                  , P.SERVICE_ADDRESS
+                  , P.SERVICE_CITY
+                  , P.SERVICE_COUNTY
+                  , P.SERVICE_STATE
+                  , P.SERVICE_ZIP_CODE
+                  , TO_DATE(P.INSTALLATION_COMPLETE)                                                   AS INSTALL_DATE
+                  , TO_DATE(CON.TRANSACTION_DATE)                                                      AS TRANSACTION_DATE
+                  , DATEADD('MM', 246, TO_DATE(INSTALL_DATE))                                          AS TERMINATION_DATE
+                  , CON.RECORD_TYPE                                                                    AS CONTRACT_TYPE
+                  , ROUND(DATEDIFF('D', '2013-11-02', INSTALL_DATE) / 7, 0)                            AS WEEK_BATCH
+                  , 'New Account'                                                                      AS BATCH_TYPE
+             FROM RPT.T_PROJECT AS P
+                      LEFT JOIN
+                  RPT.T_CONTRACT AS CON
+                  ON P.PRIMARY_CONTRACT_ID = CON.CONTRACT_ID
+                      LEFT JOIN
+                  RPT.T_CONTACT AS CT
+                  ON CON.SIGNER_CONTACT_ID = CT.CONTACT_ID
+                      LEFT JOIN
+                  RPT.T_CONTACT AS CNT
+                  ON CON.COSIGNER_CONTACT_ID = CNT.CONTACT_ID
+             WHERE P.INSTALLATION_COMPLETE IS NOT NULL
+               AND P.INSTALLATION_COMPLETE >= '2013-11-02'
+               AND CON.RECORD_TYPE NOT IN ('Solar Loan', 'Solar Cash')
+               AND (P.SALES_OFFICE != 'Homebuilder Corporate' OR
+                    (P.SALES_OFFICE = 'Homebuilder Corporate' AND P.ESCROW IS NOT NULL))
+             UNION
+             SELECT P.PROJECT_NAME
+                  , S.SERVICE_NAME
+                  , CT.FIRST_NAME                                                                      AS CUSTOMER_1_First
+                  , ''                                                                                 AS Customer_1_Middle
+                  ----------------------------------------------------------
+                  , REVERSE(REGEXP_SUBSTR(REVERSE(CT.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1,
+                                          'ie'))                                                       AS CUSTOMER_1_SUFFIX
+                  , TRIM(REPLACE(CT.LAST_NAME, NVL(CUSTOMER_1_SUFFIX, '')))                            AS CUSTOMER_1_LAST
+                  ----------------------------------------------------------
+                  , CTO.FIRST_NAME                                                                     AS CUSTOMER_2_First
+                  , ''                                                                                 AS Customer_2_Middle
+                  ----------------------------------------------------------
+                  , REVERSE(REGEXP_SUBSTR(REVERSE(CTO.LAST_NAME), '^(\.?rJ|\.?rS|III|VI)', 1, 1,
+                                          'ie'))                                                       AS CUSTOMER_2_SUFFIX_NAME
+                  , TRIM(REPLACE(CTO.LAST_NAME, NVL(CUSTOMER_2_SUFFIX_NAME, '')))                      AS CUSTOMER_2_LAST_NAME
+                  ----------------------------------------------------------
+                  , S.SERVICE_ADDRESS
+                  , S.SERVICE_CITY
+                  , S.SERVICE_COUNTY
+                  , S.SERVICE_STATE
+                  , S.SERVICE_ZIP_CODE
+                  , TO_DATE(P.INSTALLATION_COMPLETE)                                                   AS INSTALL_DATE
+                  , TO_DATE(CN.TRANSACTION_DATE)                                                       AS TRANSACTION_DATE
+                  , DATEADD('MM', 246, TO_DATE(P.INSTALLATION_COMPLETE))                               AS TERMINATION_DATE
+                  , CN.RECORD_TYPE                                                                     AS CONTRACT_TYPE
+                  , ROUND(DATEDIFF('D', '2013-11-02', TO_DATE(C.CLOSED_DATE)) / 7, 0)                  AS WEEK_BATCH
+                  , 'Transfer Account'                                                                 AS BATCH_TYPE
+             FROM RPT.T_CASE AS C
+                      LEFT JOIN
+                  RPT.T_PROJECT AS P
+                  ON P.PROJECT_ID = C.PROJECT_ID
+                      LEFT JOIN
+                  RPT.T_SERVICE AS S
+                  ON S.PROJECT_ID = P.PROJECT_ID
+                      LEFT JOIN
+                  RPT.T_CONTACT AS CT
+                  ON CT.CONTACT_ID = S.CONTRACT_SIGNER
+                      LEFT JOIN
+                  RPT.T_CONTACT AS CTO
+                  ON CTO.CONTACT_ID = S.CONTRACT_CO_SIGNER
+                      LEFT JOIN
+                  RPT.T_CONTRACT AS CN
+                  ON CN.CONTRACT_ID = P.PRIMARY_CONTRACT_ID
+             WHERE C.RECORD_TYPE = 'Solar - Transfer'
+               AND C.CREATED_DATE >= '2018-09-01'
+               AND C.STATUS = 'Closed - Processed'
+               AND S.SERVICE_STATUS != 'Solar - Transfer'
+         )
+    WHERE WEEK_BATCH >= 252
 );
 
-GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_KPIS_DEFAULT TO GENERAL_REPORTING_R -- Share the view
+GRANT SELECT ON VIEW D_POST_INSTALL.V_FILINGS_BATCH_ACCOUNT_LIST TO GENERAL_REPORTING_R -- Share the view

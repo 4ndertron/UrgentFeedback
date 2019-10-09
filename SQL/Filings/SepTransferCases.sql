@@ -2,7 +2,8 @@ WITH T1 AS (
     SELECT P.PROJECT_NAME
          , S.SERVICE_NAME
          , S.SOLAR_BILLING_ACCOUNT_NUMBER
-         , ROUND(DATEDIFF('D', '2013-11-02', P.INSTALLATION_COMPLETE) / 7, 0)                  AS WEEK_BATCH
+         , ROUND(DATEDIFF('D', '2013-11-02', TO_DATE(C.CLOSED_DATE)) / 7, 0)                   AS WEEK_BATCH
+         , 'Transfer Accounts'                                                                 AS BATCH_TYPE
          , CT.FIRST_NAME                                                                       AS CUSTOMER_1_First
          , ''                                                                                  AS Customer_1_Middle
          ----------------------------------------------------------
@@ -72,7 +73,7 @@ WITH T1 AS (
 --       AND C.CLOSED_DATE BETWEEN '2019-09-11' AND '2019-09-18' -- 306
 --       AND C.CLOSED_DATE BETWEEN '2019-09-18' AND '2019-09-25' -- 307
 --       AND C.CLOSED_DATE BETWEEN '2019-09-24' AND '2019-10-02' -- 308
-      AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
+--       AND C.CLOSED_DATE BETWEEN DATEADD('D', -7, CURRENT_DATE) AND CURRENT_DATE -- CURRENT
       AND C.STATUS = 'Closed - Processed'
       AND S.SERVICE_STATUS != 'Solar - Transfer'
     ORDER BY TOTAL_CURRENT_AMOUNT_DUE DESC
@@ -113,6 +114,7 @@ WITH T1 AS (
          , TERMINATION_DATE
          , CONTRACT_TYPE
          , WEEK_BATCH
+         , BATCH_TYPE
     FROM T1
     WHERE SERVICE_COUNTY IS NULL
 )
