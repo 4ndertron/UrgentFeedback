@@ -8,8 +8,8 @@ WITH ESCALATION_CASES AS (
          , C.SUBJECT
          , C.STATUS
          , C.CUSTOMER_TEMPERATURE
-         , TO_DATE(C.CREATED_DATE) AS CREATED_DATE
-         , TO_DATE(C.CLOSED_DATE)  AS CLOSED_DATE
+         , TO_DATE(C.CREATED_DATE) AS CASE_CREATED_DATE
+         , TO_DATE(C.CLOSED_DATE)  AS CASE_CLOSED_DATE
          , C.RECORD_TYPE
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
@@ -65,22 +65,22 @@ WITH ESCALATION_CASES AS (
    , CASE_HISTORY_TABLE AS (
     SELECT CO.*
          , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               CO.CREATED_DATE)                            AS PREVIOUS_COMMENT_DATE
-         , CC.CREATEDATE                                   AS CURRENT_COMMENT_DATE
+               CO.CASE_CREATED_DATE)                            AS PREVIOUS_COMMENT_DATE
+         , CC.CREATEDATE                                        AS CURRENT_COMMENT_DATE
          , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               NVL(CO.CLOSED_DATE,
-                   CURRENT_DATE))                          AS NEXT_COMMENT_DATE
-         , USR.NAME                                        AS COMMENT_CREATE_BY
+               NVL(CO.CASE_CLOSED_DATE,
+                   CURRENT_DATE))                               AS NEXT_COMMENT_DATE
+         , USR.NAME                                             AS COMMENT_CREATE_BY
          , HR.BUSINESS_TITLE
          , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER
         ORDER BY CC.CREATEDATE),
-                           CO.CREATED_DATE),
+                           CO.CASE_CREATED_DATE),
                     CC.CREATEDATE
                ) / (24 * 60 * 60)
-                                                           AS LAG_GAP
+                                                                AS LAG_GAP
          , DATEDIFF(s, CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-                        CO.CREATED_DATE)) / (24 * 60 * 60) AS LEAD_GAP
+                        CO.CASE_CREATED_DATE)) / (24 * 60 * 60) AS LEAD_GAP
     FROM CASES_OVERALL AS CO
              LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
                              ON CC.PARENTID = CO.CASE_ID
@@ -88,22 +88,22 @@ WITH ESCALATION_CASES AS (
                        ON USR.ID = CC.CREATEDBYID
              LEFT JOIN HR.T_EMPLOYEE AS HR
                        ON HR.EMPLOYEE_ID = USR.EMPLOYEE_ID__C
-    WHERE CC.CREATEDATE <= NVL(CO.CLOSED_DATE, CURRENT_DATE)
+    WHERE CC.CREATEDATE <= NVL(CO.CASE_CLOSED_DATE, CURRENT_DATE)
     ORDER BY CASE_NUMBER, CC.CREATEDATE
 )
 
    , FULL_CASE AS (
     SELECT CASE_NUMBER
-         , ANY_VALUE(SUBJECT)                                           AS SUBJECT
-         , ANY_VALUE(STATUS)                                            AS STATUS
-         , ANY_VALUE(CUSTOMER_TEMPERATURE)                              AS CUSTOMER_TEMPERATURE
-         , ANY_VALUE(CREATED_DATE)                                      AS CREATED_DATE
-         , ANY_VALUE(CLOSED_DATE)                                       AS CLOSED_DATE
-         , ANY_VALUE(RECORD_TYPE)                                       AS RECORD_TYPE
-         , DATEDIFF(dd, TO_DATE(ANY_VALUE(CREATED_DATE)),
-                    NVL(TO_DATE(ANY_VALUE(CLOSED_DATE)), CURRENT_DATE)) AS CASE_AGE
-         , AVG(LAG_GAP)                                                 AS AVERAGE_GAP
-    FROM CASE_HISTORY_TABLE
+         , ANY_VALUE(SUBJECT)                                                AS SUBJECT
+         , ANY_VALUE(STATUS)                                                 AS STATUS
+         , ANY_VALUE(CUSTOMER_TEMPERATURE)                                   AS CUSTOMER_TEMPERATURE
+         , ANY_VALUE(CHT.CASE_CREATED_DATE)                                  AS CREATED_DATE
+         , ANY_VALUE(CHT.CASE_CLOSED_DATE)                                   AS CLOSED_DATE
+         , ANY_VALUE(RECORD_TYPE)                                            AS RECORD_TYPE
+         , DATEDIFF(dd, TO_DATE(ANY_VALUE(CASE_CREATED_DATE)),
+                    NVL(TO_DATE(ANY_VALUE(CASE_CLOSED_DATE)), CURRENT_DATE)) AS CASE_AGE
+         , AVG(LAG_GAP)                                                      AS AVERAGE_GAP
+    FROM CASE_HISTORY_TABLE AS CHT
     GROUP BY CASE_NUMBER
     ORDER BY CASE_NUMBER
 )
@@ -182,8 +182,8 @@ WITH ESCALATION_CASES AS (
          , ANY_VALUE(CHT.COMMENT_CREATE_BY)         AS COMMENT_CREATED_BY_NAME
          , ANY_VALUE(CHT.BUSINESS_TITLE)            AS BUSINESS_TITLE
          , MAX(CHT.LAG_GAP)                         AS MAIN_GAP
-         , ANY_VALUE(CHT.CREATED_DATE)              AS CREATED_DATE
-         , ANY_VALUE(CHT.CLOSED_DATE)               AS CLOSED_DATE
+         , ANY_VALUE(CHT.CASE_CREATED_DATE)         AS CREATED_DATE
+         , ANY_VALUE(CHT.CASE_CLOSED_DATE)          AS CLOSED_DATE
          , ANY_VALUE(CHT.STATUS)                    AS STATUS
          , ANY_VALUE(CHT.RECORD_TYPE)               AS RECORD_TYPE
          , ANY_VALUE(CHT.CASE_ID)                   AS CASE_ID
@@ -219,8 +219,8 @@ WITH ESCALATION_CASES AS (
          , ANY_VALUE(CHT.COMMENT_CREATE_BY)         AS COMMENT_CREATED_BY_NAME
          , ANY_VALUE(CHT.BUSINESS_TITLE)            AS BUSINESS_TITLE
          , MAX(CHT.LAG_GAP)                         AS MAIN_GAP
-         , ANY_VALUE(CHT.CREATED_DATE)              AS CREATED_DATE
-         , ANY_VALUE(CHT.CLOSED_DATE)               AS CLOSED_DATE
+         , ANY_VALUE(CHT.CASE_CREATED_DATE)         AS CREATED_DATE
+         , ANY_VALUE(CHT.CASE_CLOSED_DATE)          AS CLOSED_DATE
          , ANY_VALUE(CHT.STATUS)                    AS STATUS
          , ANY_VALUE(CHT.RECORD_TYPE)               AS RECORD_TYPE
          , ANY_VALUE(CHT.CASE_ID)                   AS CASE_ID
@@ -259,7 +259,7 @@ WITH ESCALATION_CASES AS (
                        ON p.ACD_ID = rc.AGENT_ACD_ID
     WHERE rc.EVALUATION_EVALUATED BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
+              DATE_TRUNC(w, CURRENT_DATE)
 )
 
    , QA_INCONTACT AS (
@@ -270,16 +270,16 @@ WITH ESCALATION_CASES AS (
     FROM D_POST_INSTALL.T_NE_AGENT_QSCORE AS QA
     WHERE QA.EVALUATION_DATE BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
+              DATE_TRUNC(w, CURRENT_DATE)
 )
 
    , QA AS (
-    SELECT LAST_DAY(D.DT) AS MONTH1
+    SELECT DATE_TRUNC(w, D.DT) AS WEEK
          , ROUND(AVG(CASE
                          WHEN
                              TO_DATE(QA.evaluation_date) = D.DT
                              THEN QA.qa_score
-        END), 2)          AS AVG_QA
+        END), 2)               AS AVG_QA
     FROM RPT.T_DATES AS D
        , (
         SELECT C.QA_SCORE
@@ -302,10 +302,10 @@ WITH ESCALATION_CASES AS (
     ) AS QA
     WHERE D.DT BETWEEN
         DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-        CURRENT_DATE
+        DATE_TRUNC(w, CURRENT_DATE)
       AND QA.direct_manager IS NOT NULL
-    GROUP BY MONTH1
-    ORDER BY MONTH1
+    GROUP BY WEEK
+    ORDER BY WEEK
 )
 /*
  End core tables
@@ -330,7 +330,7 @@ WITH ESCALATION_CASES AS (
        , ER_AGENTS AS DA
     WHERE D.DT BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
+              DATE_TRUNC(w, CURRENT_DATE)
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -347,7 +347,7 @@ WITH ESCALATION_CASES AS (
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
         DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-        CURRENT_DATE
+        DATE_TRUNC(w, CURRENT_DATE)
       AND DW.DT = D.DT
     GROUP BY D.DT, DW.ACTIVE_AGENTS
     ORDER BY D.DT
@@ -363,7 +363,7 @@ WITH ESCALATION_CASES AS (
        , FULL_CASE AS FC
     WHERE D.DT BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              CURRENT_DATE
+              DATE_TRUNC(w, CURRENT_DATE)
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -374,93 +374,96 @@ WITH ESCALATION_CASES AS (
 /*
  Start month wip tables
  */
-   , CASE_MONTH_WIP AS (
+   , CASE_WEEK_WIP AS (
     SELECT CW.DT
          , ROUND(CW.CASE_ACTIVE_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
          , CW.CASE_ACTIVE_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
-    WHERE (CW.DT = LAST_DAY(CW.DT) OR CW.DT = CURRENT_DATE)
+    WHERE DAYOFWEEK(CW.DT) = 1
       AND DW.DT = CW.DT
 )
 
-   , GAP_MONTH_TABLE AS (
-    SELECT IFF(LAST_DAY(D.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(D.DT)) AS MONTH
+   , GAP_WEEK_TABLE AS (
+    SELECT DATE_TRUNC(w, D.DT)                         AS WEEK
          , AVG(CASE
-                   WHEN GL.DT = MONTH
-                       THEN GL.ACTIVE_COMMENT_AGE END)                      AS AVG_GAP
+                   WHEN GL.DT = WEEK
+                       THEN GL.ACTIVE_COMMENT_AGE END) AS AVG_GAP
          , MAX(CASE
-                   WHEN GL.DT = MONTH
-                       THEN GL.ACTIVE_COMMENT_AGE END)                      AS MAX_GAP
+                   WHEN GL.DT = WEEK
+                       THEN GL.ACTIVE_COMMENT_AGE END) AS MAX_GAP
     FROM GAP_LIST AS GL
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN
         DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-        CURRENT_DATE
+        DATE_TRUNC(w, CURRENT_DATE)
       AND GL.STATUS NOT ILIKE '%DISPUTE%'
-    GROUP BY MONTH
-    ORDER BY MONTH
+    GROUP BY WEEK
+    ORDER BY WEEK
 )
 
    , UPDATES_MONTH AS (
-    SELECT IFF(LAST_DAY(U.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(U.DT)) AS MONTH
-         , SUM(U.UPDATES)                                                   AS TOTAL_UPDATES
-         , SUM(U.WORKDAY)                                                   AS WORKDAYS
-         , ROUND(TOTAL_UPDATES / WORKDAYS, 2)                               AS AVG_DAY_UPDATES
-         , ROUND(AVG_DAY_UPDATES / MIN(U.ACTIVE_AGENTS), 2)                 AS AVG_AGENT_DAY_UPDATES
+    SELECT DATE_TRUNC(w, U.DT)                            AS WEEK
+         , SUM(U.UPDATES)                                 AS TOTAL_UPDATES
+         , SUM(U.WORKDAY)                                 AS WORKDAYS
+         , ROUND(TOTAL_UPDATES / WORKDAYS, 2)             AS AVG_DAY_UPDATES
+         , ROUND(TOTAL_UPDATES / MIN(U.ACTIVE_AGENTS), 2) AS AVG_AGENT_DAY_UPDATES
     FROM UPDATES_DAY AS U
-    GROUP BY MONTH
+    GROUP BY WEEK
 )
 
    , ION AS (
-    SELECT IFF(LAST_DAY(D.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY((D.DT))) AS MONTH1
+    SELECT DATE_TRUNC(w, D.DT)                                    AS WEEK
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT
-                               THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CLOSED
+                               THEN 1 END) / DW.ACTIVE_AGENTS, 2) AS AVERAGE_CLOSED
 
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT
-                               THEN 1 END), 2)                                AS TOTAL_CLOSED
+                               THEN 1 END), 2)                    AS TOTAL_CLOSED
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CREATED_DATE) = D.DT
-                               THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CREATED
+                               THEN 1 END) / DW.ACTIVE_AGENTS, 2) AS AVERAGE_CREATED
 
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CREATED_DATE) = D.DT
-                               THEN 1 END), 2)                                AS TOTAL_CREATED
+                               THEN 1 END), 2)                    AS TOTAL_CREATED
          , ROUND(AVG(CASE
                          WHEN TO_DATE(CREATED_DATE) <= D.DT AND
                               (TO_DATE(CLOSED_DATE) > D.DT OR
                                CLOSED_DATE IS NULL)
                              AND STATUS NOT ILIKE '%DISPUTE%'
                              THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
-        END), 2)                                                              AS AVG_OPEN_AGE
+        END), 2)                                                  AS AVG_OPEN_AGE
+         , ROUND(AVG(CASE
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT
+                             THEN CASE_AGE END), 2)               AS AVG_CLOSED_AGE
          , ROUND(AVG(CASE
                          WHEN TO_DATE(CLOSED_DATE) >= DATEADD(DAY, -7, CURRENT_DATE)
                              THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), TO_DATE(FC.CLOSED_DATE))
-        END), 2)                                                              AS AVG_7_DAY_CLOSED_AGE
+        END), 2)                                                  AS AVG_7_DAY_CLOSED_AGE
          , MAX(CASE
                    WHEN TO_DATE(CREATED_DATE) <= D.DT AND
                         (TO_DATE(CLOSED_DATE) > D.DT OR
                          CLOSED_DATE IS NULL)
                        AND STATUS NOT ILIKE '%DISPUTE%'
                        THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
-        END)                                                                  AS MAX_MONTH_AGE
+        END)                                                      AS MAX_MONTH_AGE
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT AND CUSTOMER_TEMPERATURE != 'Escalated'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
-                 2)                                                           AS AVERAGE_CLOSED_WON_CASES
+                 2)                                               AS AVERAGE_CLOSED_WON_CASES
          , DW.ACTIVE_AGENTS
     FROM FULL_CASE AS FC
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
         DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-        CURRENT_DATE
-      AND DW.DT = MONTH1
-    GROUP BY MONTH1, DW.ACTIVE_AGENTS
-    ORDER BY MONTH1, DW.ACTIVE_AGENTS
+        DATE_TRUNC(w, CURRENT_DATE)
+      AND DW.DT = WEEK
+    GROUP BY WEEK, DW.ACTIVE_AGENTS
+    ORDER BY WEEK, DW.ACTIVE_AGENTS
 )
 /*
  End month wip tables
@@ -486,23 +489,25 @@ WITH ESCALATION_CASES AS (
 )
 
    , MAIN AS (
-    SELECT ION.MONTH1
-         , ION.TOTAL_CREATED -- KPI 1
-         , ION.TOTAL_CLOSED -- KPI 1
-         , ION.AVG_OPEN_AGE -- KPI 1
-         , CASE_MONTH_WIP.CASE_ACTIVE_WIP -- KPI 2
-         , GAP_MONTH_TABLE.AVG_GAP -- KPI 3
-         -- CLOSED WON VS CLOSED LOST -- KPI 4 DNE Need Salesforce Updates
-         -- HIGH RISK STATES -- KPI 5 is a manual input from business owners
-         , CASE_MONTH_WIP.ACTIVE_AGENTS
+    SELECT ION.WEEK
+         , ION.AVG_CLOSED_AGE                   AS DAYS_TO_RESOLVE
+         , GAP_WEEK_TABLE.AVG_GAP               AS UPDATE_GAP
+         , ION.TOTAL_CREATED - ION.TOTAL_CLOSED AS NET_CASE_FLOW
+         , UPDATES_MONTH.AVG_AGENT_DAY_UPDATES  AS AVG_AGENT_CONTACTS
+         , QA.AVG_QA                            AS QUALITY
+         , CASE_WEEK_WIP.CASE_ACTIVE_WIP        AS WIP
+         , ION.AVG_OPEN_AGE                     AS AGE_OF_WIP
+         , NULL                                 AS ETA_CAUGHT_UP
     FROM ION
-       , CASE_MONTH_WIP
-       , GAP_MONTH_TABLE
+       , CASE_WEEK_WIP
+       , GAP_WEEK_TABLE
        , UPDATES_MONTH
-    WHERE CASE_MONTH_WIP.DT = ION.MONTH1
-      AND GAP_MONTH_TABLE.MONTH = ION.MONTH1
-      AND UPDATES_MONTH.MONTH = ION.MONTH1
-    ORDER BY ION.MONTH1
+       , QA
+    WHERE CASE_WEEK_WIP.DT = ION.WEEK
+      AND GAP_WEEK_TABLE.WEEK = ION.WEEK
+      AND UPDATES_MONTH.WEEK = ION.WEEK
+      AND QA.WEEK = ION.WEEK
+    ORDER BY ION.WEEK
 )
 
 SELECT *

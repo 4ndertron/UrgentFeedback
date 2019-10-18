@@ -19,6 +19,34 @@
             google.script.run.processForm(e);
         }
     </script>
+    <style>
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+
+            /* Position the tooltip */
+            position: absolute;
+            z-index: 1;
+            top: 100%;
+            left: 50%;
+            margin-left: -60px;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
+    </style>
 </head>
 <body>
 <form id="myForm" onsubmit="handleFormSubmit(this)">
@@ -27,49 +55,82 @@
     <hr>
     <div>Select all of the root cause tags that apply.</div>
     <br>
-    <input name='RC' type='checkbox' value='Account Center'/> Account Center<br>
-    <input name='RC' type='checkbox' value='Auto-pay'/> Auto-pay<br>
-    <input name='RC' type='checkbox' value='Battery/Storage'/> Battery/Storage<br>
-    <input name='RC' type='checkbox' value='Billed by VSLR & Utility'/> Billed by VSLR & Utility<br>
-    <input name='RC' type='checkbox' value='Billed on estimate'/> Billed on estimate<br>
-    <input name='RC' type='checkbox' value='Billed on solar production'/> Billed on solar production<br>
-    <input name='RC' type='checkbox' value='Report Card - Billing system'/> Report Card - Billing system<br>
-    <input name='RC' type='checkbox' value='Buyout'/> Buyout<br>
-    <input name='RC' type='checkbox' value='Contract cancellation policy'/> Contract cancellation policy<br>
-    <input name='RC' type='checkbox' value='Contract duration'/> Contract duration<br>
-    <input name='RC' type='checkbox' value='Contract Misrepresentation'/> Contract Misrepresentation<br>
-    <input name='RC' type='checkbox' value='Credits owed/Compensation'/> Credits owed/Compensation<br>
-    <input name='RC' type='checkbox' value='Customer resolution & follow up'/> Customer resolution & follow up<br>
-    <input name='RC' type='checkbox' value='Deviation from approved CAD'/> Deviation from approved CAD<br>
-    <input name='RC' type='checkbox' value='Equipment Malfunction'/> Equipment Malfunction<br>
-    <input name='RC' type='checkbox' value='Field service resolution'/> Field service resolution<br>
-    <input name='RC' type='checkbox' value='Hardship/Forclosure/Bankruptcy/Deceased'/>
-    Hardship/Forclosure/Bankruptcy/Deceased<br>
-    <input name='RC' type='checkbox' value='High True up'/> High True up<br>
-    <input name='RC' type='checkbox' value='Interconnection'/> Interconnection<br>
-    <input name='RC' type='checkbox' value='Missed appointments'/> Missed appointments<br>
-    <input name='RC' type='checkbox' value='Panel cleaning/maintenance'/> Panel cleaning/maintenance<br>
-    <input name='RC' type='checkbox' value='Permit/Inspection'/> Permit/Inspection<br>
-    <input name='RC' type='checkbox' value='Production/Usage imbalance'/> Production/Usage imbalance<br>
-    <input name='RC' type='checkbox' value='Property damage'/> Property damage<br>
-    <input name='RC' type='checkbox' value='Referral bonus'/> Referral bonus<br>
-    <input name='RC' type='checkbox' value='Removal & Reinstall'/> Removal & Reinstall<br>
-    <input name='RC' type='checkbox' value='Sales incentive'/> Sales incentive<br>
-    <input name='RC' type='checkbox' value='Snow/Animal guards'/> Snow/Animal guards<br>
-    <input name='RC' type='checkbox' value='System damage'/> System damage<br>
-    <input name='RC' type='checkbox' value='System design error'/> System design error<br>
-    <input name='RC' type='checkbox' value='System production'/> System production<br>
-    <input name='RC' type='checkbox' value='Systems billed separately'/> Systems billed separately<br>
-    <input name='RC' type='checkbox' value='Tax credits'/> Tax credits<br>
-    <input name='RC' type='checkbox' value='Technician availability'/> Technician availability<br>
-    <input name='RC' type='checkbox' value='Time to PTO'/> Time to PTO<br>
-    <input name='RC' type='checkbox' value='Transfer/Finance/Relocation'/> Transfer/Finance/Relocation<br>
-    <input name='RC' type='checkbox' value='Unmet savings Expectations'/> Unmet savings Expectations<br>
-    <input name='RC' type='checkbox' value='Utility rate discount'/> Utility rate discount<br>
-    <input name='RC' type='checkbox' value='VSLR Coverage Area'/> VSLR Coverage Area<br>
+    <div>Billing</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Auto-pay'/><div class="tooltip"> Auto-pay<span class="tooltiptext">Customer is displeased about the automatic withdrawals.</span></div><br>
+    <input name='RC' type='checkbox' value='Billed by VSLR & Utility'/><div class="tooltip"> Billed by VSLR & Utility<span class="tooltiptext">Customer is displeased about bills from both Vivint Solar and the utility provider OR Customer is frustrated about receiving a bill from the utility.</span></div><br>
+    <input name='RC' type='checkbox' value='Billed on Estimate'/><div class="tooltip"> Billed on Estimate<span class="tooltiptext">Customer is displeased about being billed on estimated production.</span></div><br>
+    <input name='RC' type='checkbox' value='Billed on Solar Production'/><div class="tooltip"> Billed on Solar Production<span class="tooltiptext">Customer is displeased about being billed on production compared to consumption.</span></div><br>
+    <input name='RC' type='checkbox' value='Credits Owed/Compensation'/><div class="tooltip"> Credits Owed/Compensation<span class="tooltiptext">Customer is expecting to receive a compensatory amount due to errors or negligence.</span></div><br>
+    <input name='RC' type='checkbox' value='Loan Billing'/><div class="tooltip"> Loan Billing<span class="tooltiptext">Customer is receiving loan bills before PTO OR Customer is concerned about the billed amount for their loan.</span></div><br>
+    <input name='RC' type='checkbox' value='Online Billing Portal'/><div class="tooltip"> Online Billing Portal<span class="tooltiptext">Customer is frustrated with the online billing portal.</span></div><br>
+    <input name='RC' type='checkbox' value='Unmet Savings Expectations'/><div class="tooltip"> Unmet Savings Expectations<span class="tooltiptext">Customer is not seeing the savings they expected or were promised by a sales manager.</span></div><br>
+    <input name='RC' type='checkbox' value='Utility Rate Discount'/><div class="tooltip"> Utility Rate Discount<span class="tooltiptext">Customer is on a utility program that reduces their monthly bill which is lower than Vivint Solar's rate.</span></div><br>
+    <input name='RC' type='checkbox' value='VSLR Systems Billed Separately'/><div class="tooltip"> VSLR Systems Billed Separately<span class="tooltiptext">Customer is displeased about being billed separately for an original and add-on system.</span></div><br>
+    <br>
+    <div>Customer Journey</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Account Center'/><div class="tooltip"> Account Center<span class="tooltiptext">Customer is frustrated with navigating the online account center.</span></div><br>
+    <input name='RC' type='checkbox' value='Bankruptcy'/><div class="tooltip"> Bankruptcy<span class="tooltiptext">Customer has filed for bankruptcy and has no ability to make solar payments.</span></div><br>
+    <input name='RC' type='checkbox' value='Buyout/Prepayment'/><div class="tooltip"> Buyout/Prepayment<span class="tooltiptext">Customer is requesting the buyout or prepayment amount OR Customer is requesting a reduced buyout or prepayment amount.</span></div><br>
+    <input name='RC' type='checkbox' value='Corporate Policy Missing/Changed'/><div class="tooltip"> Corporate Policy Missing/Changed<span class="tooltiptext">Customer is experiencing difficulty due to current policies, policies that were not in place, or policies that were changed.</span></div><br>
+    <input name='RC' type='checkbox' value='Customer Resolution & Follow-up'/><div class="tooltip"> Customer Resolution & Follow-up<span class="tooltiptext">Customer is frustrated with service experience and has not had questions or problems resolved.</span></div><br>
+    <input name='RC' type='checkbox' value='Deceased'/><div class="tooltip"> Deceased<span class="tooltiptext">Customer is no longer living and executors of the estate are now held responsible.</span></div><br>
+    <input name='RC' type='checkbox' value='Foreclosure'/><div class="tooltip"> Foreclosure<span class="tooltiptext">Customer is no longer living at the property and is still being held responsible.</span></div><br>
+    <input name='RC' type='checkbox' value='Hardship'/><div class="tooltip"> Hardship<span class="tooltiptext">Customer is experiencing a life event that has affected their ability to make solar payments.</span></div><br>
+    <input name='RC' type='checkbox' value='Medical/Elderly Issue'/><div class="tooltip"> Medical/Elderly Issue<span class="tooltiptext">Customer is frustrated and feels taken advantage of due to medical complications or old age.</span></div><br>
+    <input name='RC' type='checkbox' value='Refinance'/><div class="tooltip"> Refinance<span class="tooltiptext">Customer is refinancing and is experiencing frustration during the process</span></div><br>
+    <input name='RC' type='checkbox' value='Relocation'/><div class="tooltip"> Relocation<span class="tooltiptext">Customer is frustrated while moving and wanting the panels to go with them.</span></div><br>
+    <input name='RC' type='checkbox' value='Time from Install to PTO'/><div class="tooltip"> Time from Install to PTO<span class="tooltiptext">Customer is frustrationed with time frame to receive PTO OR Customer is displeased with expected time frame to receive PTO.</span></div><br>
+    <input name='RC' type='checkbox' value='Third-Party Communication'/><div class="tooltip"> Third-Party Communication<span class="tooltiptext">Customer is frustrated going back and forth between a third-party and the company in reaching a resolution.</span></div><br>
+    <input name='RC' type='checkbox' value='Transfer'/><div class="tooltip"> Transfer<span class="tooltiptext">Customer is frustrated with experience during the transfer, refinance, or relocation process.</span></div><br>
+    <br>
+    <div>Design</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Battery/Storage'/><div class="tooltip"> Battery/Storage<span class="tooltiptext">Customer is displeased that batteries are not available OR Customer is displeased about requirements for obtaining a battery.</span></div><br>
+    <input name='RC' type='checkbox' value='Equipment Aesthetics'/><div class="tooltip"> Equipment Aesthetics<span class="tooltiptext">Customer is displeased with the appearance of the equipment, including different module types, un-painted conduit, etc.</span></div><br>
+    <input name='RC' type='checkbox' value='Home Upgrade ESC/Trenching'/><div class="tooltip"> Home Upgrade ESC/Trenching<span class="tooltiptext">Customer is experiencing delays with a upgrade OR Customer is experiencing high costs for the upgrade.</span></div><br>
+    <input name='RC' type='checkbox' value='Law/Code Adherence'/><div class="tooltip"> Law/Code Adherence<span class="tooltiptext">Customer is frustrated or experiencing delays in order to meet jurisdiction requirements for their home or system to be compliant.</span></div><br>
+    <input name='RC' type='checkbox' value='Production/Usage Imbalance'/><div class="tooltip"> Production/Usage Imbalance<span class="tooltiptext">Customer is frustrated regarding consumption changing relative to their production or production changing relative to their consumption.</span></div><br>
+    <input name='RC' type='checkbox' value='Structure Integrity'/><div class="tooltip"> Structure Integrity<span class="tooltiptext">Customer is displeased or frustrated with requirements or delays regarding the system's presence to maintain structural safety.</span></div><br>
+    <input name='RC' type='checkbox' value='System Design Error'/><div class="tooltip"> System Design Error<span class="tooltiptext">Customer is frustrated that system was incorrectly designed for their home OR Customer is frustrated that design requests were not fulfilled.</span></div><br>
+    <input name='RC' type='checkbox' value='Transformer Upgrade'/><div class="tooltip"> Transformer Upgrade<span class="tooltiptext">Customer is experiencing delays with a transformer upgrade that is required for system operation.</span></div><br>
+    <br>
+    <div>Field Service</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Field Service Resolution'/><div class="tooltip"> Field Service Resolution<span class="tooltiptext">Customer is frustrated that the service technician was unable to fully resolve system errors.</span></div><br>
+    <input name='RC' type='checkbox' value='Missed Appointments'/><div class="tooltip"> Missed Appointments<span class="tooltiptext">Customer is frustrated that service technicians were unable to arrive during the expected time frame.</span></div><br>
+    <input name='RC' type='checkbox' value='Panel Cleaning/Maintenance'/><div class="tooltip"> Panel Cleaning/Maintenance<span class="tooltiptext">Customer is displeased that system maintenance or cleanings are not routinely performed.</span></div><br>
+    <input name='RC' type='checkbox' value='Removal & Reinstall'/><div class="tooltip"> Removal & Reinstall<span class="tooltiptext">Customer is displeased regarding removal/reinstall costs OR customer is frustrated at time frame to complete removal/reinstall.</span></div><br>
+    <input name='RC' type='checkbox' value='Snow/Animal Guards'/><div class="tooltip"> Snow/Animal Guards<span class="tooltiptext">Customer is displeased with the effects of animals or snow caused by the system OR Customer is displeased with the costs for guards.</span></div><br>
+    <input name='RC' type='checkbox' value='System Damage'/><div class="tooltip"> System Damage<span class="tooltiptext">Customer is displeased regarding policies for replacing damaged system components.</span></div><br>
+    <input name='RC' type='checkbox' value='System Monitoring'/><div class="tooltip"> System Monitoring<span class="tooltiptext">Customer is displeased that the solar system is not consistently monitored for communication errors or other production issues.</span></div><br>
+    <input name='RC' type='checkbox' value='System Performance'/><div class="tooltip"> System Performance<span class="tooltiptext">Customer is frustrated that the system or equipment is not operating as expected OR Customer is displeased regarding the production</span></div><br>
+    <input name='RC' type='checkbox' value='Technician/Part Availability'/><div class="tooltip"> Technician/Part Availability<span class="tooltiptext">Customer is displeased regarding time frame for servicing OR Customer is displeased with requirements to complete servicing the equipment.</span></div><br>
+    <br>
+    <div>Install</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Deviation from Approved CAD'/><div class="tooltip"> Deviation from Approved CAD<span class="tooltiptext">Customer is displeased that the installed solar system does not match or closely resemble the design they were showed prior to install.</span></div><br>
+    <input name='RC' type='checkbox' value='Home Upgrade Re-roof'/><div class="tooltip"> Home Upgrade Re-roof<span class="tooltiptext">Customer is experiencing delays with a re-roof OR Customer is experiencing high costs for the re-roof.</span></div><br>
+    <input name='RC' type='checkbox' value='Incomplete Install'/><div class="tooltip"> Incomplete Install<span class="tooltiptext">Customer is displeased that multiple visits are/were required to complete the installation.</span></div><br>
+    <input name='RC' type='checkbox' value='Install Error'/><div class="tooltip"> Install Error<span class="tooltiptext">Customer is frustrated or displeased regarding mistakes committed during the installation of the system.</span></div><br>
+    <input name='RC' type='checkbox' value='Property Damage'/><div class="tooltip"> Property Damage<span class="tooltiptext">Customer is displeased regarding damage to their property caused by Vivint Solar employees or by the system's presence.</span></div><br>
+    <br>
+    <div>Sale/Contract</div>
+    <hr>
+    <input name='RC' type='checkbox' value='Contract Cancellation Policy'/><div class="tooltip"> Contract Cancellation Policy<span class="tooltiptext">Customer is frustrated regarding the cancellation policy as outlined in the contract.</span></div><br>
+    <input name='RC' type='checkbox' value='Contract Duration'/><div class="tooltip"> Contract Duration<span class="tooltiptext">Customer is frustrated with the length of the contract.</span></div><br>
+    <input name='RC' type='checkbox' value='Contract Misrepresentation'/><div class="tooltip"> Contract Misrepresentation<span class="tooltiptext">Customer is frustrated regarding the portrayal of the contract by the sales manager OR Customer claims forgery of contract signatures.</span></div><br>
+    <input name='RC' type='checkbox' value='Credit Authorization'/><div class="tooltip"> Credit Authorization<span class="tooltiptext">Customer is frustrated that credit was ran with or without knowledge OR Customer is frustrated regarding credit requirements.</span></div><br>
+    <input name='RC' type='checkbox' value='Internet Access'/><div class="tooltip"> Internet Access<span class="tooltiptext">Customer is displeased that an internet connection is required for monitoring the solar system.</span></div><br>
+    <input name='RC' type='checkbox' value='Referral Bonus'/><div class="tooltip"> Referral Bonus<span class="tooltiptext">Customer is displeased they did not receive a referral bonus.</span></div><br>
+    <input name='RC' type='checkbox' value='Sales Incentive'/><div class="tooltip"> Sales Incentive<span class="tooltiptext">Customer is displeased they did not receive an incentive, not referral related, promised by their sales manager.</span></div><br>
+    <input name='RC' type='checkbox' value='Tax Credits'/><div class="tooltip"> Tax Credits<span class="tooltiptext">Customer is frustrated they cannot receive tax credits for the system OR Customer is frustrated they did not receive the expected tax credits.</span></div><br>
+    <input name='RC' type='checkbox' value='VSLR Coverage Area'/><div class="tooltip"> VSLR Coverage Area<span class="tooltiptext">Customer is frustrated that Vivint Solar does not operate in some markets.</span></div><br>
     <br><br><input type="submit" value="Submit Tag(s)"/>
 </form>
 <br>
 <div id="output"></div>
+
 </body>
 </html>

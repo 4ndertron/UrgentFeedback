@@ -1,110 +1,115 @@
-WITH employees AS -- Team Specific Members
-    (SELECT e.EMPLOYEE_ID
-          , e.FULL_NAME
-          , e.BUSINESS_TITLE
-          , e.SUPERVISOR_NAME_1 || ' (' || e.SUPERVISOR_BADGE_ID_1 || ')' AS direct_manager
-          , e.SUPERVISORY_ORG
-          , TO_DATE(NVL(ea.max_dt, e.HIRE_DATE))                          AS team_start_date
-     FROM hr.T_EMPLOYEE e
-              LEFT OUTER JOIN -- Determine last time each employee WASN'T on target manager's team
-         (SELECT EMPLOYEE_ID
-               , MAX(EXPIRY_DATE) AS max_dt
-          FROM hr.T_EMPLOYEE_ALL
-          WHERE NOT TERMINATED
-            AND (MGR_ID_4 IS DISTINCT FROM '101769' AND MGR_ID_5 IS DISTINCT FROM '101769')
-            -- Placeholder Manager (Tyler Anderson)
-          GROUP BY EMPLOYEE_ID) ea
-                              ON e.employee_id = ea.employee_id
-     WHERE NOT e.TERMINATED
-       AND e.PAY_RATE_TYPE = 'Hourly'
-       AND (e.MGR_ID_4 = '101769' OR e.MGR_ID_5 = '101769')
-       AND direct_manager ILIKE '%ALFO%'
-       AND E.EMPLOYEE_ID NOT IN (204095)
-    )
-   , cases AS -- Active Escalation Cases | Closed > Today - 30
-    (SELECT c.project_id
-          , c.OWNER_EMPLOYEE_ID
-          , c.OWNER
-          , c.STATUS
-          , c.EXECUTIVE_RESOLUTIONS_ACCEPTED
-          , c.CLOSED_DATE
-     FROM rpt.T_CASE c
-              LEFT JOIN rpt.T_PROJECT p
-                        ON p.PROJECT_ID = c.PROJECT_ID
-     WHERE ((c.RECORD_TYPE = 'Solar - Customer Escalation'
-         AND c.STATUS != 'In Dispute'
-         AND c.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL)
-         OR (C.RECORD_TYPE = 'Solar - Service'
-             AND C.OWNER_EMPLOYEE_ID NOT IN ('210463'))
-         OR (C.RECORD_TYPE = 'Solar - Cancellation'
-             AND C.OWNER_EMPLOYEE_ID IN
-                 ('121126', '207396', '208297', '208853', '209336', '209990', '211343', '213132', '214556')))
-       AND (c.CLOSED_DATE >= current_date - 30 OR c.CLOSED_DATE IS NULL))
-   , CASES_METRICS AS (
-    SELECT row_number() OVER (PARTITION BY ca.OWNER ORDER BY ca.OWNER)   AS rn
-         , ca.OWNER
-         , ca.OWNER_EMPLOYEE_ID
-         , e.BUSINESS_TITLE
-         , e.direct_manager
-         , e.SUPERVISORY_ORG
-         , sum(CASE WHEN ca.closed_date >= CURRENT_DATE - 30 THEN 1 END) AS closed
-         , sum(CASE WHEN ca.CLOSED_DATE IS NULL THEN 1 END)              AS wip_count
-         , round(avg(CASE
-                         WHEN ca.CLOSED_DATE IS NULL
-                             THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) / 1440
-        END), 2)                                                         AS avg_wip_cycle
-         , round(median(CASE
-                            WHEN ca.CLOSED_DATE IS NULL
-                                THEN datediff('m', ca.EXECUTIVE_RESOLUTIONS_ACCEPTED, current_timestamp) /
-                                     1440
-        END), 2)                                                         AS med_wip_cycle
-    FROM employees e
-             INNER JOIN cases ca
-                        ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
-                            AND NVL(ca.CLOSED_DATE, current_timestamp) >= e.team_start_date
-    GROUP BY ca.OWNER, ca.OWNER_EMPLOYEE_ID, e.BUSINESS_TITLE, e.direct_manager, e.SUPERVISORY_ORG
-)
-   , qa AS -- Calabrio QA Scores
-    (SELECT DISTINCT p.EMPLOYEE_ID             AS agent_badge
-                   , rc.AGENT_DISPLAY_ID       AS agent_evaluated
-                   , rc.TEAM_NAME
-                   , rc.EVALUATION_EVALUATED   AS evaluation_date
-                   , rc.RECORDING_CONTACT_ID   AS contact_id
-                   , rc.EVALUATION_TOTAL_SCORE AS qa_score
-                   , rc.EVALUATOR_DISPLAY_ID   AS evaluator
-                   , rc.EVALUATOR_USER_NAME    AS evaluator_email
-     FROM CALABRIO.T_RECORDING_CONTACT rc
-              LEFT JOIN CALABRIO.T_PERSONS p
-                        ON p.ACD_ID = rc.AGENT_ACD_ID
-     WHERE rc.EVALUATION_EVALUATED >= current_date - 30)
-   , QA_METRICS AS (
-    SELECT row_number() OVER (PARTITION BY E.FULL_NAME ORDER BY E.FULL_NAME) AS rn
-         , e.FULL_NAME
-         , e.EMPLOYEE_ID
-         , e.BUSINESS_TITLE
-         , e.DIRECT_MANAGER
-         , e.SUPERVISORY_ORG
-         , round(avg(qa.QA_SCORE), 2)                                        AS avg_qa_score
-         , round(median(qa.QA_SCORE), 2)                                     AS med_qa_score
-    FROM employees e
-             LEFT JOIN qa
-                       ON qa.agent_badge = e.EMPLOYEE_ID
-                           AND qa.evaluation_date >= e.team_start_date
-    GROUP BY e.full_name, e.employee_id, e.BUSINESS_TITLE, e.direct_manager, e.SUPERVISORY_ORG
-)
-   , main AS -- Joins | Aggregations
+WITH EMPLOYEES AS -- TEAM SPECIFIC MEMBERS
     (SELECT E.EMPLOYEE_ID
           , E.FULL_NAME
-          , E.TEAM_START_DATE
-          , ca.closed        AS EFFECTIVENESS
-          , ca.avg_wip_cycle AS EFFICIENCY
-          , qa.avg_qa_score  AS QUALITY
-     FROM employees e
-              INNER JOIN CASES_METRICS ca
-                         ON ca.OWNER_EMPLOYEE_ID = e.EMPLOYEE_ID
-              LEFT JOIN QA_METRICS as qa
-                        ON qa.EMPLOYEE_ID = e.EMPLOYEE_ID
-     ORDER BY EMPLOYEE_ID
+          , E.BUSINESS_TITLE
+          , E.SUPERVISOR_NAME_1 || ' (' || E.SUPERVISOR_BADGE_ID_1 || ')' AS DIRECT_MANAGER
+          , E.SUPERVISORY_ORG
+          , TO_DATE(NVL(EA.MAX_DT, E.HIRE_DATE))                          AS TEAM_START_DATE
+     FROM HR.T_EMPLOYEE E
+              LEFT OUTER JOIN -- DETERMINE LAST TIME EACH EMPLOYEE WASN'T ON TARGET MANAGER'S TEAM
+         (SELECT EMPLOYEE_ID
+               , MAX(EXPIRY_DATE) AS MAX_DT
+          FROM HR.T_EMPLOYEE_ALL
+          WHERE NOT TERMINATED
+            AND (MGR_ID_4 IS DISTINCT FROM '101769' AND MGR_ID_5 IS DISTINCT FROM '101769')
+            -- PLACEHOLDER MANAGER (TYLER ANDERSON)
+          GROUP BY EMPLOYEE_ID) EA
+                              ON E.EMPLOYEE_ID = EA.EMPLOYEE_ID
+     WHERE NOT E.TERMINATED
+       AND UPPER(E.PAY_RATE_TYPE) = 'HOURLY'
+       AND (E.MGR_ID_4 = '101769' OR E.MGR_ID_5 = '101769')
+       AND DIRECT_MANAGER ILIKE '%ALFO%'
+       AND E.EMPLOYEE_ID NOT IN (204095)
     )
+   , DATES AS (
+    SELECT DT
+    FROM RPT.V_DATES
+    WHERE DT BETWEEN
+              DATEADD(D, -90, CURRENT_DATE) AND
+              CURRENT_DATE
+)
+   , CASES AS
+    (SELECT C.PROJECT_ID
+          , C.OWNER_EMPLOYEE_ID
+          , E.EMPLOYEE_ID
+          , C.OWNER
+          , C.STATUS
+          , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, C.CREATED_DATE) AS CREATED_DATE
+          , C.CLOSED_DATE
+     FROM RPT.T_CASE AS C
+              LEFT JOIN RPT.T_PROJECT AS P
+                        ON P.PROJECT_ID = C.PROJECT_ID
+              LEFT JOIN EMPLOYEES AS E
+                        ON E.EMPLOYEE_ID = C.OWNER_EMPLOYEE_ID
+     WHERE E.EMPLOYEE_ID IS NOT NULL
+       AND ((UPPER(C.RECORD_TYPE) = 'SOLAR - CUSTOMER ESCALATION'
+         AND UPPER(C.STATUS) != 'IN DISPUTE'
+         AND C.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL)
+         OR (UPPER(C.RECORD_TYPE) = 'SOLAR - SERVICE')
+         OR (UPPER(C.RECORD_TYPE) = 'SOLAR - TRANSFER'
+             AND UPPER(C.PRIMARY_REASON) = 'RELOCATION')
+         OR (UPPER(C.RECORD_TYPE) = 'SOLAR - CANCELLATION'))
+    )
+   , CASES_METRICS AS (
+    SELECT CA.OWNER_EMPLOYEE_ID
+         , D.DT
+         , SUM(CASE
+                   WHEN CA.CLOSED_DATE >= DATEADD(D, -30, D.DT)
+                       THEN 1 END) AS CLOSED
+         , AVG(CASE
+                   WHEN CA.CLOSED_DATE >= D.DT OR
+                        CA.CLOSED_DATE IS NULL
+                       THEN DATEDIFF(D, TO_DATE(CA.CREATED_DATE), D.DT)
+        END)                       AS AVG_WIP_CYCLE
+    FROM EMPLOYEES E
+             INNER JOIN CASES CA
+                        ON CA.OWNER_EMPLOYEE_ID = E.EMPLOYEE_ID AND
+                           NVL(CA.CLOSED_DATE, CURRENT_TIMESTAMP) >= E.TEAM_START_DATE
+             INNER JOIN DATES AS D
+                        ON D.DT >= E.TEAM_START_DATE
+    GROUP BY CA.OWNER_EMPLOYEE_ID, D.DT
+    ORDER BY CA.OWNER_EMPLOYEE_ID, D.DT
+)
+   , QA AS -- CALABRIO QA SCORES
+    (
+        SELECT EM.EMPLOYEE_ID
+             , TO_DATE(QA.EVALUATION_EVALUATED)     AS DT
+             , SUM(QA.EVALUATION_TOTAL_SCORE) / 100 AS QA_SCORE_TOTAL
+             , COUNT(QA.EVALUATION_TOTAL_SCORE)     AS QA_TALLY
+        FROM EMPLOYEES AS EM
+                 INNER JOIN CALABRIO.T_PERSONS AS CP
+                            ON EM.EMPLOYEE_ID = CP.EMPLOYEE_ID
+                 INNER JOIN CALABRIO.T_RECORDING_CONTACT AS QA
+                            ON CP.ACD_ID = QA.AGENT_ACD_ID AND
+                               QA.EVALUATION_EVALUATED >= EM.TEAM_START_DATE
+        WHERE QA.EVALUATION_EVALUATED >= DATEADD(D, -90, CURRENT_DATE)
+          AND QA.EVALUATION_EVALUATED < CURRENT_DATE
+        GROUP BY EM.EMPLOYEE_ID
+               , TO_DATE(QA.EVALUATION_EVALUATED))
+   , MAIN AS -- JOINS | AGGREGATIONS
+    (SELECT E.EMPLOYEE_ID
+          , ANY_VALUE(E.FULL_NAME)         AS FULL_NAME
+          , ANY_VALUE(E.TEAM_START_DATE)   AS TEAM_START_DATE
+          , D.DT
+          , NVL(SUM(CA.CLOSED), 0)         AS EFFECTIVENESS
+          , NVL(SUM(CA.AVG_WIP_CYCLE), 0)  AS EFFICIENCY
+          , NVL(SUM(QA.QA_SCORE_TOTAL), 0) AS QUALITY_NUM
+          , NVL(SUM(QA.QA_TALLY), 0)       AS QUALITY_DENOM
+     FROM EMPLOYEES E
+              LEFT JOIN DATES AS D
+                        ON D.DT >= E.TEAM_START_DATE
+              LEFT JOIN CASES_METRICS CA
+                        ON CA.OWNER_EMPLOYEE_ID = E.EMPLOYEE_ID AND
+                           CA.DT = D.DT
+              LEFT JOIN QA
+                        ON QA.EMPLOYEE_ID = E.EMPLOYEE_ID AND
+                           QA.DT = D.DT
+     GROUP BY E.EMPLOYEE_ID, D.DT
+     ORDER BY E.EMPLOYEE_ID, D.DT
+    )
+   , TEST_CTE AS (
+    SELECT *
+    FROM EMPLOYEES
+)
 SELECT *
-FROM main m
+FROM MAIN
