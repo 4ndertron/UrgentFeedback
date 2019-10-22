@@ -497,7 +497,6 @@ WITH ESCALATION_CASES AS (
          , QA.AVG_QA                            AS QUALITY
          , CASE_WEEK_WIP.CASE_ACTIVE_WIP        AS WIP
          , ION.AVG_OPEN_AGE                     AS AGE_OF_WIP
-         , NULL                                 AS ETA_CAUGHT_UP
     FROM ION
        , CASE_WEEK_WIP
        , GAP_WEEK_TABLE
@@ -507,7 +506,8 @@ WITH ESCALATION_CASES AS (
       AND GAP_WEEK_TABLE.WEEK = ION.WEEK
       AND UPDATES_MONTH.WEEK = ION.WEEK
       AND QA.WEEK = ION.WEEK
-    ORDER BY ION.WEEK
+      AND ION.WEEK != DATE_TRUNC(wk, CURRENT_DATE)
+    ORDER BY ION.WEEK DESC
 )
 
 SELECT *
