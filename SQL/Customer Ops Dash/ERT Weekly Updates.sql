@@ -497,6 +497,7 @@ WITH ESCALATION_CASES AS (
          , QA.AVG_QA                            AS QUALITY
          , CASE_WEEK_WIP.CASE_ACTIVE_WIP        AS WIP
          , ION.AVG_OPEN_AGE                     AS AGE_OF_WIP
+         , CASE_WEEK_WIP.ACTIVE_AGENTS
     FROM ION
        , CASE_WEEK_WIP
        , GAP_WEEK_TABLE
