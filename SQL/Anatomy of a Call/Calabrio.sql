@@ -1,7 +1,11 @@
 WITH CJP AS (
     SELECT C.DATE -- MSTG Attributes
          , C.QUEUE_1
+         , C.AGENT_1
+         , C.ANI
+         , HR.EMPLOYEE_ID
          , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS SUPERVISOR
+         , HR.SUPERVISOR_NAME_2 || ' (' || HR.SUPERVISOR_BADGE_ID_2 || ')' AS MANAGER
          , HR.BUSINESS_SITE_NAME                                           AS LOCATION
          , DATEDIFF(DAY, HR.HIRE_DATE, CURRENT_DATE)                       AS HIRE_TENURE
          , CASE
@@ -61,31 +65,35 @@ WITH CJP AS (
          -------------------
          , C.ON_HOLD
          , C.WRAPUP
-         , C.RINGING
-         , DATEDIFF(S, C.CALL_START, C.CALL_END) + C.WRAPUP                AS HANDLE_TIME
+         , C.MAX_DELAY
+         , DATEDIFF(S, C.CALL_START, C.CALL_END) + C.WRAPUP - C.MAX_DELAY  AS HANDLE_TIME
     FROM D_POST_INSTALL.T_CJP_CDR_TEMP AS C
              LEFT OUTER JOIN CALABRIO.T_PERSONS AS E
                              ON E.ACD_ID = C.AGENT_1_ACD_ID
              LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
                              ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
+    WHERE C.ANI != '0'
+    AND C.QUEUE_1 != 'Q_Test'
 )
 
-   , CJP_METRICS AS (
+   , AGENT_CALL_METRICS AS (
     /*
-     TODO: 90 Day trend of the following calabrio metrics:
-        Abandon Rate
-        "ASA by interval" -- More clarification will be needed
-        Inbound Volume
-        Outbound Volume
-        Adherence
-        Occupancy
-        ATC
-     */
+    TODO: 90 Day trend of the following calabrio metrics:
+       Abandon Rate
+       "ASA by interval" -- More clarification will be needed
+       Inbound Volume
+       Outbound Volume
+       Adherence
+       Occupancy
+       ATC
+    */
     SELECT
          -- ATTRIBUTES
-        C.DATE
+        C.DATE                                                 AS DAY
          , C.QUEUE_1
+         , C.EMPLOYEE_ID
          , C.SUPERVISOR
+         , C.MANAGER
          , C.LOCATION
          , C.HIRE_TENURE_BUCKET
          , C.HIRE_TENURE_BUCKET_NAMES
@@ -94,58 +102,37 @@ WITH CJP AS (
          , C.TEAM
 
          -- METRICS
-         , AVG(HANDLE_TIME)          AS AHT
-         , AVG(ON_HOLD)              AS HOLD
-         , AVG(C.WRAPUP)             AS ACW
-         , AVG(C.RINGING)            AS ASA
+         , AVG(HANDLE_TIME)                                    AS AHT
+         , AVG(ON_HOLD)                                        AS HOLD
+         , AVG(C.WRAPUP)                                       AS ACW
+         , AVG(C.MAX_DELAY)                                    AS ASA
          , COUNT(CASE
-                     WHEN C.QUEUE_1 ILIKE '%IB%'
-                         THEN 1 END) AS INBOUND_VOLUME
+                     WHEN NVL(C.QUEUE_1, 'No_Queue') NOT ILIKE '%OUT%' AND
+                          C.AGENT_1 IS NOT NULL
+                         THEN 1 END)                           AS INBOUND_VOLUME
          , COUNT(CASE
-                     WHEN C.QUEUE_1 ILIKE '%OUT%'
-                         THEN 1 END) AS OUTBOUND_VOLUME
+                     WHEN NVL(C.QUEUE_1, 'No_Queue') ILIKE '%OUT%'
+                         THEN 1 END)                           AS OUTBOUND_VOLUME
          , COUNT(CASE
-                     WHEN NVL(TEAM, 'Abandoned Call') = 'Abandoned Call'
-                         THEN 1 END) AS ABANDONDED_CALLS
-         , COUNT(C.DATE)             AS CALL_VOLUME
+                     WHEN NVL(AGENT_1, 'Abandoned Call') = 'Abandoned Call' AND
+                          NVL(C.QUEUE_1, 'No_Queue') NOT ILIKE '%OUT%'
+                         THEN 1 END)                           AS ABANDONDED_CALLS
+         , COUNT(C.ANI)                                        AS CALL_VOLUME
     FROM CJP AS C
+    WHERE ANI != '0'
     GROUP BY C.DATE
            , C.QUEUE_1
+           , C.EMPLOYEE_ID
            , C.SUPERVISOR
+           , C.MANAGER
            , C.LOCATION
            , C.HIRE_TENURE_BUCKET
            , C.HIRE_TENURE_BUCKET_NAMES
            , C.TEAM_TENURE_BUCKET
            , C.TEAM_TENURE_BUCKET_NAMES
            , C.TEAM
-)
-
-   , ADHERENCE AS (
-    SELECT *
-           -- round(sum(adh.total_good_minutes) / sum(nullif(adh.total_scheduled_minutes, 0)) * 100, 2) adhere
-           -- from d_post_install.t_hist_adherence adh
-
-           -- round(sum(ava.total_good_time) / sum(nullif(ava.total_work_time, 0)) * 100, 2) avail
-           -- from d_post_install.v_hist_availability ava
-    FROM CALABRIO.T_AGENT_ADHERENCE AS A
-)
-
-   , NOT_CALABRIO AS (
-    /*
-     TODO: 90 day trend of the following non-calbrio metrics if possible:
-        Effectiveness
-        Efficiency
-        Quality
-        WIP
-     */
-    SELECT *
-        /*
-         V_CX_KPIS_MAIN last run time:
-         1m 34s 40ms
-         (っ °Д °;)っ
-         */
-    FROM D_POST_INSTALL.V_CX_KPIS_MAIN AS KPI
+    ORDER BY C.DATE, C.QUEUE_1
 )
 
 SELECT *
-FROM ADHERENCE
+FROM AGENT_CALL_METRICS

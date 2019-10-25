@@ -1,10 +1,10 @@
 /*
  "
  To provide the sales team with an understanding of call:
- 1) types
- 2) issues
- 3) training gaps.
- 4) A decrease in call volume and upset customers.
+ 1) types -- Types of sales account.. Corporate, door to home, retail, etc.
+ 2) issues -- Types of sales calls?
+ 3) training gaps -- More definition is needed
+ 4) A decrease in call volume and upset customers -- Expecting an outcome is not a requirement of a report.
  "
 
  Sales wants to know data. Call data, volume, NIS and Door to Home, Which customer calls are which types of acocunts.
@@ -18,9 +18,9 @@
 
  Breakdown rolling 30 days
  Ratio of sales calls.
- Brakdown of top three call types.
+ Breakdown of top three call types.
 
- TODO: tie call events to case comments and activities created in the same day by agent.
+ TODO: tie call events to case comments and activities created in the same day by agent to find the "call types."
 
  */
 
@@ -30,66 +30,45 @@ WITH CALL_VIEW AS (
      If they don't, then they "why" can still be found by either the activity subject code OR
      by the parent case of the case comment left by the call.
      */
-    SELECT C.DATE
-         , C.QUEUE_1
-         , C.AGENT_1
-         , TP.TEAM
+    SELECT TO_DATE(C.START_TIMESTAMP) AS DATE
+         , C.QUEUE_NAME
+         , C.AGENT_NAME
+         , regexp_substr(TP.TEAM,
+                         ' [\\(\\[]([\\w\\s\\,&]*)[\\)\\]] ?',
+                         1, 1, 'e')   AS TEAM
          , CT.ACCOUNT_ID
          , P.SERVICE_STATE
-    FROM D_POST_INSTALL.T_CJP_CDR_TEMP AS C
+         , CS.PRIMARY_REASON
+         , TSK.SUBJECT
+    FROM CJP.V_CUSTOMER_ACTIVITY AS C
              LEFT JOIN RPT.T_CONTACT AS CT
                        ON NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE) = C.ANI
              LEFT JOIN RPT.T_PROJECT AS P
                        ON P.ACCOUNT_ID = CT.ACCOUNT_ID
              LEFT JOIN CALABRIO.T_PERSONS AS TP
-                       ON TP.ACD_ID = C.AGENT_1_ACD_ID
+                       ON TP.ACD_ID = C.AGENT_ACD_ID
              LEFT JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                        ON E.CJP_ID = TP.USER_ID
              LEFT JOIN RPT.V_SF_CASECOMMENT AS CC
-                       ON CC.CREATEDBYID = E.SALESFORCE_ID
-    WHERE C.session_id IS NOT NULL
-      AND C.contact_type != 'Master'
-      AND C.connected > 0
-      AND C.QUEUE_1 NOT ILIKE '%OUTDIAL%'
-    ORDER BY C.DATE DESC
+                       ON CC.CREATEDBYID = E.SALESFORCE_ID AND
+                          TO_DATE(CC.CREATEDATE) = TO_DATE(C.START_TIMESTAMP)
+             LEFT JOIN RPT.T_CASE AS CS
+                       ON CS.CASE_ID = CC.PARENTID
+             LEFT JOIN RPT.T_TASK AS TSK
+                       ON TSK.CREATED_BY_ID = E.SALESFORCE_ID AND
+                          TO_DATE(TSK.CREATED_DATE) = TO_DATE(C.START_TIMESTAMP)
+    WHERE UPPER(C.STATE) = 'CONNECTED'
+      AND UPPER(C.CALL_DIRECTION) = 'INBOUND'
+    ORDER BY DATE DESC
 )
 
-   , TASKS AS (
-    SELECT LD.BILLING_ACCOUNT
-         , LD.COLLECTION_CODE
-         , LD.COLLECTION_DATE
-         , LD.TOTAL_DELINQUENT_AMOUNT_DUE
-         , LD.AGE
-         , CASE
-               WHEN LD.AGE BETWEEN 1 AND 30
-                   THEN 30
-               WHEN LD.AGE BETWEEN 31 AND 60
-                   THEN 60
-               WHEN LD.AGE BETWEEN 61 AND 90
-                   THEN 90
-               WHEN LD.AGE BETWEEN 91 AND 120
-                   THEN 120
-               WHEN LD.AGE >= 121
-                   THEN 121
-        END                                                                AS AGE_BUCKET
-         , CASE
-               WHEN AGE_BUCKET = 30
-                   THEN '1 to 30'
-               WHEN AGE_BUCKET = 60
-                   THEN '31 to 60'
-               WHEN AGE_BUCKET = 90
-                   THEN '61 to 90'
-               WHEN AGE_BUCKET = 120
-                   THEN '91 to 120'
-               WHEN AGE_BUCKET = 121
-                   THEN '121+'
-        END                                                                AS AGE_BUCKET_TEXT
-         , 'Task Creation'                                                 AS UPDATE_TYPE
-         , 'https://vivintsolar.my.salesforce.com/' || T.PROJECT_ID        AS PARENT_OBJECT
-         , P.PROJECT_NAME                                                  AS PARENT_NAME
-         , 'https://vivintsolar.my.salesforce.com/' || T.TASK_ID           AS SELF
-         , T.SUBJECT                                                       AS SELF_NAME
-         , 'Task Type'                                                     AS SELF_KEY_ATTRIBUTE
+   , TASK_VIEW AS (
+    SELECT P.PROJECT_NAME
+         , T.CREATED_BY_ID
+         , USR.EMPLOYEE_ID__C                                              AS EMPLOYEE_ID
+         , USR.NAME
+         , T.TASK_ID
+         , T.SUBJECT
          , T.TYPE                                                          AS SELF_KEY_ATTRIBUTE_VALUE
          , USR.NAME                                                        AS CREATED_BY
          , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS DIRECT_MANAGER
@@ -109,7 +88,7 @@ WITH CALL_VIEW AS (
     WHERE LD.TOTAL_DELINQUENT_AMOUNT_DUE > 0
 )
 
-   , CASE_COMMENTS AS (
+   , CASE_COMMENT_VIEW AS (
     SELECT LD.BILLING_ACCOUNT
          , LD.COLLECTION_CODE
          , LD.COLLECTION_DATE
@@ -142,6 +121,13 @@ WITH CALL_VIEW AS (
     WHERE LD.TOTAL_DELINQUENT_AMOUNT_DUE > 0
 )
 
+   , MERGE AS (
+    SELECT ''
+    FROM CALL_VIEW
+       , TASK_VIEW
+       , CASE_COMMENT_VIEW
+)
+
    , MAIN AS (
     SELECT *
     FROM CALL_VIEW
@@ -157,4 +143,6 @@ WITH CALL_VIEW AS (
 )
 
 SELECT *
-FROM QUEUES
+FROM CALL_VIEW
+WHERE SUBJECT IS NOT NULL
+ORDER BY DATE DESC, AGENT_NAME

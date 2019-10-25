@@ -1,0 +1,28 @@
+WITH CALL_VIEW AS (
+    SELECT C.DATE
+         , C.QUEUE_1
+         , CT.ACCOUNT_ID
+         , TO_DATE(P.PTO_AWARDED)                                  AS PTO_DATE
+         , DATEADD('MM', 1, LAST_DAY(TO_DATE(P.PTO_AWARDED))) + 10 AS FIRST_BILLING_PERIOD_END
+    FROM D_POST_INSTALL.T_CJP_CDR_TEMP AS C
+             LEFT JOIN RPT.T_CONTACT AS CT
+                       ON NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE) = C.ANI
+             LEFT JOIN RPT.T_PROJECT AS P
+                       ON P.ACCOUNT_ID = CT.ACCOUNT_ID
+    WHERE C.session_id IS NOT NULL
+      AND C.contact_type != 'Master'
+      AND C.connected > 0
+      AND C.QUEUE_1 NOT ILIKE '%OUTDIAL%'
+    ORDER BY C.DATE DESC
+)
+
+, AGENTS AS (
+    SELECT ''
+)
+
+, AGENT_CALLS AS (
+    SELECT ''
+)
+
+SELECT *
+FROM AGENT_CALLS
