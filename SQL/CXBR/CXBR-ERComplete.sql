@@ -487,11 +487,11 @@ WITH ESCALATION_CASES AS (
 
    , MAIN AS (
     SELECT ION.MONTH1
-         , ION.TOTAL_CREATED -- KPI 1
-         , ION.TOTAL_CLOSED -- KPI 1
-         , ION.AVG_OPEN_AGE -- KPI 1
-         , CASE_MONTH_WIP.CASE_ACTIVE_WIP -- KPI 2
-         , GAP_MONTH_TABLE.AVG_GAP -- KPI 3
+         , ION.TOTAL_CREATED              AS "In"      -- KPI 1
+         , ION.TOTAL_CLOSED               AS "Out"     -- KPI 1
+         , ION.AVG_OPEN_AGE               AS "Age"     -- KPI 1
+         , CASE_MONTH_WIP.CASE_ACTIVE_WIP AS WIP       -- KPI 2
+         , GAP_MONTH_TABLE.AVG_GAP        AS "Avg Gap" -- KPI 3
          -- CLOSED WON VS CLOSED LOST -- KPI 4 DNE Need Salesforce Updates
          -- HIGH RISK STATES -- KPI 5 is a manual input from business owners
          , CASE_MONTH_WIP.ACTIVE_AGENTS

@@ -474,14 +474,14 @@ WITH DEFAULT_CASES AS (
      ( •̀ ω •́ )y
      */
     SELECT ION.MONTH1
-         , ION.TOTAL_CREATED             -- Metric 1
-         , ION.TOTAL_CLOSED              -- Metric 1
-         , CASE_MONTH_WIP.CASE_TOTAL_WIP -- Metric 2
-         , COVERAGE.TOTAL_UPDATES        -- Information
-         , COVERAGE.X_COVERAGE           -- Metric 3
-         , ION.CLOSED_WON_RATIO          -- Metric 4
-         , ION.TOTAL_AMOUNT_SAVED        -- Metric 5
-         , CASE_MONTH_WIP.ACTIVE_AGENTS  -- Indirect Reference Point
+         , ION.TOTAL_CREATED             AS "In"         -- Metric 1
+         , ION.TOTAL_CLOSED              AS "Out"        -- Metric 1
+         , CASE_MONTH_WIP.CASE_TOTAL_WIP AS WIP          -- Metric 2
+         , COVERAGE.TOTAL_UPDATES        AS "Updates"    -- Information
+         , COVERAGE.X_COVERAGE           AS "X Coverage" -- Metric 3
+         , ION.CLOSED_WON_RATIO          AS WL           -- Metric 4
+         , ION.TOTAL_AMOUNT_SAVED        AS "Saved"      -- Metric 5
+         , CASE_MONTH_WIP.ACTIVE_AGENTS                  -- Indirect Reference Point
     FROM ION
        , CASE_MONTH_WIP
        , GAP_MONTH_TABLE

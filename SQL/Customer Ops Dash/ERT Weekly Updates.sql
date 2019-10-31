@@ -95,6 +95,8 @@ WITH ESCALATION_CASES AS (
    , FULL_CASE AS (
     SELECT CASE_NUMBER
          , ANY_VALUE(SUBJECT)                                                AS SUBJECT
+         , ANY_VALUE(CAD.SYSTEM_SIZE)                                        AS SYSTEM_SIZE
+         , ANY_VALUE(CAD.SYSTEM_SIZE) * (1000 * 4)                           AS SYSTEM_VALUE
          , ANY_VALUE(STATUS)                                                 AS STATUS
          , ANY_VALUE(CUSTOMER_TEMPERATURE)                                   AS CUSTOMER_TEMPERATURE
          , ANY_VALUE(CHT.CASE_CREATED_DATE)                                  AS CREATED_DATE
@@ -104,6 +106,8 @@ WITH ESCALATION_CASES AS (
                     NVL(TO_DATE(ANY_VALUE(CASE_CLOSED_DATE)), CURRENT_DATE)) AS CASE_AGE
          , AVG(LAG_GAP)                                                      AS AVERAGE_GAP
     FROM CASE_HISTORY_TABLE AS CHT
+             LEFT OUTER JOIN RPT.T_SYSTEM_DETAILS_SNAP AS CAD
+                             ON CAD.PROJECT_ID = CHT.PROJECT_ID
     GROUP BY CASE_NUMBER
     ORDER BY CASE_NUMBER
 )
@@ -357,6 +361,7 @@ WITH ESCALATION_CASES AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          FC.STATUS NOT ILIKE '%DISPUTE%' AND
                           (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
                          THEN 1 END) AS CASE_ACTIVE_WIP
     FROM RPT.T_DATES AS D
@@ -418,14 +423,20 @@ WITH ESCALATION_CASES AS (
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT
                                THEN 1 END) / DW.ACTIVE_AGENTS, 2) AS AVERAGE_CLOSED
-
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CLOSED_DATE) = D.DT
                                THEN 1 END), 2)                    AS TOTAL_CLOSED
+         , ROUND(SUM(CASE
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT
+                             THEN SYSTEM_VALUE END), 2)           AS TOTAL_CLOSED_SAVED
+         , ROUND(SUM(CASE
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT
+                             AND STATUS ILIKE '%SAVE%'
+                             THEN SYSTEM_VALUE END), 2)           AS CLOSED_WON_SAVED
+         , ROUND(CLOSED_WON_SAVED / TOTAL_CLOSED_SAVED, 4)        AS CLOSED_WON_RATIO
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CREATED_DATE) = D.DT
                                THEN 1 END) / DW.ACTIVE_AGENTS, 2) AS AVERAGE_CREATED
-
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(CREATED_DATE) = D.DT
                                THEN 1 END), 2)                    AS TOTAL_CREATED
@@ -481,11 +492,8 @@ WITH ESCALATION_CASES AS (
 )
 
    , TEST_RESULTS AS (
-    SELECT AVG(DATEDIFF(DAY, TO_DATE(FC.CREATED_DATE), TO_DATE(FC.CLOSED_DATE))) AS AGE
-    FROM FULL_CASE AS FC
-    WHERE TO_DATE(FC.CLOSED_DATE) BETWEEN
-              DATEADD(DAY, -7, CURRENT_DATE) AND
-              DATEADD(DAY, -1, CURRENT_DATE)
+    SELECT *
+    FROM ION
 )
 
    , MAIN AS (
@@ -513,4 +521,4 @@ WITH ESCALATION_CASES AS (
 )
 
 SELECT *
-FROM MAIN
+FROM TEST_RESULTS

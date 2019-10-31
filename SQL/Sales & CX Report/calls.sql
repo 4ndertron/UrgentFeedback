@@ -30,107 +30,95 @@ WITH CALL_VIEW AS (
      If they don't, then they "why" can still be found by either the activity subject code OR
      by the parent case of the case comment left by the call.
      */
-    SELECT TO_DATE(C.START_TIMESTAMP) AS DATE
-         , C.QUEUE_NAME
-         , C.AGENT_NAME
-         , regexp_substr(TP.TEAM,
-                         ' [\\(\\[]([\\w\\s\\,&]*)[\\)\\]] ?',
-                         1, 1, 'e')   AS TEAM
-         , CT.ACCOUNT_ID
-         , P.SERVICE_STATE
-         , CS.PRIMARY_REASON
-         , TSK.SUBJECT
-    FROM CJP.V_CUSTOMER_ACTIVITY AS C
-             LEFT JOIN RPT.T_CONTACT AS CT
-                       ON NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE) = C.ANI
-             LEFT JOIN RPT.T_PROJECT AS P
-                       ON P.ACCOUNT_ID = CT.ACCOUNT_ID
-             LEFT JOIN CALABRIO.T_PERSONS AS TP
-                       ON TP.ACD_ID = C.AGENT_ACD_ID
-             LEFT JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
-                       ON E.CJP_ID = TP.USER_ID
-             LEFT JOIN RPT.V_SF_CASECOMMENT AS CC
-                       ON CC.CREATEDBYID = E.SALESFORCE_ID AND
-                          TO_DATE(CC.CREATEDATE) = TO_DATE(C.START_TIMESTAMP)
-             LEFT JOIN RPT.T_CASE AS CS
-                       ON CS.CASE_ID = CC.PARENTID
-             LEFT JOIN RPT.T_TASK AS TSK
-                       ON TSK.CREATED_BY_ID = E.SALESFORCE_ID AND
-                          TO_DATE(TSK.CREATED_DATE) = TO_DATE(C.START_TIMESTAMP)
-    WHERE UPPER(C.STATE) = 'CONNECTED'
-      AND UPPER(C.CALL_DIRECTION) = 'INBOUND'
+
+    /*
+     114837 DISTINCT NUMBERS
+     73826 DISTINCT MAPPED NUMBERS
+     64.2876% OF ALL NUMBERS ARE MAPPED WITH THIS METHOD
+     */
+    SELECT C.SESSION_ID
+         , ANY_VALUE(C.DATE)           AS DATE        -- WHEN
+         , ANY_VALUE(E.EMPLOYEE_ID)    AS EMPLOYEE_ID -- WHO
+         , ANY_VALUE(C.ANI)            AS ANI
+         , ANY_VALUE(C.AGENT_1_ACD_ID) AS AGENT_1_ACD_ID
+         , ANY_VALUE(AC.CONTACT_PHONE) AS LD_CONTACT
+         , ANY_VALUE(CT.CLEAN_PHONE)   AS SF_CONTACT
+    FROM D_POST_INSTALL.T_CJP_CDR_TEMP AS C
+             LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
+                             ON E.CJP_ID = C.AGENT_1_ACD_ID
+             LEFT OUTER JOIN RPT.T_CONTACT AS CT
+                             ON CT.CLEAN_PHONE = C.ANI
+             LEFT OUTER JOIN (
+        SELECT REGEXP_SUBSTR(BILL_TO_CONTACT_PHONE, '\\d+', 1, 1, 'e') AS CONTACT_PHONE
+        FROM LD.T_ACCT_CONV) AS AC
+                             ON AC.CONTACT_PHONE = C.ANI
+    GROUP BY C.SESSION_ID
     ORDER BY DATE DESC
 )
 
    , TASK_VIEW AS (
-    SELECT P.PROJECT_NAME
-         , T.CREATED_BY_ID
-         , USR.EMPLOYEE_ID__C                                              AS EMPLOYEE_ID
-         , USR.NAME
-         , T.TASK_ID
-         , T.SUBJECT
-         , T.TYPE                                                          AS SELF_KEY_ATTRIBUTE_VALUE
-         , USR.NAME                                                        AS CREATED_BY
-         , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS DIRECT_MANAGER
-         , HR.SUPERVISORY_ORG
-         , T.CREATED_DATE
+    /*
+     TODO: JOIN TO CALLS ON WHO AND WHEN
+     */
+    SELECT T.TASK_ID
+         , E.EMPLOYEE_ID  -- WHO
+         , T.CREATED_DATE -- WHEN
     FROM RPT.T_TASK AS T
-             LEFT OUTER JOIN RPT.T_PROJECT AS P
-                             ON T.PROJECT_ID = P.PROJECT_ID
-             LEFT OUTER JOIN LD.T_DAILY_DATA_EXTRACT AS LD
-                             ON LD.BILLING_ACCOUNT = P.SOLAR_BILLING_ACCOUNT_NUMBER
              LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                              ON E.SALESFORCE_ID = T.CREATED_BY_ID
              LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
                              ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
-             LEFT OUTER JOIN RPT.V_SF_USER AS USR
-                             ON USR.ID = T.CREATED_BY_ID
-    WHERE LD.TOTAL_DELINQUENT_AMOUNT_DUE > 0
 )
 
    , CASE_COMMENT_VIEW AS (
-    SELECT LD.BILLING_ACCOUNT
-         , LD.COLLECTION_CODE
-         , LD.COLLECTION_DATE
-         , LD.TOTAL_DELINQUENT_AMOUNT_DUE
-         , LD.AGE
-         , 'Case Comment Creation'                                         AS UPDATE_TYPE
-         , 'https://vivintsolar.my.salesforce.com/' || cc.PARENTID         AS PARENT_OBJECT
-         , C.CASE_NUMBER                                                   AS PARENT_NAME
-         , CC.ID                                                           AS SELF
-         , CC.CREATEDBYID                                                  AS SELF_NAME
-         , 'Comment Body'                                                  AS SELF_KEY_ATTRIBUTE
-         , CC.COMMENTBODY                                                  AS SELF_KEY_ATTRIBUTE_VALUE
-         , USR.NAME                                                        AS CREATED_BY
-         , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS DIRECT_MANAGER
-         , HR.SUPERVISORY_ORG
-         , CC.CREATEDATE                                                   AS CREATED_DATE
+    /*
+     TODO: JOIN TO CALLS ON WHO AND WHEN
+     */
+    SELECT CC.ID
+         , HR.EMPLOYEE_ID                -- WHO
+         , CC.CREATEDATE AS CREATED_DATE -- WHEN
     FROM RPT.V_SF_CASECOMMENT AS CC
-             LEFT OUTER JOIN RPT.T_CASE AS C
-                             ON C.CASE_ID = CC.PARENTID
-             LEFT OUTER JOIN RPT.T_PROJECT AS P
-                             ON P.PROJECT_ID = C.PROJECT_ID
-             LEFT OUTER JOIN LD.T_DAILY_DATA_EXTRACT AS LD
-                             ON LD.BILLING_ACCOUNT = P.SOLAR_BILLING_ACCOUNT_NUMBER
              LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                              ON E.SALESFORCE_ID = cc.CREATEDBYID
              LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
                              ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
-             LEFT OUTER JOIN RPT.V_SF_USER AS USR
-                             ON USR.ID = CC.CREATEDBYID
-    WHERE LD.TOTAL_DELINQUENT_AMOUNT_DUE > 0
 )
 
    , MERGE AS (
-    SELECT ''
-    FROM CALL_VIEW
-       , TASK_VIEW
-       , CASE_COMMENT_VIEW
+    /*
+     TODO: CHECK THIS METHOD AGAINST THE MAPPED CALLS
+     */
+    SELECT CV.SESSION_ID
+         , ANY_VALUE(CV.EMPLOYEE_ID)   AS CV_EMPLOYEE_ID
+         , ANY_VALUE(CV.DATE)          AS CV_DATE
+         , TV.TASK_ID
+         , ANY_VALUE(TV.EMPLOYEE_ID)   AS TV_EMPLOYEE_ID
+         , ANY_VALUE(TV.CREATED_DATE)  AS TV_DATE
+         , CCV.ID                      AS CASE_COMMENT_ID
+         , ANY_VALUE(CCV.EMPLOYEE_ID)  AS CCV_EMPLOYEE_ID
+         , ANY_VALUE(CCV.CREATED_DATE) AS CCV_DATE
+    FROM CALL_VIEW AS CV
+             LEFT OUTER JOIN TASK_VIEW AS TV
+                             ON TV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
+                                TV.CREATED_DATE = CV.DATE
+             LEFT OUTER JOIN CASE_COMMENT_VIEW AS CCV
+                             ON CCV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
+                                CCV.CREATED_DATE = CV.DATE
+    WHERE CV.DATE = DATEADD(d, -5, CURRENT_DATE)
+      AND TV.TASK_ID IS NOT NULL
+      AND CCV.ID IS NOT NULL
+    GROUP BY CV.SESSION_ID
+           , TV.TASK_ID
+           , CCV.ID
 )
 
    , MAIN AS (
-    SELECT *
-    FROM CALL_VIEW
+    SELECT COUNT(SESSION_ID)          AS CALL_RECORDS
+         , COUNT(DISTINCT SESSION_ID) AS UNIQUE_CALLS
+         , COUNT(CV_EMPLOYEE_ID)      AS CV_EMPLOYEE_CT
+         , COUNT(TV_EMPLOYEE_ID)      AS TV_EMPLOYEE_CT
+         , COUNT(CCV_EMPLOYEE_ID)     AS CCV_EMPLOYEE_CT
+    FROM MERGE
 )
 
    , QUEUES AS (
@@ -142,7 +130,29 @@ WITH CALL_VIEW AS (
       AND Q.QUEUE_NAME IS NOT NULL
 )
 
+   , TEST_TASK AS (
+    SELECT COUNT(TV.TASK_ID)          AS ALL_TASKS
+         , COUNT(DISTINCT TV.TASK_ID) AS UNIQUE_TASKS
+         , COUNT(TV.EMPLOYEE_ID)      AS TV_EMPLOYEE_COUNT
+    FROM TASK_VIEW AS TV
+    WHERE TV.CREATED_DATE = DATEADD(d, -5, CURRENT_DATE)
+)
+
+   , TEST_CASE_COMMENT AS (
+    SELECT COUNT(CCV.ID)          AS ALL_CASE_COMMENTS
+         , COUNT(DISTINCT CCV.ID) AS UNIQUE_CASE_COMMENTS
+         , COUNT(CCV.EMPLOYEE_ID) AS CCV_EMPLOYEE_COUNT
+    FROM CASE_COMMENT_VIEW AS CCV
+    WHERE CCV.CREATED_DATE = DATEADD(d, -5, CURRENT_DATE)
+)
+
+   , TEST_CALLS AS (
+    SELECT COUNT(CV.SESSION_ID)          AS ALL_CALLS
+         , COUNT(DISTINCT CV.SESSION_ID) AS DISTINCT_CALLS
+         , COUNT(CV.EMPLOYEE_ID)         AS CV_EMPLOYEE_COUNT
+    FROM CALL_VIEW AS CV
+    WHERE CV.DATE = DATEADD(d, -5, CURRENT_DATE)
+)
+
 SELECT *
-FROM CALL_VIEW
-WHERE SUBJECT IS NOT NULL
-ORDER BY DATE DESC, AGENT_NAME
+FROM MAIN

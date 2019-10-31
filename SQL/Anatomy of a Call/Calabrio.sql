@@ -3,9 +3,10 @@ WITH CJP AS (
          , C.QUEUE_1
          , C.AGENT_1
          , C.ANI
-         , HR.EMPLOYEE_ID
+         , HR.FULL_NAME || ' (' || HR.EMPLOYEE_ID || ')'                   AS EMPLOYEE
          , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS SUPERVISOR
-         , HR.SUPERVISOR_NAME_2 || ' (' || HR.SUPERVISOR_BADGE_ID_2 || ')' AS MANAGER
+         , COALESCE(HR.MGR_NAME_5, HR.MGR_NAME_4, HR.MGR_NAME_3) ||
+           ' (' || COALESCE(HR.MGR_ID_5, HR.MGR_ID_4, HR.MGR_ID_3) || ')'  AS MANAGER
          , HR.BUSINESS_SITE_NAME                                           AS LOCATION
          , DATEDIFF(DAY, HR.HIRE_DATE, CURRENT_DATE)                       AS HIRE_TENURE
          , CASE
@@ -59,7 +60,8 @@ WITH CJP AS (
         END                                                                AS TEAM_TENURE_BUCKET_NAMES
          , nvl(regexp_substr(E.TEAM,
                              ' [\\(\\[]([\\w\\s\\,&]*)[\\)\\]] ?',
-                             1, 1, 'e'), E.TEAM)                           AS TEAM
+                             1, 1, 'e'),
+               E.TEAM)                                                     AS TEAM
          -------------------
          -- Metric Fields --
          -------------------
@@ -73,7 +75,7 @@ WITH CJP AS (
              LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
                              ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
     WHERE C.ANI != '0'
-    AND C.QUEUE_1 != 'Q_Test'
+      AND C.QUEUE_1 != 'Q_Test'
 )
 
    , AGENT_CALL_METRICS AS (
@@ -89,9 +91,9 @@ WITH CJP AS (
     */
     SELECT
          -- ATTRIBUTES
-        C.DATE                                                 AS DAY
+        C.DATE                       AS DAY
          , C.QUEUE_1
-         , C.EMPLOYEE_ID
+         , C.EMPLOYEE
          , C.SUPERVISOR
          , C.MANAGER
          , C.LOCATION
@@ -102,27 +104,28 @@ WITH CJP AS (
          , C.TEAM
 
          -- METRICS
-         , AVG(HANDLE_TIME)                                    AS AHT
-         , AVG(ON_HOLD)                                        AS HOLD
-         , AVG(C.WRAPUP)                                       AS ACW
-         , AVG(C.MAX_DELAY)                                    AS ASA
+         , AVG(HANDLE_TIME)          AS AHT
+         , AVG(ON_HOLD)              AS HOLD
+         , AVG(C.WRAPUP)             AS ACW
+         , AVG(C.MAX_DELAY)          AS ASA
          , COUNT(CASE
                      WHEN NVL(C.QUEUE_1, 'No_Queue') NOT ILIKE '%OUT%' AND
                           C.AGENT_1 IS NOT NULL
-                         THEN 1 END)                           AS INBOUND_VOLUME
+                         THEN 1 END) AS INBOUND_VOLUME
          , COUNT(CASE
                      WHEN NVL(C.QUEUE_1, 'No_Queue') ILIKE '%OUT%'
-                         THEN 1 END)                           AS OUTBOUND_VOLUME
+                         THEN 1 END) AS OUTBOUND_VOLUME
          , COUNT(CASE
                      WHEN NVL(AGENT_1, 'Abandoned Call') = 'Abandoned Call' AND
                           NVL(C.QUEUE_1, 'No_Queue') NOT ILIKE '%OUT%'
-                         THEN 1 END)                           AS ABANDONDED_CALLS
-         , COUNT(C.ANI)                                        AS CALL_VOLUME
+                         THEN 1 END) AS ABANDONDED_CALLS
+         , COUNT(C.ANI)              AS CALL_VOLUME
+         , CURRENT_DATE              AS LAST_REFRESHED
     FROM CJP AS C
     WHERE ANI != '0'
     GROUP BY C.DATE
            , C.QUEUE_1
-           , C.EMPLOYEE_ID
+           , C.EMPLOYEE
            , C.SUPERVISOR
            , C.MANAGER
            , C.LOCATION

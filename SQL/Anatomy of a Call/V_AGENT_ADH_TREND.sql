@@ -1,6 +1,7 @@
 WITH CALABRIO_VIEW AS (
     SELECT ADH.ADH_ACD_AGENT_ID
          , E.EMPLOYEE_ID
+         , HR.FULL_NAME || ' (' || HR.EMPLOYEE_ID || ')' AS EMPLOYEE
          , ADH.DETAIL_SCHEDULED_ACTIVITY_TYPE
          , ADH.DETAIL_SCHEDULED_ACTIVITY_START_TIME
          , ADH.ADH_SCHEDULED_SECONDS
@@ -10,10 +11,12 @@ WITH CALABRIO_VIEW AS (
     FROM CALABRIO.T_AGENT_ADHERENCE AS ADH -- I don't think this has a '1001735-0' value
              LEFT JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                        ON E.CJP_ID = ADH.ADH_ACD_AGENT_ID
+             LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
+                             ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
 )
 
    , AGENT_STATES AS (
-    SELECT CP.EMPLOYEE_ID
+    SELECT HR.FULL_NAME || ' (' || HR.EMPLOYEE_ID || ')'                   AS EMPLOYEE
          , A.START_TIMESTAMP
          , A.END_TIMESTAMP
          , IFF(A.STATE IN
@@ -23,7 +26,8 @@ WITH CALABRIO_VIEW AS (
                'NOT CALL')                                                 AS STATE_BUCKET
          , TO_DATE(A.START_TIMESTAMP)                                      AS START_DAY
          , HR.SUPERVISOR_NAME_1 || ' (' || HR.SUPERVISOR_BADGE_ID_1 || ')' AS SUPERVISOR
-         , HR.SUPERVISOR_NAME_2 || ' (' || HR.SUPERVISOR_BADGE_ID_2 || ')' AS MANAGER
+         , COALESCE(HR.MGR_NAME_5, HR.MGR_NAME_4, HR.MGR_NAME_3) ||
+           ' (' || COALESCE(HR.MGR_ID_5, HR.MGR_ID_4, HR.MGR_ID_3) || ')'  AS MANAGER
          , HR.BUSINESS_SITE_NAME                                           AS LOCATION
          , DATEDIFF(DAY, HR.HIRE_DATE, CURRENT_DATE)                       AS HIRE_TENURE
          , CASE
@@ -93,28 +97,28 @@ WITH CALABRIO_VIEW AS (
 )
 
    , ADHERENCE AS (
-    SELECT EMPLOYEE_ID
+    SELECT EMPLOYEE
          , TO_DATE(DETAIL_SCHEDULED_ACTIVITY_START_TIME)                   AS DAY
          , SUM(DISTINCT DETAIL_IN_ADHERENCE_SECONDS)                       AS ADHERENCE_NUM
          , MAX(ADH_SCHEDULED_SECONDS)                                      AS ADHERENCE_DENOM
          , IFF(ADHERENCE_DENOM = 0, NULL, ADHERENCE_NUM / ADHERENCE_DENOM) AS ADHERENCE
     FROM CALABRIO_VIEW
-    GROUP BY EMPLOYEE_ID
+    GROUP BY EMPLOYEE
            , DAY
-    ORDER BY EMPLOYEE_ID, DAY
+    ORDER BY EMPLOYEE, DAY
 )
 
    , ATC AS (
-    SELECT EMPLOYEE_ID
+    SELECT EMPLOYEE
          , TO_DATE(DETAIL_SCHEDULED_ACTIVITY_START_TIME)                                       AS DAY
          , MAX(ADH_ACTUAL_IN_SERVICE_SECONDS)                                                  AS ATC_NUM
          , SUM(DISTINCT IFF(DETAIL_SCHEDULED_ACTIVITY_TYPE = 'in_service',
                             DETAIL_IN_ADHERENCE_SECONDS + DETAIL_OUT_OF_ADHERENCE_SECONDS, 0)) AS ATC_DENOM
          , IFF(ATC_DENOM = 0, NULL, ATC_NUM / ATC_DENOM)                                       AS ATC
     FROM CALABRIO_VIEW
-    GROUP BY EMPLOYEE_ID
+    GROUP BY EMPLOYEE
            , DAY
-    ORDER BY EMPLOYEE_ID, DAY
+    ORDER BY EMPLOYEE, DAY
 )
 
 
@@ -123,7 +127,7 @@ WITH CALABRIO_VIEW AS (
         /*
          ATTRIBUTE FIELDS
          */
-        EMPLOYEE_ID
+        EMPLOYEE
          , START_DAY
          , ANY_VALUE(SUPERVISOR)                    AS SUPERVISOR
          , ANY_VALUE(MANAGER)                       AS MANAGER
@@ -148,8 +152,8 @@ WITH CALABRIO_VIEW AS (
          , SECONDS_ON_CALL / SECONDS_OFF_CALL       AS OCCUPANCY_SCORE
     FROM AGENT_STATES
     WHERE TIME_DELTA_SECONDS > 0
-    GROUP BY EMPLOYEE_ID, START_DAY
-    ORDER BY EMPLOYEE_ID, START_DAY
+    GROUP BY EMPLOYEE, START_DAY
+    ORDER BY EMPLOYEE, START_DAY
 )
 
    , AGENT_METRICS AS (
@@ -157,7 +161,7 @@ WITH CALABRIO_VIEW AS (
         /*
          FINAL ATTRIBUTES
          */
-        ADH.EMPLOYEE_ID
+        ADH.EMPLOYEE
          , ADH.DAY
          , ANY_VALUE(OCC.SUPERVISOR)               AS SUPERVISOR
          , ANY_VALUE(OCC.MANAGER)                  AS MANAGER
@@ -176,14 +180,15 @@ WITH CALABRIO_VIEW AS (
          , ANY_VALUE(ADH.ADHERENCE)                AS ADHERENCE
          , ANY_VALUE(AC.ATC)                       AS ATC
          , ANY_VALUE(OCC.OCCUPANCY_SCORE)          AS OCCUPANCY_SCORE
+         , CURRENT_DATE                            AS LAST_REFRESHED
     FROM ADHERENCE AS ADH
              INNER JOIN ATC AS AC
-                        ON AC.EMPLOYEE_ID = ADH.EMPLOYEE_ID AND
+                        ON AC.EMPLOYEE = ADH.EMPLOYEE AND
                            AC.DAY = ADH.DAY
              INNER JOIN OCCUPANCY AS OCC
-                        ON OCC.EMPLOYEE_ID = ADH.EMPLOYEE_ID AND
+                        ON OCC.EMPLOYEE = ADH.EMPLOYEE AND
                            OCC.START_DAY = ADH.DAY
-    GROUP BY ADH.EMPLOYEE_ID
+    GROUP BY ADH.EMPLOYEE
            , ADH.DAY
 )
 
