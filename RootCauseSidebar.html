@@ -18,20 +18,55 @@
         function handleFormSubmit(e) {
             google.script.run.processForm(e);
         }
+
+        function handleClick(e) {
+            var type = e.toElement.className;
+            console.log(type);
+            if (type == 'parent') {
+                var state = e.toElement.children[0].style.display;
+                console.log(state);
+                if (e.toElement.children[0].style.display == '') {
+                    showChild(e)
+                } else if (state != 'none') {
+                    hideChild(e)
+                } else {
+                    showChild(e)
+                }
+            }
+        }
+        function showChild(e) {
+            console.log('showChild called')
+            console.log('clicked: ' + e.toElement.innerText)
+            var children = e.toElement.children;
+            for (child = 0; child < children.length; child++) {
+                children[child].style.display='inline';
+            }
+        }
+        function hideChild(e) {
+            console.log('hideChild called')
+            console.log('clicked: ' + e.toElement.innerText)
+            var children = e.toElement.children;
+            for (child = 0; child < children.length; child++) {
+                children[child].style.display='none';
+            }
+        }
     </script>
     <style>
-
-        .parent {
-            position: relative;
-            display: inline-block;
-            border-bottom: 1px black;
+        .child {
+            display: none;
         }
 
-        .parent .tooltip {
+        .parent {
+            margin-left: 25px;
+            font-size: 14px;
+        }
+
+        .tooltip {
             position: relative;
-            display: inline-block;
+            display: none;
             border-bottom: 1px dotted black;
-            visibility: hidden;
+            font-size: 12px;
+            word-break: normal;
         }
 
         .tooltip .tooltiptext {
@@ -55,9 +90,6 @@
             visibility: visible;
         }
 
-        .parent:focus .tooltip {
-            visibility: visible;
-        }
     </style>
 </head>
 <body>
@@ -67,374 +99,317 @@
     <hr>
     <div>Select all of the root cause tags that apply.</div>
     <br>
+    <br>
     <!-- Begin emailSidebarText GAS function results -->
-     <div class="parent" tabindex="1"></div>
-        <br>
-        <div>Sales</div>
+    <div>Sales</div>
         <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Contract Misrepresentation - Sales</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Auto-pay'/><div class="tooltip">Auto-pay<span class="tooltiptext">Customer was unaware that they were being billed on an automatic basis (auto-pay was explained by the Sales Manager, but unaware that they were being auto-enrolled</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Cancellation - Fee'/><div class="tooltip">Cancellation - Fee<span class="tooltiptext">customer upset, as the understood that the RnR fee was the cancelation fee.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Cancellation - No Penalty'/><div class="tooltip">Cancellation - No Penalty<span class="tooltiptext">customer upset , as they felt that the cancellation process wasn't explained</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Confirmation Email - PPA'/><div class="tooltip">Confirmation Email - PPA<span class="tooltiptext">Customer Claimed they weren't getting the confirmation email finalizing the creation process .</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Contract Type Billing Method'/><div class="tooltip">Contract Type Billing Method<span class="tooltiptext">Customer didn't understand how a lease worked and asked for compensation</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Duration'/><div class="tooltip">Duration<span class="tooltiptext">custom claimed that they were never told of the agreement duration</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Free Energy'/><div class="tooltip">Free Energy<span class="tooltiptext">customer upset, as they understood that the system, and energy produced, would be free of charge. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Internet'/><div class="tooltip">Internet<span class="tooltiptext">Customer wasn't aware that the system requires constant internet access. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Law / Code'/><div class="tooltip">Law / Code<span class="tooltiptext">customer upset , as they were told that solar equipment was required by law to be installed. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Loan - Monthly Amount'/><div class="tooltip">Loan - Monthly Amount<span class="tooltiptext">Customer claims that weren't given a monthly loan amount </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Loan - Principal'/><div class="tooltip">Loan - Principal<span class="tooltiptext">Customer unaware of the total loan amount</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Loan - Provider'/><div class="tooltip">Loan - Provider<span class="tooltiptext">Customer claims that they were unaware of a 3rd party loan provider finiaching the loan. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Loan - Reamortization '/><div class="tooltip">Loan - Reamortization <span class="tooltiptext">Customer claims they weren't given info on the Reamortization process or due date</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Production - Consumption'/><div class="tooltip">Production - Consumption<span class="tooltiptext">Customer was unaware that they would be invoiced for solar production vs consumption</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Production - Solar Offset '/><div class="tooltip">Production - Solar Offset <span class="tooltiptext">Customer wasn't given adequate info of the offset percentage from the Sales Manager</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='SREC'/><div class="tooltip">SREC<span class="tooltiptext">Customer claims they weren't given info regarding the SREC</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility -  Program'/><div class="tooltip">Utility -  Program<span class="tooltiptext">customer upset, as they were told that solar equipment was part of a utility program</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility - Net Metering'/><div class="tooltip">Utility - Net Metering<span class="tooltiptext">Customer cited that the utility company was tracking site production and felt VSLR was over invoicing because the "production" did not match between the utility and VSLR invoice </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Unaware - Contract'/><div class="tooltip">Unaware - Contract<span class="tooltiptext">Customer claims that they weren't aware that they were signing an agreement with VSLR. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Unmet Savings -  Flat Rate'/><div class="tooltip">Unmet Savings -  Flat Rate<span class="tooltiptext">Customer claims that the aren't seeing th savings that was promised by the sales manager - was promised that they'd be paying a flat rate with VSLR</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Unmet Savings - % of savings'/><div class="tooltip">Unmet Savings - % of savings<span class="tooltiptext">Customer was told that they would be saving a certain % of savings</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Dispute - Sales</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Acquaintance - Lower Rate'/><div class="tooltip">Acquaintance - Lower Rate<span class="tooltiptext">Freedom Pricing program</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Age'/><div class="tooltip">Age<span class="tooltiptext">Customer feels that they were taken advantage of, due to age. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credit Authorization'/><div class="tooltip">Credit Authorization<span class="tooltiptext">customer was upset ask they weren't notified that their credit would be ran. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Design - Alteration'/><div class="tooltip">Design - Alteration<span class="tooltiptext">Customer upset that they were not notified of any changes from the initial Welcome Packet</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Install - Conduit Run'/><div class="tooltip">Install - Conduit Run<span class="tooltiptext">customer upset over where the conduit was installed, or not painted</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Install - Electrical Equipment'/><div class="tooltip">Install - Electrical Equipment<span class="tooltiptext">customer upset over where the electrical equipment was installed - not aware of how much equipment would be installed on the side of the home</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Lien'/><div class="tooltip">Lien<span class="tooltiptext">Customer understood the filing to be a lien against the home</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - Animal Guards / Skirts'/><div class="tooltip">Panel - Animal Guards / Skirts<span class="tooltiptext">customer upset that the animal guards / skirts are either unsitly or install incorrectly</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - Cleaning'/><div class="tooltip">Panel - Cleaning<span class="tooltiptext">Customer wasn't told that they had to clean the panels themselves</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - Location / Arrangement'/><div class="tooltip">Panel - Location / Arrangement<span class="tooltiptext">customer upset over the location / arrangement of the panels</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - No Skirts'/><div class="tooltip">Panel - No Skirts<span class="tooltiptext">Customer upset that the equipment under the panels could be seen -</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - Orientation'/><div class="tooltip">Panel - Orientation<span class="tooltiptext">Customer was upset because of the orientation of the panels.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Panel - Type / Color'/><div class="tooltip">Panel - Type / Color<span class="tooltiptext">customer was upset because of either the panels don't match, or the panels are a different color</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Pre-Solar Utility Discount Program'/><div class="tooltip">Pre-Solar Utility Discount Program<span class="tooltiptext">Customer is on a CARE program with the utility</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Tax Credit'/><div class="tooltip">Tax Credit<span class="tooltiptext">Customer claimed that the tax credit process hadn't been explained </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Time to PTO'/><div class="tooltip">Time to PTO<span class="tooltiptext">Customer claims that they weren't told of the time to PTO</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Transfer Process'/><div class="tooltip">Transfer Process<span class="tooltiptext">Customer was unaware of the transfer process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Transformer Upgrade'/><div class="tooltip">Transformer Upgrade<span class="tooltiptext">Customer upset that they were unaware of a transformer upgrade</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Usage Error'/><div class="tooltip">Usage Error<span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset % - due to incorrect utility info submitted by Sales Manager</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR Coverage Area'/><div class="tooltip">VSLR Coverage Area<span class="tooltiptext">No VSLR Coverage Area </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Add-On'/><div class="tooltip">Add-On<span class="tooltiptext">Customer Claiming that they never needed the add-on system. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Roof Age'/><div class="tooltip">Roof Age<span class="tooltiptext">Customer claiming that the panels should never have been installed - lied to</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Annual Escalator '/><div class="tooltip">Annual Escalator <span class="tooltiptext">customer claims the annual escalator wasn't explained. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Forgery'/><div class="tooltip">Forgery<span class="tooltiptext">customer claims the sales manager forged a signature</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Fraud - Unknown Person on the Account '/><div class="tooltip">Fraud - Unknown Person on the Account <span class="tooltiptext">customer claims that they are unaware of the main account holder in SF. </span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Sales Promise - Sales</div>
-        <input name='RC' type='checkbox' class="tooltip" value=' Free Snow/Animal Guards'/><div class="tooltip"> Free Snow/Animal Guards<span class="tooltiptext">customer upset that they were promised that the snow guards would be free of charge</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' Incentive '/><div class="tooltip"> Incentive <span class="tooltiptext">Customer has not received their installation bonus</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' Referral Bonus'/><div class="tooltip"> Referral Bonus<span class="tooltiptext">Customer hadn't receive their referral bonus</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' RnR Fee'/><div class="tooltip"> RnR Fee<span class="tooltiptext">customer upset that they were promised that there were no prices associated with the RnR</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' RnR Fee - Flat Rate'/><div class="tooltip"> RnR Fee - Flat Rate<span class="tooltiptext">customer upset that were were told that the RnR would be a flat rate of $499</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' System Monitoring - Sales'/><div class="tooltip"> System Monitoring - Sales<span class="tooltiptext">customer upset that they were told that VSLR actively monitors all systems</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' Unable to Relocate'/><div class="tooltip"> Unable to Relocate<span class="tooltiptext">customer upset because they were told that they could relocate the panels in the event of a move / sales</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value=' Upgrade'/><div class="tooltip"> Upgrade<span class="tooltiptext">Customer was promised that an ESC or trenching would be completed, free of charge</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Roof Repairs - Sales'/><div class="tooltip">Roof Repairs - Sales<span class="tooltiptext">Customer promised VSLR would cover roofing repairs - </span></div><br>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Contract Misrepresentation - Sales<br style="display: none;">
+        <input name='RC' id='0-2' type='checkbox' class="child" value='Auto-pay'/><span class="tooltip"><label for="0-2">Auto-pay</label><span class="tooltiptext">Customer was unaware that they were being billed on an automatic basis (auto-pay was explained by the Sales Manager, but unaware that they were being auto-enrolled</span></span><br style="display: none;">
+        <input name='RC' id='1-2' type='checkbox' class="child" value='Cancellation - Fee'/><span class="tooltip"><label for="1-2">Cancellation - Fee</label><span class="tooltiptext">customer upset, as the understood that the RnR fee was the cancelation fee.</span></span><br style="display: none;">
+        <input name='RC' id='2-2' type='checkbox' class="child" value='Cancellation - No Penalty'/><span class="tooltip"><label for="2-2">Cancellation - No Penalty</label><span class="tooltiptext">customer upset , as they felt that the cancellation process wasn't explained</span></span><br style="display: none;">
+        <input name='RC' id='3-2' type='checkbox' class="child" value='Confirmation Email - PPA'/><span class="tooltip"><label for="3-2">Confirmation Email - PPA</label><span class="tooltiptext">Customer Claimed they weren't getting the confirmation email finalizing the creation process .</span></span><br style="display: none;">
+        <input name='RC' id='4-2' type='checkbox' class="child" value='Contract Type Billing Method'/><span class="tooltip"><label for="4-2">Contract Type Billing Method</label><span class="tooltiptext">Customer didn't understand how a lease worked and asked for compensation</span></span><br style="display: none;">
+        <input name='RC' id='5-2' type='checkbox' class="child" value='Duration'/><span class="tooltip"><label for="5-2">Duration</label><span class="tooltiptext">custom claimed that they were never told of the agreement duration</span></span><br style="display: none;">
+        <input name='RC' id='6-2' type='checkbox' class="child" value='Free Energy'/><span class="tooltip"><label for="6-2">Free Energy</label><span class="tooltiptext">customer upset, as they understood that the system, and energy produced, would be free of charge. </span></span><br style="display: none;">
+        <input name='RC' id='7-2' type='checkbox' class="child" value='Internet'/><span class="tooltip"><label for="7-2">Internet</label><span class="tooltiptext">Customer wasn't aware that the system requires constant internet access. </span></span><br style="display: none;">
+        <input name='RC' id='8-2' type='checkbox' class="child" value='Law / Code'/><span class="tooltip"><label for="8-2">Law / Code</label><span class="tooltiptext">customer upset , as they were told that solar equipment was required by law to be installed. </span></span><br style="display: none;">
+        <input name='RC' id='9-2' type='checkbox' class="child" value='Loan - Monthly Amount'/><span class="tooltip"><label for="9-2">Loan - Monthly Amount</label><span class="tooltiptext">Customer claims that weren't given a monthly loan amount </span></span><br style="display: none;">
+        <input name='RC' id='10-2' type='checkbox' class="child" value='Loan - Principal'/><span class="tooltip"><label for="10-2">Loan - Principal</label><span class="tooltiptext">Customer unaware of the total loan amount</span></span><br style="display: none;">
+        <input name='RC' id='11-2' type='checkbox' class="child" value='Loan - Provider'/><span class="tooltip"><label for="11-2">Loan - Provider</label><span class="tooltiptext">Customer claims that they were unaware of a 3rd party loan provider finiaching the loan. </span></span><br style="display: none;">
+        <input name='RC' id='12-2' type='checkbox' class="child" value='Loan - Reamortization '/><span class="tooltip"><label for="12-2">Loan - Reamortization </label><span class="tooltiptext">Customer claims they weren't given info on the Reamortization process or due date</span></span><br style="display: none;">
+        <input name='RC' id='13-2' type='checkbox' class="child" value='Production - Consumption'/><span class="tooltip"><label for="13-2">Production - Consumption</label><span class="tooltiptext">Customer was unaware that they would be invoiced for solar production vs consumption</span></span><br style="display: none;">
+        <input name='RC' id='14-2' type='checkbox' class="child" value='Production - Solar Offset '/><span class="tooltip"><label for="14-2">Production - Solar Offset </label><span class="tooltiptext">Customer wasn't given adequate info of the offset percentage from the Sales Manager</span></span><br style="display: none;">
+        <input name='RC' id='15-2' type='checkbox' class="child" value='SREC'/><span class="tooltip"><label for="15-2">SREC</label><span class="tooltiptext">Customer claims they weren't given info regarding the SREC</span></span><br style="display: none;">
+        <input name='RC' id='16-2' type='checkbox' class="child" value='Utility -  Program'/><span class="tooltip"><label for="16-2">Utility -  Program</label><span class="tooltiptext">customer upset, as they were told that solar equipment was part of a utility program</span></span><br style="display: none;">
+        <input name='RC' id='17-2' type='checkbox' class="child" value='Utility - Net Metering'/><span class="tooltip"><label for="17-2">Utility - Net Metering</label><span class="tooltiptext">Customer cited that the utility company was tracking site production and felt VSLR was over invoicing because the "production" did not match between the utility and VSLR invoice </span></span><br style="display: none;">
+        <input name='RC' id='18-2' type='checkbox' class="child" value='Unaware - Contract'/><span class="tooltip"><label for="18-2">Unaware - Contract</label><span class="tooltiptext">Customer claims that they weren't aware that they were signing an agreement with VSLR. </span></span><br style="display: none;">
+        <input name='RC' id='19-2' type='checkbox' class="child" value='Unmet Savings -  Flat Rate'/><span class="tooltip"><label for="19-2">Unmet Savings -  Flat Rate</label><span class="tooltiptext">Customer claims that the aren't seeing th savings that was promised by the sales manager - was promised that they'd be paying a flat rate with VSLR</span></span><br style="display: none;">
+        <input name='RC' id='20-2' type='checkbox' class="child" value='Unmet Savings - % of savings'/><span class="tooltip"><label for="20-2">Unmet Savings - % of savings</label><span class="tooltiptext">Customer was told that they would be saving a certain % of savings</span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Sales Operations </div>
-        <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Dispute - SO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Confirmation Email'/><div class="tooltip">Confirmation Email<span class="tooltiptext">Customer Claimed they weren't getting the confirmation email finalizing the creation process .</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Design - Alteration'/><div class="tooltip">Design - Alteration<span class="tooltiptext">Customer upset that they were not notified of any changes from the initial Welcome Packet</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Incomplete Install - Reschedule'/><div class="tooltip">Incomplete Install - Reschedule<span class="tooltiptext">customer upset over the install being rescheduled. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Pre-Install'/><div class="tooltip">Pre-Install<span class="tooltiptext">Customer upset over the pre-installation process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Usage Error'/><div class="tooltip">Usage Error<span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset %</span></div><br>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Dispute - Sales<br style="display: none;">
+        <input name='RC' id='22-2' type='checkbox' class="child" value='Acquaintance - Lower Rate'/><span class="tooltip"><label for="22-2">Acquaintance - Lower Rate</label><span class="tooltiptext">Freedom Pricing program</span></span><br style="display: none;">
+        <input name='RC' id='23-2' type='checkbox' class="child" value='Age'/><span class="tooltip"><label for="23-2">Age</label><span class="tooltiptext">Customer feels that they were taken advantage of, due to age. </span></span><br style="display: none;">
+        <input name='RC' id='24-2' type='checkbox' class="child" value='Credit Authorization'/><span class="tooltip"><label for="24-2">Credit Authorization</label><span class="tooltiptext">customer was upset ask they weren't notified that their credit would be ran. </span></span><br style="display: none;">
+        <input name='RC' id='25-2' type='checkbox' class="child" value='Design - Alteration'/><span class="tooltip"><label for="25-2">Design - Alteration</label><span class="tooltiptext">Customer upset that they were not notified of any changes from the initial Welcome Packet</span></span><br style="display: none;">
+        <input name='RC' id='26-2' type='checkbox' class="child" value='Install - Conduit Run'/><span class="tooltip"><label for="26-2">Install - Conduit Run</label><span class="tooltiptext">customer upset over where the conduit was installed, or not painted</span></span><br style="display: none;">
+        <input name='RC' id='27-2' type='checkbox' class="child" value='Install - Electrical Equipment'/><span class="tooltip"><label for="27-2">Install - Electrical Equipment</label><span class="tooltiptext">customer upset over where the electrical equipment was installed - not aware of how much equipment would be installed on the side of the home</span></span><br style="display: none;">
+        <input name='RC' id='28-2' type='checkbox' class="child" value='Lien'/><span class="tooltip"><label for="28-2">Lien</label><span class="tooltiptext">Customer understood the filing to be a lien against the home</span></span><br style="display: none;">
+        <input name='RC' id='29-2' type='checkbox' class="child" value='Panel - Animal Guards / Skirts'/><span class="tooltip"><label for="29-2">Panel - Animal Guards / Skirts</label><span class="tooltiptext">customer upset that the animal guards / skirts are either unsitly or install incorrectly</span></span><br style="display: none;">
+        <input name='RC' id='30-2' type='checkbox' class="child" value='Panel - Cleaning'/><span class="tooltip"><label for="30-2">Panel - Cleaning</label><span class="tooltiptext">Customer wasn't told that they had to clean the panels themselves</span></span><br style="display: none;">
+        <input name='RC' id='31-2' type='checkbox' class="child" value='Panel - Location / Arrangement'/><span class="tooltip"><label for="31-2">Panel - Location / Arrangement</label><span class="tooltiptext">customer upset over the location / arrangement of the panels</span></span><br style="display: none;">
+        <input name='RC' id='32-2' type='checkbox' class="child" value='Panel - No Skirts'/><span class="tooltip"><label for="32-2">Panel - No Skirts</label><span class="tooltiptext">Customer upset that the equipment under the panels could be seen -</span></span><br style="display: none;">
+        <input name='RC' id='33-2' type='checkbox' class="child" value='Panel - Orientation'/><span class="tooltip"><label for="33-2">Panel - Orientation</label><span class="tooltiptext">Customer was upset because of the orientation of the panels.</span></span><br style="display: none;">
+        <input name='RC' id='34-2' type='checkbox' class="child" value='Panel - Type / Color'/><span class="tooltip"><label for="34-2">Panel - Type / Color</label><span class="tooltiptext">customer was upset because of either the panels don't match, or the panels are a different color</span></span><br style="display: none;">
+        <input name='RC' id='35-2' type='checkbox' class="child" value='Pre-Solar Utility Discount Program'/><span class="tooltip"><label for="35-2">Pre-Solar Utility Discount Program</label><span class="tooltiptext">Customer is on a CARE program with the utility</span></span><br style="display: none;">
+        <input name='RC' id='36-2' type='checkbox' class="child" value='Tax Credit'/><span class="tooltip"><label for="36-2">Tax Credit</label><span class="tooltiptext">Customer claimed that the tax credit process hadn't been explained </span></span><br style="display: none;">
+        <input name='RC' id='37-2' type='checkbox' class="child" value='Time to PTO'/><span class="tooltip"><label for="37-2">Time to PTO</label><span class="tooltiptext">Customer claims that they weren't told of the time to PTO</span></span><br style="display: none;">
+        <input name='RC' id='38-2' type='checkbox' class="child" value='Transfer Process'/><span class="tooltip"><label for="38-2">Transfer Process</label><span class="tooltiptext">Customer was unaware of the transfer process</span></span><br style="display: none;">
+        <input name='RC' id='39-2' type='checkbox' class="child" value='Transformer Upgrade'/><span class="tooltip"><label for="39-2">Transformer Upgrade</label><span class="tooltiptext">Customer upset that they were unaware of a transformer upgrade</span></span><br style="display: none;">
+        <input name='RC' id='40-2' type='checkbox' class="child" value='Usage Error'/><span class="tooltip"><label for="40-2">Usage Error</label><span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset % - due to incorrect utility info submitted by Sales Manager</span></span><br style="display: none;">
+        <input name='RC' id='41-2' type='checkbox' class="child" value='VSLR Coverage Area'/><span class="tooltip"><label for="41-2">VSLR Coverage Area</label><span class="tooltiptext">No VSLR Coverage Area </span></span><br style="display: none;">
+        <input name='RC' id='42-2' type='checkbox' class="child" value='Add-On'/><span class="tooltip"><label for="42-2">Add-On</label><span class="tooltiptext">Customer Claiming that they never needed the add-on system. </span></span><br style="display: none;">
+        <input name='RC' id='43-2' type='checkbox' class="child" value='Roof Age'/><span class="tooltip"><label for="43-2">Roof Age</label><span class="tooltiptext">Customer claiming that the panels should never have been installed - lied to</span></span><br style="display: none;">
+        <input name='RC' id='44-2' type='checkbox' class="child" value='Annual Escalator '/><span class="tooltip"><label for="44-2">Annual Escalator </label><span class="tooltiptext">customer claims the annual escalator wasn't explained. </span></span><br style="display: none;">
+        <input name='RC' id='45-2' type='checkbox' class="child" value='Forgery'/><span class="tooltip"><label for="45-2">Forgery</label><span class="tooltiptext">customer claims the sales manager forged a signature</span></span><br style="display: none;">
+        <input name='RC' id='46-2' type='checkbox' class="child" value='Fraud - Unknown Person on the Account '/><span class="tooltip"><label for="46-2">Fraud - Unknown Person on the Account </label><span class="tooltiptext">customer claims that they are unaware of the main account holder in SF. </span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Field Operations</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Sales Promise - Sales<br style="display: none;">
+        <input name='RC' id='48-2' type='checkbox' class="child" value=' Free Snow/Animal Guards'/><span class="tooltip"><label for="48-2"> Free Snow/Animal Guards</label><span class="tooltiptext">customer upset that they were promised that the snow guards would be free of charge</span></span><br style="display: none;">
+        <input name='RC' id='49-2' type='checkbox' class="child" value=' Incentive '/><span class="tooltip"><label for="49-2"> Incentive </label><span class="tooltiptext">Customer has not received their installation bonus</span></span><br style="display: none;">
+        <input name='RC' id='50-2' type='checkbox' class="child" value=' Referral Bonus'/><span class="tooltip"><label for="50-2"> Referral Bonus</label><span class="tooltiptext">Customer hadn't receive their referral bonus</span></span><br style="display: none;">
+        <input name='RC' id='51-2' type='checkbox' class="child" value=' RnR Fee'/><span class="tooltip"><label for="51-2"> RnR Fee</label><span class="tooltiptext">customer upset that they were promised that there were no prices associated with the RnR</span></span><br style="display: none;">
+        <input name='RC' id='52-2' type='checkbox' class="child" value=' RnR Fee - Flat Rate'/><span class="tooltip"><label for="52-2"> RnR Fee - Flat Rate</label><span class="tooltiptext">customer upset that were were told that the RnR would be a flat rate of $499</span></span><br style="display: none;">
+        <input name='RC' id='53-2' type='checkbox' class="child" value=' System Monitoring - Sales'/><span class="tooltip"><label for="53-2"> System Monitoring - Sales</label><span class="tooltiptext">customer upset that they were told that VSLR actively monitors all systems</span></span><br style="display: none;">
+        <input name='RC' id='54-2' type='checkbox' class="child" value=' Unable to Relocate'/><span class="tooltip"><label for="54-2"> Unable to Relocate</label><span class="tooltiptext">customer upset because they were told that they could relocate the panels in the event of a move / sales</span></span><br style="display: none;">
+        <input name='RC' id='55-2' type='checkbox' class="child" value=' Upgrade'/><span class="tooltip"><label for="55-2"> Upgrade</label><span class="tooltiptext">Customer was promised that an ESC or trenching would be completed, free of charge</span></span><br style="display: none;">
+        <input name='RC' id='56-2' type='checkbox' class="child" value='Roof Repairs - Sales'/><span class="tooltip"><label for="56-2">Roof Repairs - Sales</label><span class="tooltiptext">Customer promised VSLR would cover roofing repairs - </span></span><br style="display: none;">
+</div><br><div>Sales Operations </div>
         <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Removal & Reinstall - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Reinstall'/><div class="tooltip">Credits Owed/Compensation - Reinstall<span class="tooltiptext">Customer seeking compensation for time while the system was uninstalled - delays caused by VSLR due to reshedules</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - RnR - Dive Time'/><div class="tooltip">Missed Appointment - RnR - Dive Time<span class="tooltiptext">missed appointment due to drive time</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - RnR - illness / injury'/><div class="tooltip">Missed Appointment - RnR - illness / injury<span class="tooltiptext">missed appointment due to illness / injury</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - RnR - Missing Equipment'/><div class="tooltip">Missed Appointment - RnR - Missing Equipment<span class="tooltiptext">missed appointment due to missing equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - RnR - Weather'/><div class="tooltip">Missed Appointment - RnR - Weather<span class="tooltiptext">customer upset over missed appointment due to Weather</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - RnR - Wrong Equipment'/><div class="tooltip">Missed Appointment - RnR - Wrong Equipment<span class="tooltiptext">missed appointment due to wrong equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Rescheduling - No Update'/><div class="tooltip">Rescheduling - No Update<span class="tooltiptext">customer upset over rescheduling, with no updates from customer facing teams</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Scheduling - Multiple Appointments'/><div class="tooltip">Scheduling - Multiple Appointments<span class="tooltiptext">customer upset over the number of appointments scheduled</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Scheduling - RnR - Availability'/><div class="tooltip">Scheduling - RnR - Availability<span class="tooltiptext">customer upset over the availability of the appointment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Mounts '/><div class="tooltip">Mounts <span class="tooltiptext">Customer upset that the removal team left the mounts on the home</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Missed Appointments - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - Drive Time'/><div class="tooltip">Missed Appointment - Field Ops - Drive Time<span class="tooltiptext">VSLR tech missed the appointment due to high drive time</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - illness / injury'/><div class="tooltip">Missed Appointment - Field Ops - illness / injury<span class="tooltiptext">VSLR tech missed the appointment due to illness / injury</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - Incorrect Notes'/><div class="tooltip">Missed Appointment - Field Ops - Incorrect Notes<span class="tooltiptext">VSLR tech missed the appointment due to incorrect work order notes</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - No Equipment'/><div class="tooltip">Missed Appointment - Field Ops - No Equipment<span class="tooltiptext">VSLR tech missed the apppointment due to no equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - OM'/><div class="tooltip">Missed Appointment - Field Ops - OM<span class="tooltiptext">VSLR tech missed the appointment due to reschedule at OM request</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Field Ops - Weather'/><div class="tooltip">Missed Appointment - Field Ops - Weather<span class="tooltiptext">VSLR tech missed the appointment due to weather</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Pre-PTO Process - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - AB to FIN'/><div class="tooltip">Appointment Missed - AB to FIN<span class="tooltiptext">Customer upset over missed service appointments during the AB to FIN process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - ESC'/><div class="tooltip">Appointment Missed - ESC<span class="tooltiptext">Customer upset over the missed ESC appointments</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - Incorrect Notes - AB to FIN'/><div class="tooltip">Appointment Missed - Incorrect Notes - AB to FIN<span class="tooltiptext">VSLR tech arrived, only to leave the home due to incorrect notes in the work order, resulting in a missed appointment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - Inspection'/><div class="tooltip">Appointment Missed - Inspection<span class="tooltiptext">Customer upset over the missed Inspection appointments</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - No Equipment - AB to FIN'/><div class="tooltip">Appointment Missed - No Equipment - AB to FIN<span class="tooltiptext">VSLR tech arrived without the equipment needed to resolve the issue, resulting in a missed appointment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - Weather'/><div class="tooltip">Appointment Missed - Weather<span class="tooltiptext">VSLR tech missed the appointment due to weather</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - Work Order'/><div class="tooltip">Appointment Missed - Work Order<span class="tooltiptext">Customer upset over the missed service appointments to secure the work order</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment Missed - Wrong Equipment - AB to FIN'/><div class="tooltip">Appointment Missed - Wrong Equipment - AB to FIN<span class="tooltiptext">VSLR tech arrived with the wrong equipment, resulting in a missed appointment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Loan Payment'/><div class="tooltip">Credits Owed/Compensation - Loan Payment<span class="tooltiptext">Due to delays in the pre-PTO process, the loan payments have begun, caused by the FO's org</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Pre PTO'/><div class="tooltip">Credits Owed/Compensation - Pre PTO<span class="tooltiptext">Customer asking for compensation due to delays in PTO, caused by the FO's org. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - ESC'/><div class="tooltip">Process Delay - ESC<span class="tooltiptext">Customer upset over delays in the ESC process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Inspection'/><div class="tooltip">Process Delay - Inspection<span class="tooltiptext">Customer upset over delays in the inspection process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Interconnection - Missing FIN'/><div class="tooltip">Process Delay - Interconnection - Missing FIN<span class="tooltiptext">Customer upset over the time taken to submit for PTO, due to a FIN missing</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Permitting'/><div class="tooltip">Process Delay - Permitting<span class="tooltiptext">Customer upset over the permitting process (AB to FIN)</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Work Order Uploaded'/><div class="tooltip">Process Delay - Work Order Uploaded<span class="tooltiptext">Delays in the process due to work orders not being uploaded.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Snow/Animal Guards - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Animals'/><div class="tooltip">Damage - Animals<span class="tooltiptext">Customer upset over roof damages caused by animals nesting under the panels</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Snow'/><div class="tooltip">Damage - Snow<span class="tooltiptext">Customer upset over snow damage collecting from the panels</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Health Hazard - Animals'/><div class="tooltip">Health Hazard - Animals<span class="tooltiptext">customer upset citing that animal nest under the panels are causing a health issue</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>System Damage - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Contractor - Damage Assessment'/><div class="tooltip">Contractor - Damage Assessment<span class="tooltiptext">Customer upset over lack of follow up from a third party contractor for a VSLR approved repair, via third party company</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Contractor - Damage Repairs'/><div class="tooltip">Contractor - Damage Repairs<span class="tooltiptext">Repairs completed by a third-party contractor - lack of follow up</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Damage'/><div class="tooltip">Credits Owed/Compensation - Damage<span class="tooltiptext">Customer seeking compensation for damages caused by VSLR </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Damage - No Follow Up'/><div class="tooltip">Credits Owed/Compensation - Damage - No Follow Up<span class="tooltiptext">Customer seeking compensation for lack of follow up from the Damage team. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Electrical - Breaker Size'/><div class="tooltip">Damage - Electrical - Breaker Size<span class="tooltiptext">customer upset over electrical damages at the home caused by a wrongfully sized breaker</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Electrical - MSP'/><div class="tooltip">Damage - Electrical - MSP<span class="tooltiptext">customer upset over electrical damages to the MSP</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Fire'/><div class="tooltip">Damage - Fire<span class="tooltiptext">customer claiming a home fire was caused by VSLR's equipment / negligence</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Interior - Install'/><div class="tooltip">Damage - Interior - Install<span class="tooltiptext">customer upset over damage to the interior of the home, caused by the install team -</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Interior - leaking roof'/><div class="tooltip">Damage - Interior - leaking roof<span class="tooltiptext">customer upset over damages to the interior of the home, resulting from a leaking roof from the solar equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Property'/><div class="tooltip">Damage - Property<span class="tooltiptext">customer upset that VSLR employee caused damage to property - cars included</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Roof -  Reoccurring'/><div class="tooltip">Damage - Roof -  Reoccurring<span class="tooltiptext">customer is calling back due to a reoccuring roof damages, where VSLR has fixed the issue, or denied a prior claim.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Roof - Non VSLR'/><div class="tooltip">Damage - Roof - Non VSLR<span class="tooltiptext">customer upset over roofing damages not caused by VSLR.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Damage - Roof - VSLR'/><div class="tooltip">Damage - Roof - VSLR<span class="tooltiptext">customer upset over roofing damages caused by VSLR install</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Home Upgrade Re-roof - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR Contractor - Home Upgrade - Roofing'/><div class="tooltip">VSLR Contractor - Home Upgrade - Roofing<span class="tooltiptext">customer upset over the lack of follow up from a VSLR contractor</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Incomplete Install - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Install - Incomplete - Equipment'/><div class="tooltip">Install - Incomplete - Equipment<span class="tooltiptext">customer upset that the instal wasn't complete due to equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Install - Incomplete - Weather'/><div class="tooltip">Install - Incomplete - Weather<span class="tooltiptext">customer upset that the install wasn't complete due to weather</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Install Error - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Error - Incorrect CAD'/><div class="tooltip">Error - Incorrect CAD<span class="tooltiptext">install team used the wrong CAD to install</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Error - Wrong Meter'/><div class="tooltip">Error - Wrong Meter<span class="tooltiptext">connected into wrong meter. </span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Battery/Storage - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Delay - Battery'/><div class="tooltip">Delay - Battery<span class="tooltiptext">Customer upset over the process delay's to install a battery at the home</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Home Upgrade ESC/Trenching - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR Contractor - ESC'/><div class="tooltip">VSLR Contractor - ESC<span class="tooltiptext">Customer upset over lack of follow up from an ESC contractor</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR Contractor - ESC - Permitting / Inspection'/><div class="tooltip">VSLR Contractor - ESC - Permitting / Inspection<span class="tooltiptext">Customer upset over lack of follow up from an ESC contractor regarding the permit / inspection process.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR Contractor - Roofing'/><div class="tooltip">VSLR Contractor - Roofing<span class="tooltiptext">roofing repairs completed,but the customer was upset over the lack of follow up</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility - Meter Spot'/><div class="tooltip">Utility - Meter Spot<span class="tooltiptext">Customer upset over the time taken to secure a meter location from utility</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility - Transformer Upgrade'/><div class="tooltip">Utility - Transformer Upgrade<span class="tooltiptext">Customer upset over time taken to complete a transformer upgrade.</span></div><br>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Dispute - SO<br style="display: none;">
+        <input name='RC' id='58-2' type='checkbox' class="child" value='Confirmation Email'/><span class="tooltip"><label for="58-2">Confirmation Email</label><span class="tooltiptext">Customer Claimed they weren't getting the confirmation email finalizing the creation process .</span></span><br style="display: none;">
+        <input name='RC' id='59-2' type='checkbox' class="child" value='Design - Alteration'/><span class="tooltip"><label for="59-2">Design - Alteration</label><span class="tooltiptext">Customer upset that they were not notified of any changes from the initial Welcome Packet</span></span><br style="display: none;">
+        <input name='RC' id='60-2' type='checkbox' class="child" value='Incomplete Install - Reschedule'/><span class="tooltip"><label for="60-2">Incomplete Install - Reschedule</label><span class="tooltiptext">customer upset over the install being rescheduled. </span></span><br style="display: none;">
+        <input name='RC' id='61-2' type='checkbox' class="child" value='Pre-Install'/><span class="tooltip"><label for="61-2">Pre-Install</label><span class="tooltiptext">Customer upset over the pre-installation process</span></span><br style="display: none;">
+        <input name='RC' id='62-2' type='checkbox' class="child" value='Usage Error'/><span class="tooltip"><label for="62-2">Usage Error</label><span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset %</span></span><br style="display: none;">
+</div><br><div>Field Operations</div>
+        <hr>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Removal & Reinstall - FO<br style="display: none;">
+        <input name='RC' id='64-2' type='checkbox' class="child" value='Credits Owed/Compensation - Reinstall'/><span class="tooltip"><label for="64-2">Credits Owed/Compensation - Reinstall</label><span class="tooltiptext">Customer seeking compensation for time while the system was uninstalled - delays caused by VSLR due to reshedules</span></span><br style="display: none;">
+        <input name='RC' id='65-2' type='checkbox' class="child" value='Missed Appointment - RnR - Dive Time'/><span class="tooltip"><label for="65-2">Missed Appointment - RnR - Dive Time</label><span class="tooltiptext">missed appointment due to drive time</span></span><br style="display: none;">
+        <input name='RC' id='66-2' type='checkbox' class="child" value='Missed Appointment - RnR - illness / injury'/><span class="tooltip"><label for="66-2">Missed Appointment - RnR - illness / injury</label><span class="tooltiptext">missed appointment due to illness / injury</span></span><br style="display: none;">
+        <input name='RC' id='67-2' type='checkbox' class="child" value='Missed Appointment - RnR - Missing Equipment'/><span class="tooltip"><label for="67-2">Missed Appointment - RnR - Missing Equipment</label><span class="tooltiptext">missed appointment due to missing equipment</span></span><br style="display: none;">
+        <input name='RC' id='68-2' type='checkbox' class="child" value='Missed Appointment - RnR - Weather'/><span class="tooltip"><label for="68-2">Missed Appointment - RnR - Weather</label><span class="tooltiptext">customer upset over missed appointment due to Weather</span></span><br style="display: none;">
+        <input name='RC' id='69-2' type='checkbox' class="child" value='Missed Appointment - RnR - Wrong Equipment'/><span class="tooltip"><label for="69-2">Missed Appointment - RnR - Wrong Equipment</label><span class="tooltiptext">missed appointment due to wrong equipment</span></span><br style="display: none;">
+        <input name='RC' id='70-2' type='checkbox' class="child" value='Rescheduling - No Update'/><span class="tooltip"><label for="70-2">Rescheduling - No Update</label><span class="tooltiptext">customer upset over rescheduling, with no updates from customer facing teams</span></span><br style="display: none;">
+        <input name='RC' id='71-2' type='checkbox' class="child" value='Scheduling - Multiple Appointments'/><span class="tooltip"><label for="71-2">Scheduling - Multiple Appointments</label><span class="tooltiptext">customer upset over the number of appointments scheduled</span></span><br style="display: none;">
+        <input name='RC' id='72-2' type='checkbox' class="child" value='Scheduling - RnR - Availability'/><span class="tooltip"><label for="72-2">Scheduling - RnR - Availability</label><span class="tooltiptext">customer upset over the availability of the appointment</span></span><br style="display: none;">
+        <input name='RC' id='73-2' type='checkbox' class="child" value='Mounts '/><span class="tooltip"><label for="73-2">Mounts </label><span class="tooltiptext">Customer upset that the removal team left the mounts on the home</span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Customer Ops</div>
-        <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Credits Owed/Compensation - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Experience - Goodwill'/><div class="tooltip">Customer Experience - Goodwill<span class="tooltiptext">VSLR was neglgient in helping to resolve a customer issue</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Account Center - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Multiple Property/Systems'/><div class="tooltip">Multiple Property/Systems<span class="tooltiptext">Customer claimed they couldn't add another service to the Account Center</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Password Issues'/><div class="tooltip">Password Issues<span class="tooltiptext">Customer claimed they weren't getting the "Password Reset" email</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Site Production - Panel-level View/Data'/><div class="tooltip">Site Production - Panel-level View/Data<span class="tooltiptext">Customers were under the impression that they could have more access to site production (e.g., panel production, inverter status, etc.)</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Site Production Data - System Communication'/><div class="tooltip">Site Production Data - System Communication<span class="tooltiptext">Customer couldn't view daily production from the Account Center</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Site Production Data - Technical Error'/><div class="tooltip">Site Production Data - Technical Error<span class="tooltiptext">System is communicating to monitoring portal, but isn't showing production data in Account Center</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='VSLR App'/><div class="tooltip">VSLR App<span class="tooltiptext">Customer upset that the VSLR app isn't working</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Bankruptcy - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Bankruptcy'/><div class="tooltip">Bankruptcy<span class="tooltiptext">Customer has filed, or claims to be, filing for bankruptcy and/or has experienced issues in VSLR Bankruptcy process</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Buyout/Prepayment - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Buyout/Prepayment Request'/><div class="tooltip">Buyout/Prepayment Request<span class="tooltiptext">Customer is requesting a buyout/prepayment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Cost of Buyout/Prepayment'/><div class="tooltip">Cost of Buyout/Prepayment<span class="tooltiptext">Customer is requesting a reduced buyout/pre-payment on the solar equipment.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Deceased - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Deceased Process'/><div class="tooltip">Deceased Process<span class="tooltiptext">Customer is no longer living and executors of the estate are now held responsible.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='System Buyout/Prepayment/Default Cost'/><div class="tooltip">System Buyout/Prepayment/Default Cost<span class="tooltiptext">executors have requested a system buyout/prepayment</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Foreclosure - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Cost of Buyout/Prepayment'/><div class="tooltip">Cost of Buyout/Prepayment<span class="tooltiptext">new home buy is asking for a buyout / prepayment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Foreclosure'/><div class="tooltip">Foreclosure<span class="tooltiptext">Customer is no longer living at the property and is still being held responsible.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Transfer - Foreclosure'/><div class="tooltip">Transfer - Foreclosure<span class="tooltiptext">New home buy is asking for a transfer</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Hardship - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Loss of employment'/><div class="tooltip">Loss of employment<span class="tooltiptext">Customer is experiencing a life event that has affected their ability to make solar payments.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Medical'/><div class="tooltip">Medical<span class="tooltiptext">Custom feels they were taken advantage of, due to a medical condition / complication</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Unable to Pay'/><div class="tooltip">Unable to Pay<span class="tooltiptext">Customer has a high true-up bill through utility, making the payment to VSLR difficult.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Refinance - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Filing Termination Process'/><div class="tooltip">Filing Termination Process<span class="tooltiptext">Customer asked for a temporary cancellation on the filing</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Pre-PTO Process  - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Pre PTO - Loan Payment'/><div class="tooltip">Credits Owed/Compensation - Pre PTO - Loan Payment<span class="tooltiptext">Customer asking for reimbursement due to the loan payment beginning, issues caused by lack of follow up from the CO org. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Credits Owed/Compensation - Pre PTO - PPA'/><div class="tooltip">Credits Owed/Compensation - Pre PTO - PPA<span class="tooltiptext">Customer asking for compensation due to the length in the pre PTO process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Education - Time to PTO'/><div class="tooltip">Customer Education - Time to PTO<span class="tooltiptext">Customer claims that they weren't told of the time to PTO</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - AB CAD to FIN - Design'/><div class="tooltip">Process Delay - AB CAD to FIN - Design<span class="tooltiptext">Customer upset over delays in the AB CAD process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Interconnection - Paperwork'/><div class="tooltip">Process Delay - Interconnection - Paperwork<span class="tooltiptext">Customer upset over the interconnection paperwork required for PTO submission</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - MassACA'/><div class="tooltip">Process Delay - MassACA<span class="tooltiptext">Customer upset over delays in the Interconnection process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility - Meter Spot - Follow Up'/><div class="tooltip">Utility - Meter Spot - Follow Up<span class="tooltiptext">Customer upset over the time taken to secure a meter location from utility</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Utility - Transformer Upgrade - Follow Up'/><div class="tooltip">Utility - Transformer Upgrade - Follow Up<span class="tooltiptext">Customer upset over time taken to complete a transformer upgrade.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Transfer - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Complete Transfer - Billing Prior Homeowner'/><div class="tooltip">Complete Transfer - Billing Prior Homeowner<span class="tooltiptext">Transfer complete, but the Billing Account may not have been closed out properly so the prior customer was still being invoiced</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Complete Transfer - Filing Release'/><div class="tooltip">Complete Transfer - Filing Release<span class="tooltiptext">Customer requested a filing termination</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Incomplete Transfer - Billing'/><div class="tooltip">Incomplete Transfer - Billing<span class="tooltiptext">Customer moved from the home, without completing the transfer process, but was upset for being invoiced</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Potential Home Buyer Refusal - Cost/Savings'/><div class="tooltip">Potential Home Buyer Refusal - Cost/Savings<span class="tooltiptext">Customer explained that the potential home buyer was refusing to assume the agreement</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Potential Home Buyer Refusal - Trust in Solar Industry'/><div class="tooltip">Potential Home Buyer Refusal - Trust in Solar Industry<span class="tooltiptext">Customer was refusing to proceed with the transfer process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Potential Home Buyer Refusal - Trust in VSLR'/><div class="tooltip">Potential Home Buyer Refusal - Trust in VSLR<span class="tooltiptext">Potential home buy doesn't trust VSLR, preventing the transfer of the agreement.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Third Party Authorization'/><div class="tooltip">Third Party Authorization<span class="tooltiptext">Customer upset that there were issues with the Third Party Authorization</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Transfer Agreement - Terms'/><div class="tooltip">Transfer Agreement - Terms<span class="tooltiptext">Customer explained that the potential home buyer was unwilling to assume the agreement due to the language in the agreement</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Law/Code Adherence - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Law/Code Adherence'/><div class="tooltip">Law/Code Adherence<span class="tooltiptext">Customer is frustrated or experiencing delays in order to meet jurisdiction requirements for their home or system to be compliant.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Production/Usage Imbalance - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Consumption Change - Greater'/><div class="tooltip">Consumption Change - Greater<span class="tooltiptext">Customer upset as their consumption needs have increased since PTO</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Consumption Change - Fewer'/><div class="tooltip">Consumption Change - Fewer<span class="tooltiptext">Customer upset as their consumption needs have decreased since PTO</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Structure Integrity - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Structure Integrity'/><div class="tooltip">Structure Integrity<span class="tooltiptext">Customer is displeased or frustrated with requirements or delays regarding the system's presence to maintain structural safety.</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Structure Integrity - Overload'/><div class="tooltip">Structure Integrity - Overload<span class="tooltiptext">Customer claims that the system is a burden on their roof</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>System Design Error - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Usage Error - Design'/><div class="tooltip">Usage Error - Design<span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset % caused by the Design team</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='System Performance - Shading / Placement'/><div class="tooltip">System Performance - Shading / Placement<span class="tooltiptext">system was design incorrectly </span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Missed Appointments</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Click'/><div class="tooltip">Missed Appointment - Click<span class="tooltiptext">VLSR tech missed the appointment due to Click issues</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Removal & Reinstall - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Billing - Incorrect - RnR'/><div class="tooltip">Billing - Incorrect - RnR<span class="tooltiptext">customer upset because they were invoiced the incorrect amount</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Billing - Payment Plan - RnR'/><div class="tooltip">Billing - Payment Plan - RnR<span class="tooltiptext">Customer seeking to complete a payment plan on the  RnR</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>System Performance - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='System Performance - Missing Equipment'/><div class="tooltip">System Performance - Missing Equipment<span class="tooltiptext">system not working due to customers taking equipment when moving.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Property Damage - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Caused Damage'/><div class="tooltip">Customer Caused Damage<span class="tooltiptext">damage caused by the customer (Act of God)</span></div><br>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Missed Appointments - FO<br style="display: none;">
+        <input name='RC' id='75-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - Drive Time'/><span class="tooltip"><label for="75-2">Missed Appointment - Field Ops - Drive Time</label><span class="tooltiptext">VSLR tech missed the appointment due to high drive time</span></span><br style="display: none;">
+        <input name='RC' id='76-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - illness / injury'/><span class="tooltip"><label for="76-2">Missed Appointment - Field Ops - illness / injury</label><span class="tooltiptext">VSLR tech missed the appointment due to illness / injury</span></span><br style="display: none;">
+        <input name='RC' id='77-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - Incorrect Notes'/><span class="tooltip"><label for="77-2">Missed Appointment - Field Ops - Incorrect Notes</label><span class="tooltiptext">VSLR tech missed the appointment due to incorrect work order notes</span></span><br style="display: none;">
+        <input name='RC' id='78-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - No Equipment'/><span class="tooltip"><label for="78-2">Missed Appointment - Field Ops - No Equipment</label><span class="tooltiptext">VSLR tech missed the apppointment due to no equipment</span></span><br style="display: none;">
+        <input name='RC' id='79-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - OM'/><span class="tooltip"><label for="79-2">Missed Appointment - Field Ops - OM</label><span class="tooltiptext">VSLR tech missed the appointment due to reschedule at OM request</span></span><br style="display: none;">
+        <input name='RC' id='80-2' type='checkbox' class="child" value='Missed Appointment - Field Ops - Weather'/><span class="tooltip"><label for="80-2">Missed Appointment - Field Ops - Weather</label><span class="tooltiptext">VSLR tech missed the appointment due to weather</span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Finance </div>
-        <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Billed on Estimate - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Solar Equipment - Uninstalled'/><div class="tooltip">Solar Equipment - Uninstalled<span class="tooltiptext">Customer Received an invoice while the panels were off the home -</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Credits Owed/Compensation - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Cumulative Billing Error'/><div class="tooltip">Cumulative Billing Error<span class="tooltiptext">Cumulative Billing didn't work properly, manual true - up required.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Online Billing Portal - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Payment Issue - Account Center'/><div class="tooltip">Payment Issue - Account Center<span class="tooltiptext">Customer can't make a payment via Account Center</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Update Payment information'/><div class="tooltip">Update Payment information<span class="tooltiptext">Customer can't change payment info via Account Center</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Rate Dispute - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Post-Solar Utility Discount Program'/><div class="tooltip">Post-Solar Utility Discount Program<span class="tooltiptext">Saving analysis found that the utility rate is lower than VSLR.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Multiple Account Billing - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Additional System Invoicing'/><div class="tooltip">Additional System Invoicing<span class="tooltiptext">Customer has multiple systems at the home and is requesting one invoice for the two system</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Multiple Properties Invoicing'/><div class="tooltip">Multiple Properties Invoicing<span class="tooltiptext">Customer has multiple properties, with VSLR solar units on them and is asking for one invoice for all the systems.</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Pre-PTO Process - FIN</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Process Delay - Funding'/><div class="tooltip">Process Delay - Funding<span class="tooltiptext">Customer upset over the delay in PTO submission due to no funding</span></div><br>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Pre-PTO Process - FO<br style="display: none;">
+        <input name='RC' id='82-2' type='checkbox' class="child" value='Appointment Missed - AB to FIN'/><span class="tooltip"><label for="82-2">Appointment Missed - AB to FIN</label><span class="tooltiptext">Customer upset over missed service appointments during the AB to FIN process</span></span><br style="display: none;">
+        <input name='RC' id='83-2' type='checkbox' class="child" value='Appointment Missed - ESC'/><span class="tooltip"><label for="83-2">Appointment Missed - ESC</label><span class="tooltiptext">Customer upset over the missed ESC appointments</span></span><br style="display: none;">
+        <input name='RC' id='84-2' type='checkbox' class="child" value='Appointment Missed - Incorrect Notes - AB to FIN'/><span class="tooltip"><label for="84-2">Appointment Missed - Incorrect Notes - AB to FIN</label><span class="tooltiptext">VSLR tech arrived, only to leave the home due to incorrect notes in the work order, resulting in a missed appointment</span></span><br style="display: none;">
+        <input name='RC' id='85-2' type='checkbox' class="child" value='Appointment Missed - Inspection'/><span class="tooltip"><label for="85-2">Appointment Missed - Inspection</label><span class="tooltiptext">Customer upset over the missed Inspection appointments</span></span><br style="display: none;">
+        <input name='RC' id='86-2' type='checkbox' class="child" value='Appointment Missed - No Equipment - AB to FIN'/><span class="tooltip"><label for="86-2">Appointment Missed - No Equipment - AB to FIN</label><span class="tooltiptext">VSLR tech arrived without the equipment needed to resolve the issue, resulting in a missed appointment</span></span><br style="display: none;">
+        <input name='RC' id='87-2' type='checkbox' class="child" value='Appointment Missed - Weather'/><span class="tooltip"><label for="87-2">Appointment Missed - Weather</label><span class="tooltiptext">VSLR tech missed the appointment due to weather</span></span><br style="display: none;">
+        <input name='RC' id='88-2' type='checkbox' class="child" value='Appointment Missed - Work Order'/><span class="tooltip"><label for="88-2">Appointment Missed - Work Order</label><span class="tooltiptext">Customer upset over the missed service appointments to secure the work order</span></span><br style="display: none;">
+        <input name='RC' id='89-2' type='checkbox' class="child" value='Appointment Missed - Wrong Equipment - AB to FIN'/><span class="tooltip"><label for="89-2">Appointment Missed - Wrong Equipment - AB to FIN</label><span class="tooltiptext">VSLR tech arrived with the wrong equipment, resulting in a missed appointment</span></span><br style="display: none;">
+        <input name='RC' id='90-2' type='checkbox' class="child" value='Credits Owed/Compensation - Loan Payment'/><span class="tooltip"><label for="90-2">Credits Owed/Compensation - Loan Payment</label><span class="tooltiptext">Due to delays in the pre-PTO process, the loan payments have begun, caused by the FO's org</span></span><br style="display: none;">
+        <input name='RC' id='91-2' type='checkbox' class="child" value='Credits Owed/Compensation - Pre PTO'/><span class="tooltip"><label for="91-2">Credits Owed/Compensation - Pre PTO</label><span class="tooltiptext">Customer asking for compensation due to delays in PTO, caused by the FO's org. </span></span><br style="display: none;">
+        <input name='RC' id='92-2' type='checkbox' class="child" value='Process Delay - ESC'/><span class="tooltip"><label for="92-2">Process Delay - ESC</label><span class="tooltiptext">Customer upset over delays in the ESC process</span></span><br style="display: none;">
+        <input name='RC' id='93-2' type='checkbox' class="child" value='Process Delay - Inspection'/><span class="tooltip"><label for="93-2">Process Delay - Inspection</label><span class="tooltiptext">Customer upset over delays in the inspection process</span></span><br style="display: none;">
+        <input name='RC' id='94-2' type='checkbox' class="child" value='Process Delay - Interconnection - Missing FIN'/><span class="tooltip"><label for="94-2">Process Delay - Interconnection - Missing FIN</label><span class="tooltiptext">Customer upset over the time taken to submit for PTO, due to a FIN missing</span></span><br style="display: none;">
+        <input name='RC' id='95-2' type='checkbox' class="child" value='Process Delay - Permitting'/><span class="tooltip"><label for="95-2">Process Delay - Permitting</label><span class="tooltiptext">Customer upset over the permitting process (AB to FIN)</span></span><br style="display: none;">
+        <input name='RC' id='96-2' type='checkbox' class="child" value='Process Delay - Work Order Uploaded'/><span class="tooltip"><label for="96-2">Process Delay - Work Order Uploaded</label><span class="tooltiptext">Delays in the process due to work orders not being uploaded.</span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Solar Performance</div>
-        <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Billed on Estimate - SP</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Solar Equipment - System Communication'/><div class="tooltip">Solar Equipment - System Communication<span class="tooltiptext">Equipment at the home either malfunctioned or was defective, causing a datacomm's issue</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Credits Owed/Compensation - SP</div>
-        <input name='RC' type='checkbox' class="tooltip" value='System Downtime - Missed service appointment(s)'/><div class="tooltip">System Downtime - Missed service appointment(s)<span class="tooltiptext">Customer seeking compensation due to missed appointment - loss of wages</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='System Downtime - System Generation'/><div class="tooltip">System Downtime - System Generation<span class="tooltiptext">Customer seeking compensation due to VSLR equipment not working properly</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='System Underperforming - SP'/><div class="tooltip">System Underperforming - SP<span class="tooltiptext">customer seeking compensation for underperforming</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Appointment Issues - SP</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Expired Time'/><div class="tooltip">Appointment - Expired Time<span class="tooltiptext">VSLR tech didn't have enough time on the work order to complete the job</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - illness / injury'/><div class="tooltip">Appointment - illness / injury<span class="tooltiptext">VSLR arrived, but left due to illness / injury</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Incorrect Notes'/><div class="tooltip">Appointment - Incorrect Notes<span class="tooltiptext">VSLR tech arrived, only to leave the home due to incorrect notes in the work order</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - No Access'/><div class="tooltip">Appointment - No Access<span class="tooltiptext">VSLR couldn't access the solar equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - No Equipment'/><div class="tooltip">Appointment - No Equipment<span class="tooltiptext">VSLR tech arrived without the equipment needed to resolve the issue</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Not Confirmed'/><div class="tooltip">Appointment - Not Confirmed<span class="tooltiptext">Appointment not confirmed with the customer. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Pets'/><div class="tooltip">Appointment - Pets<span class="tooltiptext">VSLR couldn't service the home, due to pets</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Weather'/><div class="tooltip">Appointment - Weather<span class="tooltiptext">VSLR arrived, but had to leave the job site due to weather</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Appointment - Wrong Equipment'/><div class="tooltip">Appointment - Wrong Equipment<span class="tooltiptext">VSLR tech arrived with the wrong equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Drive Time'/><div class="tooltip">Missed Appointment - Drive Time<span class="tooltiptext">VSLR tech missed the appointment due to high drive time</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - illness / injury'/><div class="tooltip">Missed Appointment - illness / injury<span class="tooltiptext">VSLR tech missed the appointment due to illness / injury</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Incorrect Notes'/><div class="tooltip">Missed Appointment - Incorrect Notes<span class="tooltiptext">VSLR tech missed the appointment due to incorrect work order notes</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - No Equipment'/><div class="tooltip">Missed Appointment - No Equipment<span class="tooltiptext">VSLR tech missed the apppointment due to no equipment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - OM'/><div class="tooltip">Missed Appointment - OM<span class="tooltiptext">VSLR tech missed the appointment due to reschedule at OM request</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Missed Appointment - Weather'/><div class="tooltip">Missed Appointment - Weather<span class="tooltiptext">VSLR tech missed the appointment due to weather</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Waiting On Equipment'/><div class="tooltip">Waiting On Equipment<span class="tooltiptext">Local office didn't have the equipment needed for the work. </span></div><br>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Snow/Animal Guards - FO<br style="display: none;">
+        <input name='RC' id='98-2' type='checkbox' class="child" value='Damage - Animals'/><span class="tooltip"><label for="98-2">Damage - Animals</label><span class="tooltiptext">Customer upset over roof damages caused by animals nesting under the panels</span></span><br style="display: none;">
+        <input name='RC' id='99-2' type='checkbox' class="child" value='Damage - Snow'/><span class="tooltip"><label for="99-2">Damage - Snow</label><span class="tooltiptext">Customer upset over snow damage collecting from the panels</span></span><br style="display: none;">
+        <input name='RC' id='100-2' type='checkbox' class="child" value='Health Hazard - Animals'/><span class="tooltip"><label for="100-2">Health Hazard - Animals</label><span class="tooltiptext">customer upset citing that animal nest under the panels are causing a health issue</span></span><br style="display: none;">
 </div>
-        <br>
-        <div>Customer Follow-up & Resolution</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">System Damage - FO<br style="display: none;">
+        <input name='RC' id='102-2' type='checkbox' class="child" value='Contractor - Damage Assessment'/><span class="tooltip"><label for="102-2">Contractor - Damage Assessment</label><span class="tooltiptext">Customer upset over lack of follow up from a third party contractor for a VSLR approved repair, via third party company</span></span><br style="display: none;">
+        <input name='RC' id='103-2' type='checkbox' class="child" value='Contractor - Damage Repairs'/><span class="tooltip"><label for="103-2">Contractor - Damage Repairs</label><span class="tooltiptext">Repairs completed by a third-party contractor - lack of follow up</span></span><br style="display: none;">
+        <input name='RC' id='104-2' type='checkbox' class="child" value='Credits Owed/Compensation - Damage'/><span class="tooltip"><label for="104-2">Credits Owed/Compensation - Damage</label><span class="tooltiptext">Customer seeking compensation for damages caused by VSLR </span></span><br style="display: none;">
+        <input name='RC' id='105-2' type='checkbox' class="child" value='Credits Owed/Compensation - Damage - No Follow Up'/><span class="tooltip"><label for="105-2">Credits Owed/Compensation - Damage - No Follow Up</label><span class="tooltiptext">Customer seeking compensation for lack of follow up from the Damage team. </span></span><br style="display: none;">
+        <input name='RC' id='106-2' type='checkbox' class="child" value='Damage - Electrical - Breaker Size'/><span class="tooltip"><label for="106-2">Damage - Electrical - Breaker Size</label><span class="tooltiptext">customer upset over electrical damages at the home caused by a wrongfully sized breaker</span></span><br style="display: none;">
+        <input name='RC' id='107-2' type='checkbox' class="child" value='Damage - Electrical - MSP'/><span class="tooltip"><label for="107-2">Damage - Electrical - MSP</label><span class="tooltiptext">customer upset over electrical damages to the MSP</span></span><br style="display: none;">
+        <input name='RC' id='108-2' type='checkbox' class="child" value='Damage - Fire'/><span class="tooltip"><label for="108-2">Damage - Fire</label><span class="tooltiptext">customer claiming a home fire was caused by VSLR's equipment / negligence</span></span><br style="display: none;">
+        <input name='RC' id='109-2' type='checkbox' class="child" value='Damage - Interior - Install'/><span class="tooltip"><label for="109-2">Damage - Interior - Install</label><span class="tooltiptext">customer upset over damage to the interior of the home, caused by the install team -</span></span><br style="display: none;">
+        <input name='RC' id='110-2' type='checkbox' class="child" value='Damage - Interior - leaking roof'/><span class="tooltip"><label for="110-2">Damage - Interior - leaking roof</label><span class="tooltiptext">customer upset over damages to the interior of the home, resulting from a leaking roof from the solar equipment</span></span><br style="display: none;">
+        <input name='RC' id='111-2' type='checkbox' class="child" value='Damage - Property'/><span class="tooltip"><label for="111-2">Damage - Property</label><span class="tooltiptext">customer upset that VSLR employee caused damage to property - cars included</span></span><br style="display: none;">
+        <input name='RC' id='112-2' type='checkbox' class="child" value='Damage - Roof -  Reoccurring'/><span class="tooltip"><label for="112-2">Damage - Roof -  Reoccurring</label><span class="tooltiptext">customer is calling back due to a reoccuring roof damages, where VSLR has fixed the issue, or denied a prior claim.</span></span><br style="display: none;">
+        <input name='RC' id='113-2' type='checkbox' class="child" value='Damage - Roof - Non VSLR'/><span class="tooltip"><label for="113-2">Damage - Roof - Non VSLR</label><span class="tooltiptext">customer upset over roofing damages not caused by VSLR.</span></span><br style="display: none;">
+        <input name='RC' id='114-2' type='checkbox' class="child" value='Damage - Roof - VSLR'/><span class="tooltip"><label for="114-2">Damage - Roof - VSLR</label><span class="tooltiptext">customer upset over roofing damages caused by VSLR install</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Home Upgrade Re-roof - FO<br style="display: none;">
+        <input name='RC' id='116-2' type='checkbox' class="child" value='VSLR Contractor - Home Upgrade - Roofing'/><span class="tooltip"><label for="116-2">VSLR Contractor - Home Upgrade - Roofing</label><span class="tooltiptext">customer upset over the lack of follow up from a VSLR contractor</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Incomplete Install - FO<br style="display: none;">
+        <input name='RC' id='118-2' type='checkbox' class="child" value='Install - Incomplete - Equipment'/><span class="tooltip"><label for="118-2">Install - Incomplete - Equipment</label><span class="tooltiptext">customer upset that the instal wasn't complete due to equipment</span></span><br style="display: none;">
+        <input name='RC' id='119-2' type='checkbox' class="child" value='Install - Incomplete - Weather'/><span class="tooltip"><label for="119-2">Install - Incomplete - Weather</label><span class="tooltiptext">customer upset that the install wasn't complete due to weather</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Install Error - FO<br style="display: none;">
+        <input name='RC' id='121-2' type='checkbox' class="child" value='Error - Incorrect CAD'/><span class="tooltip"><label for="121-2">Error - Incorrect CAD</label><span class="tooltiptext">install team used the wrong CAD to install</span></span><br style="display: none;">
+        <input name='RC' id='122-2' type='checkbox' class="child" value='Error - Wrong Meter'/><span class="tooltip"><label for="122-2">Error - Wrong Meter</label><span class="tooltiptext">connected into wrong meter. </span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Battery/Storage - FO<br style="display: none;">
+        <input name='RC' id='124-2' type='checkbox' class="child" value='Delay - Battery'/><span class="tooltip"><label for="124-2">Delay - Battery</label><span class="tooltiptext">Customer upset over the process delay's to install a battery at the home</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Home Upgrade ESC/Trenching - FO<br style="display: none;">
+        <input name='RC' id='126-2' type='checkbox' class="child" value='VSLR Contractor - ESC'/><span class="tooltip"><label for="126-2">VSLR Contractor - ESC</label><span class="tooltiptext">Customer upset over lack of follow up from an ESC contractor</span></span><br style="display: none;">
+        <input name='RC' id='127-2' type='checkbox' class="child" value='VSLR Contractor - ESC - Permitting / Inspection'/><span class="tooltip"><label for="127-2">VSLR Contractor - ESC - Permitting / Inspection</label><span class="tooltiptext">Customer upset over lack of follow up from an ESC contractor regarding the permit / inspection process.</span></span><br style="display: none;">
+        <input name='RC' id='128-2' type='checkbox' class="child" value='VSLR Contractor - Roofing'/><span class="tooltip"><label for="128-2">VSLR Contractor - Roofing</label><span class="tooltiptext">roofing repairs completed,but the customer was upset over the lack of follow up</span></span><br style="display: none;">
+        <input name='RC' id='129-2' type='checkbox' class="child" value='Utility - Meter Spot'/><span class="tooltip"><label for="129-2">Utility - Meter Spot</label><span class="tooltiptext">Customer upset over the time taken to secure a meter location from utility</span></span><br style="display: none;">
+        <input name='RC' id='130-2' type='checkbox' class="child" value='Utility - Transformer Upgrade'/><span class="tooltip"><label for="130-2">Utility - Transformer Upgrade</label><span class="tooltiptext">Customer upset over time taken to complete a transformer upgrade.</span></span><br style="display: none;">
+</div><br><div>Customer Ops</div>
         <hr>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Follow-up & Resolution - Sales</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Contract Misrepresentation '/><div class="tooltip">Customer Follow Up -  Contract Misrepresentation <span class="tooltiptext">customer upset over the lack of follow up regarding misrepresentation of the following: cancellation / fees / free energy </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Deviation From Approved CAD'/><div class="tooltip">Customer Follow Up -  Deviation From Approved CAD<span class="tooltiptext">customer upset over the lack of follow up regarding an inquiry of the approved CAD </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Dispute'/><div class="tooltip">Customer Follow Up -  Dispute<span class="tooltiptext">customer upset over the lack of follow up regarding the following: credit authorization / Internet</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Sales Incentive / Referral Bonus'/><div class="tooltip">Customer Follow Up -  Sales Incentive / Referral Bonus<span class="tooltiptext">customer upset over the lack of follow up regarding their  Referral bonus / Incentive /</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Follow-up & Resolution - SO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Incomplete Install'/><div class="tooltip">Customer Follow Up - Incomplete Install<span class="tooltiptext">customer upset over the lack of follow up regarding the installation</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Pre Install'/><div class="tooltip">Customer Follow Up - Pre Install<span class="tooltiptext">Customer upset over the lack of follow up during the pre- installation process</span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Follow-up & Resolution - FO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Damage Resolution'/><div class="tooltip">Customer Follow Up -  Damage Resolution<span class="tooltiptext">customer upset over the lack of follow up regarding the Damage Resolution process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Home Upgrade/Trenching'/><div class="tooltip">Customer Follow Up -  Home Upgrade/Trenching<span class="tooltiptext">customer upset over the lack of follow up regarding the Home Upgrade Process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Home Upgrade/Trenching'/><div class="tooltip">Customer Follow Up -  Home Upgrade/Trenching<span class="tooltiptext">customer upset over the lack of follow up regarding the Home Upgrade Process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Missed Appointments - AB to FIN'/><div class="tooltip">Customer Follow Up -  Missed Appointments - AB to FIN<span class="tooltiptext">customer upset over the lack of follow up regarding a missed appointment </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Missed Appointments - Damage'/><div class="tooltip">Customer Follow Up -  Missed Appointments - Damage<span class="tooltiptext">customer upset over the lack of follow up regarding a missed appointment - damage</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Removal & Re - Missed Appointment'/><div class="tooltip">Customer Follow Up -  Removal & Re - Missed Appointment<span class="tooltiptext">customer upset over the lack of follow up regarding an RnR missed appointment. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Removal & Re - Rescheduled Appointment'/><div class="tooltip">Customer Follow Up -  Removal & Re - Rescheduled Appointment<span class="tooltiptext">customer upset over the lack of follow up regarding the RnR rescheduled appointment</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Third Party Communication '/><div class="tooltip">Customer Follow Up -  Third Party Communication <span class="tooltiptext">customer upset over the lack of follow up regarding the communication with a third-party contractor</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  R & R '/><div class="tooltip">Customer Follow Up -  R & R <span class="tooltiptext">customer upset over lack of follows up from the R & R team </span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Follow-up & Resolution - CO</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up  - Solar Production'/><div class="tooltip">Customer Follow Up  - Solar Production<span class="tooltiptext">customer upset over the lack of follow up regarding the Solar Production process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -   Foreclosure'/><div class="tooltip">Customer Follow Up -   Foreclosure<span class="tooltiptext">customer upset over the lack of follow up regarding the foreclosure process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Account Center'/><div class="tooltip">Customer Follow Up -  Account Center<span class="tooltiptext">customer upset over the lack of follow up regarding the Account Center </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Battery/Storage'/><div class="tooltip">Customer Follow Up -  Battery/Storage<span class="tooltiptext">customer upset over the lack of follow up regarding information / process for a battery</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Buyout/Prepayment'/><div class="tooltip">Customer Follow Up -  Buyout/Prepayment<span class="tooltiptext">customer upset over the lack of follow up regarding the buyout/prepayment process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Contract Misrepresentation '/><div class="tooltip">Customer Follow Up -  Contract Misrepresentation <span class="tooltiptext">customer upset over the lack of follow up regarding misrepresentation of the following: cancellation / fees / free energy </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Deviation From Approved CAD'/><div class="tooltip">Customer Follow Up -  Deviation From Approved CAD<span class="tooltiptext">customer upset over the lack of follow up regarding an inquiry of the approved CAD </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Deviation From Approved CAD'/><div class="tooltip">Customer Follow Up -  Deviation From Approved CAD<span class="tooltiptext">customer upset over the lack of follow up regarding an inquiry of the approved CAD </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Dispute'/><div class="tooltip">Customer Follow Up -  Dispute<span class="tooltiptext">customer upset over the lack of follow up regarding their Rates with VSLR vs. the utility </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Dispute'/><div class="tooltip">Customer Follow Up -  Dispute<span class="tooltiptext">customer upset over the lack of follow up regarding the following: credit authorization / Internet</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Equipment Aesthetics'/><div class="tooltip">Customer Follow Up -  Equipment Aesthetics<span class="tooltiptext">customer upset over the lack of follow up regarding the equipment aesthetics </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Law/Code Adherence'/><div class="tooltip">Customer Follow Up -  Law/Code Adherence<span class="tooltiptext">customer upset over the lack of follow up regarding a law/code issue</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Panel Cleaning/Maintenance'/><div class="tooltip">Customer Follow Up -  Panel Cleaning/Maintenance<span class="tooltiptext">customer upset over the lack of follow up regarding the panel cleaning / maintenance</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Post Install'/><div class="tooltip">Customer Follow Up -  Post Install<span class="tooltiptext">Customer upset over the lack of follow up during the Post-install, pre PTO</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Production/Usage Imbalance'/><div class="tooltip">Customer Follow Up -  Production/Usage Imbalance<span class="tooltiptext">customer upset over the lack of follow up regarding their production / usage imbalance</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Refinance'/><div class="tooltip">Customer Follow Up -  Refinance<span class="tooltiptext">customer upset over the lack of follow up regarding the refinance process - filing issue</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Removal & Re RnR Fee'/><div class="tooltip">Customer Follow Up -  Removal & Re RnR Fee<span class="tooltiptext">customer upset over the lack of follow up regarding the RnR fee</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Sales Incentive / Referral Bonus'/><div class="tooltip">Customer Follow Up -  Sales Incentive / Referral Bonus<span class="tooltiptext">customer upset over the lack of follow up regarding their  Referral bonus / Incentive /</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Snow/Animal Guards'/><div class="tooltip">Customer Follow Up -  Snow/Animal Guards<span class="tooltiptext">customer upset over the lack of follow up regarding the guards</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Structure Integrity'/><div class="tooltip">Customer Follow Up -  Structure Integrity<span class="tooltiptext">customer upset over the lack of follow up regarding the structural integrity of the roof</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  System Design Error'/><div class="tooltip">Customer Follow Up -  System Design Error<span class="tooltiptext">customer upset over the lack of follow up regarding the their system design error</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  System Performance'/><div class="tooltip">Customer Follow Up -  System Performance<span class="tooltiptext">customer upset over the lack of follow up regarding their system performance. </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Transfer'/><div class="tooltip">Customer Follow Up -  Transfer<span class="tooltiptext">customer upset over the lack of follow up regarding the transfer process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Transformer Upgrade'/><div class="tooltip">Customer Follow Up -  Transformer Upgrade<span class="tooltiptext">customer upset over the lack of follow up regarding the transformer upgrade</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Autopay'/><div class="tooltip">Customer Follow Up - Autopay<span class="tooltiptext">customer upset over the lack of follow up regarding the Auto-Pay process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Credits Owed/Compensation'/><div class="tooltip">Customer Follow Up - Credits Owed/Compensation<span class="tooltiptext">customer upset over the lack of follow up regarding the Credits Owed/Compensation process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Estimate'/><div class="tooltip">Customer Follow Up - Estimate<span class="tooltiptext">customer upset over the lack of follow up regarding the estimate billing process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Loan Billing'/><div class="tooltip">Customer Follow Up - Loan Billing<span class="tooltiptext">customer upset over the lack of follow up regarding the loan billing process</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Multiple Account Billing'/><div class="tooltip">Customer Follow Up - Multiple Account Billing<span class="tooltiptext">customer upset over the lack of follow up regarding Multiple Account Billing</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Online Billing Portal'/><div class="tooltip">Customer Follow Up - Online Billing Portal<span class="tooltiptext">customer upset over the lack of follow up regarding the Online Billing Portal</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Property Damage - Customer Caused'/><div class="tooltip">Customer Follow Up - Property Damage - Customer Caused<span class="tooltiptext">customer upset over the lack of follow up regarding property damage not caused by VSLR (e.g.- fire, hail, storm, etc.)</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Unmet Savings Expectations'/><div class="tooltip">Customer Follow Up - Unmet Savings Expectations<span class="tooltiptext">customer upset over the lack of follow up regarding the Unmet Savings Expectations</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Long Wait times'/><div class="tooltip">Customer Follow Up - Long Wait times<span class="tooltiptext">      <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - True Up Bill'/><div class="tooltip">Customer Follow Up - True Up Bill<span class="tooltiptext">Customer upset over the lack of follow up regarding their true up bill</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up - Deny for Supervisor Request'/><div class="tooltip">Customer Follow Up - Deny for Supervisor Request<span class="tooltiptext">customer upset over the request to speak with a supervisor being denied. </span></div><br>
-        <br><div class="parent" tabindex="1">
-        <div>Customer Follow-up & Resolution - SP</div>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  Missed Appointments'/><div class="tooltip">Customer Follow Up -  Missed Appointments<span class="tooltiptext">customer upset over the lack of follow up regarding a missed appointment </span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  SP Resolution'/><div class="tooltip">Customer Follow Up -  SP Resolution<span class="tooltiptext">customer upset over the lack of follow up regarding another appointment needed</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  System Monitoring'/><div class="tooltip">Customer Follow Up -  System Monitoring<span class="tooltiptext">customer upset over the lack of follow up regarding the monitoring of the system</span></div><br>
-        <input name='RC' type='checkbox' class="tooltip" value='Customer Follow Up -  System Performance'/><div class="tooltip">Customer Follow Up -  System Performance<span class="tooltiptext">customer upset over the lack of follow up regarding their system performance. </span></div><br>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Credits Owed/Compensation - CO<br style="display: none;">
+        <input name='RC' id='132-2' type='checkbox' class="child" value='Customer Experience - Goodwill'/><span class="tooltip"><label for="132-2">Customer Experience - Goodwill</label><span class="tooltiptext">VSLR was neglgient in helping to resolve a customer issue</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Account Center - CO<br style="display: none;">
+        <input name='RC' id='134-2' type='checkbox' class="child" value='Multiple Property/Systems'/><span class="tooltip"><label for="134-2">Multiple Property/Systems</label><span class="tooltiptext">Customer claimed they couldn't add another service to the Account Center</span></span><br style="display: none;">
+        <input name='RC' id='135-2' type='checkbox' class="child" value='Password Issues'/><span class="tooltip"><label for="135-2">Password Issues</label><span class="tooltiptext">Customer claimed they weren't getting the "Password Reset" email</span></span><br style="display: none;">
+        <input name='RC' id='136-2' type='checkbox' class="child" value='Site Production - Panel-level View/Data'/><span class="tooltip"><label for="136-2">Site Production - Panel-level View/Data</label><span class="tooltiptext">Customers were under the impression that they could have more access to site production (e.g., panel production, inverter status, etc.)</span></span><br style="display: none;">
+        <input name='RC' id='137-2' type='checkbox' class="child" value='Site Production Data - System Communication'/><span class="tooltip"><label for="137-2">Site Production Data - System Communication</label><span class="tooltiptext">Customer couldn't view daily production from the Account Center</span></span><br style="display: none;">
+        <input name='RC' id='138-2' type='checkbox' class="child" value='Site Production Data - Technical Error'/><span class="tooltip"><label for="138-2">Site Production Data - Technical Error</label><span class="tooltiptext">System is communicating to monitoring portal, but isn't showing production data in Account Center</span></span><br style="display: none;">
+        <input name='RC' id='139-2' type='checkbox' class="child" value='VSLR App'/><span class="tooltip"><label for="139-2">VSLR App</label><span class="tooltiptext">Customer upset that the VSLR app isn't working</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Bankruptcy - CO<br style="display: none;">
+        <input name='RC' id='141-2' type='checkbox' class="child" value='Bankruptcy'/><span class="tooltip"><label for="141-2">Bankruptcy</label><span class="tooltiptext">Customer has filed, or claims to be, filing for bankruptcy and/or has experienced issues in VSLR Bankruptcy process</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Buyout/Prepayment - CO<br style="display: none;">
+        <input name='RC' id='143-2' type='checkbox' class="child" value='Buyout/Prepayment Request'/><span class="tooltip"><label for="143-2">Buyout/Prepayment Request</label><span class="tooltiptext">Customer is requesting a buyout/prepayment</span></span><br style="display: none;">
+        <input name='RC' id='144-2' type='checkbox' class="child" value='Cost of Buyout/Prepayment'/><span class="tooltip"><label for="144-2">Cost of Buyout/Prepayment</label><span class="tooltiptext">Customer is requesting a reduced buyout/pre-payment on the solar equipment.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Deceased - CO<br style="display: none;">
+        <input name='RC' id='146-2' type='checkbox' class="child" value='Deceased Process'/><span class="tooltip"><label for="146-2">Deceased Process</label><span class="tooltiptext">Customer is no longer living and executors of the estate are now held responsible.</span></span><br style="display: none;">
+        <input name='RC' id='147-2' type='checkbox' class="child" value='System Buyout/Prepayment/Default Cost'/><span class="tooltip"><label for="147-2">System Buyout/Prepayment/Default Cost</label><span class="tooltiptext">executors have requested a system buyout/prepayment</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Foreclosure - CO<br style="display: none;">
+        <input name='RC' id='149-2' type='checkbox' class="child" value='Cost of Buyout/Prepayment'/><span class="tooltip"><label for="149-2">Cost of Buyout/Prepayment</label><span class="tooltiptext">new home buy is asking for a buyout / prepayment</span></span><br style="display: none;">
+        <input name='RC' id='150-2' type='checkbox' class="child" value='Foreclosure'/><span class="tooltip"><label for="150-2">Foreclosure</label><span class="tooltiptext">Customer is no longer living at the property and is still being held responsible.</span></span><br style="display: none;">
+        <input name='RC' id='151-2' type='checkbox' class="child" value='Transfer - Foreclosure'/><span class="tooltip"><label for="151-2">Transfer - Foreclosure</label><span class="tooltiptext">New home buy is asking for a transfer</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Hardship - CO<br style="display: none;">
+        <input name='RC' id='153-2' type='checkbox' class="child" value='Loss of employment'/><span class="tooltip"><label for="153-2">Loss of employment</label><span class="tooltiptext">Customer is experiencing a life event that has affected their ability to make solar payments.</span></span><br style="display: none;">
+        <input name='RC' id='154-2' type='checkbox' class="child" value='Medical'/><span class="tooltip"><label for="154-2">Medical</label><span class="tooltiptext">Custom feels they were taken advantage of, due to a medical condition / complication</span></span><br style="display: none;">
+        <input name='RC' id='155-2' type='checkbox' class="child" value='Unable to Pay'/><span class="tooltip"><label for="155-2">Unable to Pay</label><span class="tooltiptext">Customer has a high true-up bill through utility, making the payment to VSLR difficult.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Refinance - CO<br style="display: none;">
+        <input name='RC' id='157-2' type='checkbox' class="child" value='Filing Termination Process'/><span class="tooltip"><label for="157-2">Filing Termination Process</label><span class="tooltiptext">Customer asked for a temporary cancellation on the filing</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Pre-PTO Process  - CO<br style="display: none;">
+        <input name='RC' id='159-2' type='checkbox' class="child" value='Credits Owed/Compensation - Pre PTO - Loan Payment'/><span class="tooltip"><label for="159-2">Credits Owed/Compensation - Pre PTO - Loan Payment</label><span class="tooltiptext">Customer asking for reimbursement due to the loan payment beginning, issues caused by lack of follow up from the CO org. </span></span><br style="display: none;">
+        <input name='RC' id='160-2' type='checkbox' class="child" value='Credits Owed/Compensation - Pre PTO - PPA'/><span class="tooltip"><label for="160-2">Credits Owed/Compensation - Pre PTO - PPA</label><span class="tooltiptext">Customer asking for compensation due to the length in the pre PTO process</span></span><br style="display: none;">
+        <input name='RC' id='161-2' type='checkbox' class="child" value='Customer Education - Time to PTO'/><span class="tooltip"><label for="161-2">Customer Education - Time to PTO</label><span class="tooltiptext">Customer claims that they weren't told of the time to PTO</span></span><br style="display: none;">
+        <input name='RC' id='162-2' type='checkbox' class="child" value='Process Delay - AB CAD to FIN - Design'/><span class="tooltip"><label for="162-2">Process Delay - AB CAD to FIN - Design</label><span class="tooltiptext">Customer upset over delays in the AB CAD process</span></span><br style="display: none;">
+        <input name='RC' id='163-2' type='checkbox' class="child" value='Process Delay - Interconnection - Paperwork'/><span class="tooltip"><label for="163-2">Process Delay - Interconnection - Paperwork</label><span class="tooltiptext">Customer upset over the interconnection paperwork required for PTO submission</span></span><br style="display: none;">
+        <input name='RC' id='164-2' type='checkbox' class="child" value='Process Delay - MassACA'/><span class="tooltip"><label for="164-2">Process Delay - MassACA</label><span class="tooltiptext">Customer upset over delays in the Interconnection process</span></span><br style="display: none;">
+        <input name='RC' id='165-2' type='checkbox' class="child" value='Utility - Meter Spot - Follow Up'/><span class="tooltip"><label for="165-2">Utility - Meter Spot - Follow Up</label><span class="tooltiptext">Customer upset over the time taken to secure a meter location from utility</span></span><br style="display: none;">
+        <input name='RC' id='166-2' type='checkbox' class="child" value='Utility - Transformer Upgrade - Follow Up'/><span class="tooltip"><label for="166-2">Utility - Transformer Upgrade - Follow Up</label><span class="tooltiptext">Customer upset over time taken to complete a transformer upgrade.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Transfer - CO<br style="display: none;">
+        <input name='RC' id='168-2' type='checkbox' class="child" value='Complete Transfer - Billing Prior Homeowner'/><span class="tooltip"><label for="168-2">Complete Transfer - Billing Prior Homeowner</label><span class="tooltiptext">Transfer complete, but the Billing Account may not have been closed out properly so the prior customer was still being invoiced</span></span><br style="display: none;">
+        <input name='RC' id='169-2' type='checkbox' class="child" value='Complete Transfer - Filing Release'/><span class="tooltip"><label for="169-2">Complete Transfer - Filing Release</label><span class="tooltiptext">Customer requested a filing termination</span></span><br style="display: none;">
+        <input name='RC' id='170-2' type='checkbox' class="child" value='Incomplete Transfer - Billing'/><span class="tooltip"><label for="170-2">Incomplete Transfer - Billing</label><span class="tooltiptext">Customer moved from the home, without completing the transfer process, but was upset for being invoiced</span></span><br style="display: none;">
+        <input name='RC' id='171-2' type='checkbox' class="child" value='Potential Home Buyer Refusal - Cost/Savings'/><span class="tooltip"><label for="171-2">Potential Home Buyer Refusal - Cost/Savings</label><span class="tooltiptext">Customer explained that the potential home buyer was refusing to assume the agreement</span></span><br style="display: none;">
+        <input name='RC' id='172-2' type='checkbox' class="child" value='Potential Home Buyer Refusal - Trust in Solar Industry'/><span class="tooltip"><label for="172-2">Potential Home Buyer Refusal - Trust in Solar Industry</label><span class="tooltiptext">Customer was refusing to proceed with the transfer process</span></span><br style="display: none;">
+        <input name='RC' id='173-2' type='checkbox' class="child" value='Potential Home Buyer Refusal - Trust in VSLR'/><span class="tooltip"><label for="173-2">Potential Home Buyer Refusal - Trust in VSLR</label><span class="tooltiptext">Potential home buy doesn't trust VSLR, preventing the transfer of the agreement.</span></span><br style="display: none;">
+        <input name='RC' id='174-2' type='checkbox' class="child" value='Third Party Authorization'/><span class="tooltip"><label for="174-2">Third Party Authorization</label><span class="tooltiptext">Customer upset that there were issues with the Third Party Authorization</span></span><br style="display: none;">
+        <input name='RC' id='175-2' type='checkbox' class="child" value='Transfer Agreement - Terms'/><span class="tooltip"><label for="175-2">Transfer Agreement - Terms</label><span class="tooltiptext">Customer explained that the potential home buyer was unwilling to assume the agreement due to the language in the agreement</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Law/Code Adherence - CO<br style="display: none;">
+        <input name='RC' id='177-2' type='checkbox' class="child" value='Law/Code Adherence'/><span class="tooltip"><label for="177-2">Law/Code Adherence</label><span class="tooltiptext">Customer is frustrated or experiencing delays in order to meet jurisdiction requirements for their home or system to be compliant.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Production/Usage Imbalance - CO<br style="display: none;">
+        <input name='RC' id='179-2' type='checkbox' class="child" value='Consumption Change - Greater'/><span class="tooltip"><label for="179-2">Consumption Change - Greater</label><span class="tooltiptext">Customer upset as their consumption needs have increased since PTO</span></span><br style="display: none;">
+        <input name='RC' id='180-2' type='checkbox' class="child" value='Consumption Change - Fewer'/><span class="tooltip"><label for="180-2">Consumption Change - Fewer</label><span class="tooltiptext">Customer upset as their consumption needs have decreased since PTO</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Structure Integrity - CO<br style="display: none;">
+        <input name='RC' id='182-2' type='checkbox' class="child" value='Structure Integrity'/><span class="tooltip"><label for="182-2">Structure Integrity</label><span class="tooltiptext">Customer is displeased or frustrated with requirements or delays regarding the system's presence to maintain structural safety.</span></span><br style="display: none;">
+        <input name='RC' id='183-2' type='checkbox' class="child" value='Structure Integrity - Overload'/><span class="tooltip"><label for="183-2">Structure Integrity - Overload</label><span class="tooltiptext">Customer claims that the system is a burden on their roof</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">System Design Error - CO<br style="display: none;">
+        <input name='RC' id='185-2' type='checkbox' class="child" value='Usage Error - Design'/><span class="tooltip"><label for="185-2">Usage Error - Design</label><span class="tooltiptext">Customer upset that there were issues with the usage, causing a lower / higher offset % caused by the Design team</span></span><br style="display: none;">
+        <input name='RC' id='186-2' type='checkbox' class="child" value='System Performance - Shading / Placement'/><span class="tooltip"><label for="186-2">System Performance - Shading / Placement</label><span class="tooltiptext">system was design incorrectly </span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Missed Appointments<br style="display: none;">
+        <input name='RC' id='188-2' type='checkbox' class="child" value='Missed Appointment - Click'/><span class="tooltip"><label for="188-2">Missed Appointment - Click</label><span class="tooltiptext">VLSR tech missed the appointment due to Click issues</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Removal & Reinstall - CO<br style="display: none;">
+        <input name='RC' id='190-2' type='checkbox' class="child" value='Billing - Incorrect - RnR'/><span class="tooltip"><label for="190-2">Billing - Incorrect - RnR</label><span class="tooltiptext">customer upset because they were invoiced the incorrect amount</span></span><br style="display: none;">
+        <input name='RC' id='191-2' type='checkbox' class="child" value='Billing - Payment Plan - RnR'/><span class="tooltip"><label for="191-2">Billing - Payment Plan - RnR</label><span class="tooltiptext">Customer seeking to complete a payment plan on the  RnR</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">System Performance - CO<br style="display: none;">
+        <input name='RC' id='193-2' type='checkbox' class="child" value='System Performance - Missing Equipment'/><span class="tooltip"><label for="193-2">System Performance - Missing Equipment</label><span class="tooltiptext">system not working due to customers taking equipment when moving.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Property Damage - CO<br style="display: none;">
+        <input name='RC' id='195-2' type='checkbox' class="child" value='Customer Caused Damage'/><span class="tooltip"><label for="195-2">Customer Caused Damage</label><span class="tooltiptext">damage caused by the customer (Act of God)</span></span><br style="display: none;">
+</div><br><div>Finance </div>
+        <hr>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Billed on Estimate - FIN<br style="display: none;">
+        <input name='RC' id='197-2' type='checkbox' class="child" value='Solar Equipment - Uninstalled'/><span class="tooltip"><label for="197-2">Solar Equipment - Uninstalled</label><span class="tooltiptext">Customer Received an invoice while the panels were off the home -</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Credits Owed/Compensation - FIN<br style="display: none;">
+        <input name='RC' id='199-2' type='checkbox' class="child" value='Cumulative Billing Error'/><span class="tooltip"><label for="199-2">Cumulative Billing Error</label><span class="tooltiptext">Cumulative Billing didn't work properly, manual true - up required.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Online Billing Portal - FIN<br style="display: none;">
+        <input name='RC' id='201-2' type='checkbox' class="child" value='Payment Issue - Account Center'/><span class="tooltip"><label for="201-2">Payment Issue - Account Center</label><span class="tooltiptext">Customer can't make a payment via Account Center</span></span><br style="display: none;">
+        <input name='RC' id='202-2' type='checkbox' class="child" value='Update Payment information'/><span class="tooltip"><label for="202-2">Update Payment information</label><span class="tooltiptext">Customer can't change payment info via Account Center</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Rate Dispute - FIN<br style="display: none;">
+        <input name='RC' id='204-2' type='checkbox' class="child" value='Post-Solar Utility Discount Program'/><span class="tooltip"><label for="204-2">Post-Solar Utility Discount Program</label><span class="tooltiptext">Saving analysis found that the utility rate is lower than VSLR.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Multiple Account Billing - FIN<br style="display: none;">
+        <input name='RC' id='206-2' type='checkbox' class="child" value='Additional System Invoicing'/><span class="tooltip"><label for="206-2">Additional System Invoicing</label><span class="tooltiptext">Customer has multiple systems at the home and is requesting one invoice for the two system</span></span><br style="display: none;">
+        <input name='RC' id='207-2' type='checkbox' class="child" value='Multiple Properties Invoicing'/><span class="tooltip"><label for="207-2">Multiple Properties Invoicing</label><span class="tooltiptext">Customer has multiple properties, with VSLR solar units on them and is asking for one invoice for all the systems.</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Pre-PTO Process - FIN<br style="display: none;">
+        <input name='RC' id='209-2' type='checkbox' class="child" value='Process Delay - Funding'/><span class="tooltip"><label for="209-2">Process Delay - Funding</label><span class="tooltiptext">Customer upset over the delay in PTO submission due to no funding</span></span><br style="display: none;">
+</div><br><div>Solar Performance</div>
+        <hr>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Billed on Estimate - SP<br style="display: none;">
+        <input name='RC' id='211-2' type='checkbox' class="child" value='Solar Equipment - System Communication'/><span class="tooltip"><label for="211-2">Solar Equipment - System Communication</label><span class="tooltiptext">Equipment at the home either malfunctioned or was defective, causing a datacomm's issue</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Credits Owed/Compensation - SP<br style="display: none;">
+        <input name='RC' id='213-2' type='checkbox' class="child" value='System Downtime - Missed service appointment(s)'/><span class="tooltip"><label for="213-2">System Downtime - Missed service appointment(s)</label><span class="tooltiptext">Customer seeking compensation due to missed appointment - loss of wages</span></span><br style="display: none;">
+        <input name='RC' id='214-2' type='checkbox' class="child" value='System Downtime - System Generation'/><span class="tooltip"><label for="214-2">System Downtime - System Generation</label><span class="tooltiptext">Customer seeking compensation due to VSLR equipment not working properly</span></span><br style="display: none;">
+        <input name='RC' id='215-2' type='checkbox' class="child" value='System Underperforming - SP'/><span class="tooltip"><label for="215-2">System Underperforming - SP</label><span class="tooltiptext">customer seeking compensation for underperforming</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Appointment Issues - SP<br style="display: none;">
+        <input name='RC' id='217-2' type='checkbox' class="child" value='Appointment - Expired Time'/><span class="tooltip"><label for="217-2">Appointment - Expired Time</label><span class="tooltiptext">VSLR tech didn't have enough time on the work order to complete the job</span></span><br style="display: none;">
+        <input name='RC' id='218-2' type='checkbox' class="child" value='Appointment - illness / injury'/><span class="tooltip"><label for="218-2">Appointment - illness / injury</label><span class="tooltiptext">VSLR arrived, but left due to illness / injury</span></span><br style="display: none;">
+        <input name='RC' id='219-2' type='checkbox' class="child" value='Appointment - Incorrect Notes'/><span class="tooltip"><label for="219-2">Appointment - Incorrect Notes</label><span class="tooltiptext">VSLR tech arrived, only to leave the home due to incorrect notes in the work order</span></span><br style="display: none;">
+        <input name='RC' id='220-2' type='checkbox' class="child" value='Appointment - No Access'/><span class="tooltip"><label for="220-2">Appointment - No Access</label><span class="tooltiptext">VSLR couldn't access the solar equipment</span></span><br style="display: none;">
+        <input name='RC' id='221-2' type='checkbox' class="child" value='Appointment - No Equipment'/><span class="tooltip"><label for="221-2">Appointment - No Equipment</label><span class="tooltiptext">VSLR tech arrived without the equipment needed to resolve the issue</span></span><br style="display: none;">
+        <input name='RC' id='222-2' type='checkbox' class="child" value='Appointment - Not Confirmed'/><span class="tooltip"><label for="222-2">Appointment - Not Confirmed</label><span class="tooltiptext">Appointment not confirmed with the customer. </span></span><br style="display: none;">
+        <input name='RC' id='223-2' type='checkbox' class="child" value='Appointment - Pets'/><span class="tooltip"><label for="223-2">Appointment - Pets</label><span class="tooltiptext">VSLR couldn't service the home, due to pets</span></span><br style="display: none;">
+        <input name='RC' id='224-2' type='checkbox' class="child" value='Appointment - Weather'/><span class="tooltip"><label for="224-2">Appointment - Weather</label><span class="tooltiptext">VSLR arrived, but had to leave the job site due to weather</span></span><br style="display: none;">
+        <input name='RC' id='225-2' type='checkbox' class="child" value='Appointment - Wrong Equipment'/><span class="tooltip"><label for="225-2">Appointment - Wrong Equipment</label><span class="tooltiptext">VSLR tech arrived with the wrong equipment</span></span><br style="display: none;">
+        <input name='RC' id='226-2' type='checkbox' class="child" value='Missed Appointment - Drive Time'/><span class="tooltip"><label for="226-2">Missed Appointment - Drive Time</label><span class="tooltiptext">VSLR tech missed the appointment due to high drive time</span></span><br style="display: none;">
+        <input name='RC' id='227-2' type='checkbox' class="child" value='Missed Appointment - illness / injury'/><span class="tooltip"><label for="227-2">Missed Appointment - illness / injury</label><span class="tooltiptext">VSLR tech missed the appointment due to illness / injury</span></span><br style="display: none;">
+        <input name='RC' id='228-2' type='checkbox' class="child" value='Missed Appointment - Incorrect Notes'/><span class="tooltip"><label for="228-2">Missed Appointment - Incorrect Notes</label><span class="tooltiptext">VSLR tech missed the appointment due to incorrect work order notes</span></span><br style="display: none;">
+        <input name='RC' id='229-2' type='checkbox' class="child" value='Missed Appointment - No Equipment'/><span class="tooltip"><label for="229-2">Missed Appointment - No Equipment</label><span class="tooltiptext">VSLR tech missed the apppointment due to no equipment</span></span><br style="display: none;">
+        <input name='RC' id='230-2' type='checkbox' class="child" value='Missed Appointment - OM'/><span class="tooltip"><label for="230-2">Missed Appointment - OM</label><span class="tooltiptext">VSLR tech missed the appointment due to reschedule at OM request</span></span><br style="display: none;">
+        <input name='RC' id='231-2' type='checkbox' class="child" value='Missed Appointment - Weather'/><span class="tooltip"><label for="231-2">Missed Appointment - Weather</label><span class="tooltiptext">VSLR tech missed the appointment due to weather</span></span><br style="display: none;">
+        <input name='RC' id='232-2' type='checkbox' class="child" value='Waiting On Equipment'/><span class="tooltip"><label for="232-2">Waiting On Equipment</label><span class="tooltiptext">Local office didn't have the equipment needed for the work. </span></span><br style="display: none;">
+</div><br><div>Customer Follow-up & Resolution</div>
+        <hr>
+        <br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Follow-up & Resolution - Sales<br style="display: none;">
+        <input name='RC' id='234-2' type='checkbox' class="child" value='Customer Follow Up -  Contract Misrepresentation '/><span class="tooltip"><label for="234-2">Customer Follow Up -  Contract Misrepresentation </label><span class="tooltiptext">customer upset over the lack of follow up regarding misrepresentation of the following: cancellation / fees / free energy </span></span><br style="display: none;">
+        <input name='RC' id='235-2' type='checkbox' class="child" value='Customer Follow Up -  Deviation From Approved CAD'/><span class="tooltip"><label for="235-2">Customer Follow Up -  Deviation From Approved CAD</label><span class="tooltiptext">customer upset over the lack of follow up regarding an inquiry of the approved CAD </span></span><br style="display: none;">
+        <input name='RC' id='236-2' type='checkbox' class="child" value='Customer Follow Up -  Dispute'/><span class="tooltip"><label for="236-2">Customer Follow Up -  Dispute</label><span class="tooltiptext">customer upset over the lack of follow up regarding the following: credit authorization / Internet</span></span><br style="display: none;">
+        <input name='RC' id='237-2' type='checkbox' class="child" value='Customer Follow Up -  Sales Incentive / Referral Bonus'/><span class="tooltip"><label for="237-2">Customer Follow Up -  Sales Incentive / Referral Bonus</label><span class="tooltiptext">customer upset over the lack of follow up regarding their  Referral bonus / Incentive /</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Follow-up & Resolution - SO<br style="display: none;">
+        <input name='RC' id='239-2' type='checkbox' class="child" value='Customer Follow Up - Incomplete Install'/><span class="tooltip"><label for="239-2">Customer Follow Up - Incomplete Install</label><span class="tooltiptext">customer upset over the lack of follow up regarding the installation</span></span><br style="display: none;">
+        <input name='RC' id='240-2' type='checkbox' class="child" value='Customer Follow Up - Pre Install'/><span class="tooltip"><label for="240-2">Customer Follow Up - Pre Install</label><span class="tooltiptext">Customer upset over the lack of follow up during the pre- installation process</span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Follow-up & Resolution - FO<br style="display: none;">
+        <input name='RC' id='242-2' type='checkbox' class="child" value='Customer Follow Up -  Damage Resolution'/><span class="tooltip"><label for="242-2">Customer Follow Up -  Damage Resolution</label><span class="tooltiptext">customer upset over the lack of follow up regarding the Damage Resolution process</span></span><br style="display: none;">
+        <input name='RC' id='243-2' type='checkbox' class="child" value='Customer Follow Up -  Home Upgrade/Trenching'/><span class="tooltip"><label for="243-2">Customer Follow Up -  Home Upgrade/Trenching</label><span class="tooltiptext">customer upset over the lack of follow up regarding the Home Upgrade Process</span></span><br style="display: none;">
+        <input name='RC' id='244-2' type='checkbox' class="child" value='Customer Follow Up -  Home Upgrade/Trenching'/><span class="tooltip"><label for="244-2">Customer Follow Up -  Home Upgrade/Trenching</label><span class="tooltiptext">customer upset over the lack of follow up regarding the Home Upgrade Process</span></span><br style="display: none;">
+        <input name='RC' id='245-2' type='checkbox' class="child" value='Customer Follow Up -  Missed Appointments - AB to FIN'/><span class="tooltip"><label for="245-2">Customer Follow Up -  Missed Appointments - AB to FIN</label><span class="tooltiptext">customer upset over the lack of follow up regarding a missed appointment </span></span><br style="display: none;">
+        <input name='RC' id='246-2' type='checkbox' class="child" value='Customer Follow Up -  Missed Appointments - Damage'/><span class="tooltip"><label for="246-2">Customer Follow Up -  Missed Appointments - Damage</label><span class="tooltiptext">customer upset over the lack of follow up regarding a missed appointment - damage</span></span><br style="display: none;">
+        <input name='RC' id='247-2' type='checkbox' class="child" value='Customer Follow Up -  Removal & Re - Missed Appointment'/><span class="tooltip"><label for="247-2">Customer Follow Up -  Removal & Re - Missed Appointment</label><span class="tooltiptext">customer upset over the lack of follow up regarding an RnR missed appointment. </span></span><br style="display: none;">
+        <input name='RC' id='248-2' type='checkbox' class="child" value='Customer Follow Up -  Removal & Re - Rescheduled Appointment'/><span class="tooltip"><label for="248-2">Customer Follow Up -  Removal & Re - Rescheduled Appointment</label><span class="tooltiptext">customer upset over the lack of follow up regarding the RnR rescheduled appointment</span></span><br style="display: none;">
+        <input name='RC' id='249-2' type='checkbox' class="child" value='Customer Follow Up -  Third Party Communication '/><span class="tooltip"><label for="249-2">Customer Follow Up -  Third Party Communication </label><span class="tooltiptext">customer upset over the lack of follow up regarding the communication with a third-party contractor</span></span><br style="display: none;">
+        <input name='RC' id='250-2' type='checkbox' class="child" value='Customer Follow Up -  R & R '/><span class="tooltip"><label for="250-2">Customer Follow Up -  R & R </label><span class="tooltiptext">customer upset over lack of follows up from the R & R team </span></span><br style="display: none;">
+</div>
+<br style="display: none;"><div class="parent" onclick="handleClick(event)">Customer Follow-up & Resolution - CO<br style="display: none;">
+        <input name='RC' id='252-2' type='checkbox' class="child" value='Customer Follow Up  - Solar Production'/><span class="tooltip"><label for="252-2">Customer Follow Up  - Solar Production</label><span class="tooltiptext">customer upset over the lack of follow up regarding the Solar Production process</span></span><br style="display: none;">
+        <input name='RC' id='253-2' type='checkbox' class="child" value='Customer Follow Up -   Foreclosure'/><span class="tooltip"><label for="253-2">Customer Follow Up -   Foreclosure</label><span class="tooltiptext">customer upset over the lack of follow up regarding the foreclosure process</span></span><br style="display: none;">
     <!-- End emailSidebarText GAS function results -->
+    </div></div>
     <br><br><input type="submit" value="Submit Tag(s)"/>
 </form>
 <br>
