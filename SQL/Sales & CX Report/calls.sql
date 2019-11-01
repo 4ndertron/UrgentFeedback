@@ -38,6 +38,7 @@ WITH CALL_VIEW AS (
      */
     SELECT C.SESSION_ID
          , ANY_VALUE(C.DATE)           AS DATE        -- WHEN
+         , ANY_VALUE(C.CALL_START)     AS CALL_START  -- WHEN
          , ANY_VALUE(E.EMPLOYEE_ID)    AS EMPLOYEE_ID -- WHO
          , ANY_VALUE(C.ANI)            AS ANI
          , ANY_VALUE(C.AGENT_1_ACD_ID) AS AGENT_1_ACD_ID
