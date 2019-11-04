@@ -2,7 +2,7 @@ WITH PROJECTS_RAW AS (
     SELECT PROJECT_ID
          , PROJECT_NAME                   AS PROJECT_NUMBER
          , SERVICE_NAME                   AS SERVICE_NUMBER
-         , NVL(SERVICE_STATE, '[blank]')  AS STATE_NAME
+         , NVL(SERVICE_STATE, '[blank]')  AS SERVICE_STATE
          , TO_DATE(INSTALLATION_COMPLETE) AS INSTALL_DATE
          , TO_DATE(CANCELLATION_DATE)     AS CANCELLATION_DATE
     FROM RPT.T_PROJECT
@@ -10,7 +10,7 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_SERVICE AS (
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -35,7 +35,7 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_REMOVAL_REINSTALL AS (
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -60,7 +60,7 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_TROUBLESHOOTING AS (
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -97,7 +97,7 @@ WITH PROJECTS_RAW AS (
      TODO: And how many of them also have an ERT Case.
      TODO: Talk with Landon on how the Damage Case subcategories are reported.
      */
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -121,7 +121,7 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_ESCALATION AS (
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -184,7 +184,7 @@ WITH PROJECTS_RAW AS (
      TODO: Breakout by Foreclosure and Default, and I guess the D1,2,4,5, Deceased...
      TODO: Use the standard breakpoints in the other reports... CXBR?
      */
-    SELECT PR.STATE_NAME
+    SELECT PR.SERVICE_STATE
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
          , PR.SERVICE_NUMBER
@@ -236,7 +236,7 @@ WITH PROJECTS_RAW AS (
 
    , CASE_DAY_WIP AS (
     SELECT D.DT
-         , C.STATE_NAME
+         , C.SERVICE_STATE
          , C.ORG_BUCKET
          , C.CASE_BUCKET
          , COUNT(CASE
@@ -256,9 +256,9 @@ WITH PROJECTS_RAW AS (
               CURRENT_DATE
     GROUP BY D.DT
            , C.ORG_BUCKET
-           , C.STATE_NAME
+           , C.SERVICE_STATE
            , C.CASE_BUCKET
-    ORDER BY C.STATE_NAME
+    ORDER BY C.SERVICE_STATE
            , C.ORG_BUCKET
            , C.CASE_BUCKET
            , D.DT
@@ -266,7 +266,7 @@ WITH PROJECTS_RAW AS (
 
    , INSTALL_DAY_WIP AS (
     SELECT D.DT
-         , P.STATE_NAME
+         , P.SERVICE_STATE
          , COUNT(CASE
                      WHEN P.INSTALL_DATE <= D.DT AND
                           (P.CANCELLATION_DATE > D.DT OR
@@ -278,15 +278,15 @@ WITH PROJECTS_RAW AS (
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
     GROUP BY D.DT
-           , P.STATE_NAME
-    ORDER BY P.STATE_NAME
+           , P.SERVICE_STATE
+    ORDER BY P.SERVICE_STATE
            , D.DT
 )
 
    , MONTH_WIP_TABLE AS (
     SELECT CDW.DT      AS MONTH
          , YEAR(MONTH) AS YEAR
-         , CDW.STATE_NAME
+         , CDW.SERVICE_STATE
          , CDW.ORG_BUCKET
          , CDW.CASE_BUCKET
          , CDW.ACTIVE_CASES
@@ -294,9 +294,9 @@ WITH PROJECTS_RAW AS (
          , IDW.CASE_ACTIVE_INSTALLS
     FROM CASE_DAY_WIP AS CDW
              INNER JOIN INSTALL_DAY_WIP AS IDW
-                        ON IDW.DT = CDW.DT AND IDW.STATE_NAME = CDW.STATE_NAME
+                        ON IDW.DT = CDW.DT AND IDW.SERVICE_STATE = CDW.SERVICE_STATE
     WHERE DAY(CDW.DT) = DAY(CURRENT_DATE)
-    ORDER BY CDW.STATE_NAME
+    ORDER BY CDW.SERVICE_STATE
            , CDW.ORG_BUCKET
            , CDW.CASE_BUCKET
            , MONTH
@@ -305,29 +305,29 @@ WITH PROJECTS_RAW AS (
    , CASE_ION AS (
     SELECT D.DT
          , YEAR(D.DT)                                                       AS YEAR
-         , CO.STATE_NAME
+         , CO.SERVICE_STATE
          , CO.ORG_BUCKET
          , CO.CASE_BUCKET
          , SUM(COUNT(CASE
                          WHEN CREATED_DATE = D.DT
                              THEN 1 END)) OVER
-                   (PARTITION BY CO.STATE_NAME, CO.ORG_BUCKET, CO.CASE_BUCKET
+                   (PARTITION BY CO.SERVICE_STATE, CO.ORG_BUCKET, CO.CASE_BUCKET
                    ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS CASE_INFLOW
          , SUM(COUNT(CASE
                          WHEN CLOSED_DATE = D.DT
                              THEN 1 END)) OVER
-                   (PARTITION BY CO.STATE_NAME, CO.ORG_BUCKET, CO.CASE_BUCKET
+                   (PARTITION BY CO.SERVICE_STATE, CO.ORG_BUCKET, CO.CASE_BUCKET
                    ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS CASE_OUTFLOW
          , CASE_INFLOW - CASE_OUTFLOW                                       AS CASE_NET
          , SUM(COUNT(DISTINCT (CASE
                                    WHEN CREATED_DATE = D.DT
                                        THEN CO.PROJECT_ID END))) OVER
-                   (PARTITION BY CO.STATE_NAME, CO.ORG_BUCKET, CO.CASE_BUCKET
+                   (PARTITION BY CO.SERVICE_STATE, CO.ORG_BUCKET, CO.CASE_BUCKET
                    ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS DISTINCT_ACCOUNT_INFLOW
          , SUM(COUNT(DISTINCT (CASE
                                    WHEN CLOSED_DATE = D.DT
                                        THEN CO.PROJECT_ID END))) OVER
-                   (PARTITION BY CO.STATE_NAME, CO.ORG_BUCKET, CO.CASE_BUCKET
+                   (PARTITION BY CO.SERVICE_STATE, CO.ORG_BUCKET, CO.CASE_BUCKET
                    ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS DISTINCT_ACCOUNT_OUTFLOW
          , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW               AS DISTINCT_ACCOUNT_NET
     FROM CASES_OVERALL AS CO
@@ -336,10 +336,10 @@ WITH PROJECTS_RAW AS (
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
     GROUP BY D.DT
-           , CO.STATE_NAME
+           , CO.SERVICE_STATE
            , CO.ORG_BUCKET
            , CO.CASE_BUCKET
-    ORDER BY CO.STATE_NAME
+    ORDER BY CO.SERVICE_STATE
            , CO.ORG_BUCKET
            , CO.CASE_BUCKET
            , D.DT
@@ -348,7 +348,7 @@ WITH PROJECTS_RAW AS (
    , METRIC_MERGE AS (
     SELECT ION.DT
          , ION.YEAR
-         , ION.STATE_NAME
+         , ION.SERVICE_STATE
          , ION.ORG_BUCKET
          , ION.CASE_BUCKET
          , ION.CASE_INFLOW
@@ -363,12 +363,12 @@ WITH PROJECTS_RAW AS (
     FROM CASE_ION AS ION
              INNER JOIN MONTH_WIP_TABLE AS WIP
                         ON WIP.MONTH = ION.DT AND
-                           WIP.STATE_NAME = ION.STATE_NAME AND
+                           WIP.SERVICE_STATE = ION.SERVICE_STATE AND
                            WIP.CASE_BUCKET = ION.CASE_BUCKET AND
                            WIP.ORG_BUCKET = ION.ORG_BUCKET AND
                            WIP.YEAR = ION.YEAR
     WHERE DAY(ION.DT) = DAY(CURRENT_DATE)
-    ORDER BY ION.STATE_NAME
+    ORDER BY ION.SERVICE_STATE
            , ION.CASE_BUCKET
            , ION.DT
 )
