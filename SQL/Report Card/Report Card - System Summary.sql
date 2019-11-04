@@ -52,33 +52,35 @@ WITH SYSTEM_DAILY_STATUS AS (
 )
 
    , SYSTEM_ION AS (
-       /*
-        Last run:
-        1 m 17 s
-        (#｀-_ゝ-)
-        */
-    SELECT DATE_TRUNC('MM', TO_DATE(D.DT)) + DAY(CURRENT_DATE) - 1 AS MONTH
-         , YEAR(MONTH)                                             AS YEAR
+    /*
+     Last run:
+     1 m 17 s
+     (#｀-_ゝ-)
+     */
+    SELECT D.DT
+         , YEAR(D.DT)                                                        AS YEAR
          , S.STATUS_BUCKET
          , S.SERVICE_STATE
-         , COUNT(CASE
-                     WHEN S.FIRST_DAY_IN_STATUS = D.DT
-                         THEN 1 END)                               AS SYSTEM_INFLOW
-         , COUNT(CASE
-                     WHEN S.LAST_DAY_IN_STATUS = D.DT
-                         THEN 1 END)                               AS SYSTEM_OUTFLOW
-         , SYSTEM_INFLOW - SYSTEM_OUTFLOW                          AS SYSTEM_NET
+         , SUM(COUNT(CASE
+                         WHEN S.FIRST_DAY_IN_STATUS = D.DT
+                             THEN 1 END)) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS SYSTEM_INFLOW
+         , SUM(COUNT(CASE
+                         WHEN S.LAST_DAY_IN_STATUS = D.DT
+                             THEN 1 END)) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS SYSTEM_OUTFLOW
+         , SYSTEM_INFLOW - SYSTEM_OUTFLOW                                    AS SYSTEM_NET
     FROM RPT.T_DATES AS D
        , SYSTEM_DAILY_STATUS S
     WHERE D.DT BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
     GROUP BY S.STATUS_BUCKET
-           , MONTH
+           , D.DT
            , S.SERVICE_STATE
     ORDER BY S.SERVICE_STATE
            , S.STATUS_BUCKET
-           , MONTH
+           , D.DT
 )
 
    , METRIC_MERGE AS (
@@ -86,7 +88,7 @@ WITH SYSTEM_DAILY_STATUS AS (
      Last run time:
      33 s 435 ms
      */
-    SELECT ION.MONTH
+    SELECT ION.DT
          , ION.SERVICE_STATE
          , ION.STATUS_BUCKET
          , ION.SYSTEM_INFLOW
@@ -95,15 +97,16 @@ WITH SYSTEM_DAILY_STATUS AS (
          , WIP.ACTIVE_SYSTEM_STATUS
     FROM SYSTEM_ION AS ION
              INNER JOIN SYSTEM_DAY_WIP AS WIP
-                        ON WIP.DT = ION.MONTH AND
+                        ON WIP.DT = ION.DT AND
                            WIP.STATUS_BUCKET = ION.STATUS_BUCKET AND
                            WIP.SERVICE_STATE = ION.SERVICE_STATE
+    WHERE DAY(ION.DT) = DAY(CURRENT_DATE)
 )
 
    , TEST_CTE AS (
     SELECT *
     FROM SYSTEM_ION
-    ORDER BY MONTH DESC
+    ORDER BY DT DESC
     LIMIT 100
 )
 

@@ -21,25 +21,26 @@ WITH BILLING_TABLE AS (
 )
 
    , BILLING_WIP AS (
-    SELECT DATE_TRUNC('MM', TO_DATE(D.DT)) + DAY(CURRENT_DATE) - 1 AS MONTH
-         , YEAR(MONTH)                                             AS YEAR
+    SELECT D.DT
+         , YEAR(D.DT)                                                        AS YEAR
          , B.SERVICE_STATE
          , B.BILLING_BUCKET
-         , COUNT(CASE
-                     WHEN B.METER_READ_MONTH = D.DT
-                         THEN 1 END)                               AS BILLING_VOLUME
+         , SUM(COUNT(CASE
+                         WHEN B.METER_READ_MONTH = D.DT
+                             THEN 1 END)) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS BILLING_VOLUME
     FROM RPT.T_DATES AS D
        , BILLING_TABLE AS B
     WHERE D.DT BETWEEN
         DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
         CURRENT_DATE
       AND DAY(D.DT) = DAY(CURRENT_DATE)
-    GROUP BY MONTH
+    GROUP BY D.DT
            , B.BILLING_BUCKET
            , B.SERVICE_STATE
     ORDER BY B.BILLING_BUCKET
            , B.SERVICE_STATE
-           , MONTH
+           , D.DT
 )
 
    , TEST_CTE AS (
@@ -50,6 +51,7 @@ WITH BILLING_TABLE AS (
    , METRIC_MERGE AS (
     SELECT *
     FROM BILLING_WIP
+    WHERE DAY(DT) = DAY(CURRENT_DATE)
 )
 
 SELECT *

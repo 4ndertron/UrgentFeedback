@@ -39,6 +39,7 @@ WITH CALL_VIEW AS (
     SELECT C.SESSION_ID
          , ANY_VALUE(C.DATE)           AS DATE        -- WHEN
          , ANY_VALUE(C.CALL_START)     AS CALL_START  -- WHEN
+         , ANY_VALUE(C.CALL_END)       AS CALL_END    -- WHEN
          , ANY_VALUE(E.EMPLOYEE_ID)    AS EMPLOYEE_ID -- WHO
          , ANY_VALUE(C.ANI)            AS ANI
          , ANY_VALUE(C.AGENT_1_ACD_ID) AS AGENT_1_ACD_ID
@@ -62,8 +63,12 @@ WITH CALL_VIEW AS (
      TODO: JOIN TO CALLS ON WHO AND WHEN
      */
     SELECT T.TASK_ID
-         , E.EMPLOYEE_ID  -- WHO
-         , T.CREATED_DATE -- WHEN
+         , E.EMPLOYEE_ID                                          -- WHO
+         , TO_DATE(T.CREATED_DATE)                AS CREATED_DATE -- WHEN
+         , TO_TIME(T.CREATED_DATE)                AS CREATED_TIME -- WHEN
+         , ROW_NUMBER()
+            OVER (PARTITION BY E.EMPLOYEE_ID, TO_DATE(T.CREATED_DATE)
+                ORDER BY TO_TIME(T.CREATED_DATE)) AS RN
     FROM RPT.T_TASK AS T
              LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                              ON E.SALESFORCE_ID = T.CREATED_BY_ID
@@ -76,8 +81,12 @@ WITH CALL_VIEW AS (
      TODO: JOIN TO CALLS ON WHO AND WHEN
      */
     SELECT CC.ID
-         , HR.EMPLOYEE_ID                -- WHO
-         , CC.CREATEDATE AS CREATED_DATE -- WHEN
+         , HR.EMPLOYEE_ID                                        -- WHO
+         , TO_DATE(CC.CREATEDATE)                AS CREATED_DATE -- WHEN
+         , TO_TIME(CC.CREATEDATE)                AS CREATED_TIME -- WHEN
+         , ROW_NUMBER()
+            OVER (PARTITION BY HR.EMPLOYEE_ID , TO_DATE(CC.CREATEDATE)
+                ORDER BY TO_TIME(CC.CREATEDATE)) AS RN
     FROM RPT.V_SF_CASECOMMENT AS CC
              LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                              ON E.SALESFORCE_ID = cc.CREATEDBYID
@@ -92,20 +101,32 @@ WITH CALL_VIEW AS (
     SELECT CV.SESSION_ID
          , ANY_VALUE(CV.EMPLOYEE_ID)   AS CV_EMPLOYEE_ID
          , ANY_VALUE(CV.DATE)          AS CV_DATE
+         , ANY_VALUE(CV.CALL_START)    AS CV_START
+         , ANY_VALUE(CV.CALL_END)      AS CV_END
          , TV.TASK_ID
          , ANY_VALUE(TV.EMPLOYEE_ID)   AS TV_EMPLOYEE_ID
          , ANY_VALUE(TV.CREATED_DATE)  AS TV_DATE
+         , ANY_VALUE(TV.CREATED_TIME)  AS TV_TIME
          , CCV.ID                      AS CASE_COMMENT_ID
          , ANY_VALUE(CCV.EMPLOYEE_ID)  AS CCV_EMPLOYEE_ID
          , ANY_VALUE(CCV.CREATED_DATE) AS CCV_DATE
+         , ANY_VALUE(CCV.CREATED_TIME) AS CCV_TIME
     FROM CALL_VIEW AS CV
              LEFT OUTER JOIN TASK_VIEW AS TV
                              ON TV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
-                                TV.CREATED_DATE = CV.DATE
+                                TV.CREATED_DATE = CV.DATE AND
+                                TV.CREATED_TIME BETWEEN
+                                    CV.CALL_START AND
+                                    TIMEADD(mi, 5, CV.CALL_END) AND
+                                TV.RN = 1
              LEFT OUTER JOIN CASE_COMMENT_VIEW AS CCV
                              ON CCV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
-                                CCV.CREATED_DATE = CV.DATE
-    WHERE CV.DATE = DATEADD(d, -5, CURRENT_DATE)
+                                CCV.CREATED_DATE = CV.DATE AND
+                                CCV.CREATED_TIME BETWEEN
+                                    CV.CALL_START AND
+                                    TIMEADD(mi, 5, CV.CALL_END) AND
+                                CCV.RN = 1
+    WHERE CV.DATE = DATEADD(d, -3, CURRENT_DATE)
       AND TV.TASK_ID IS NOT NULL
       AND CCV.ID IS NOT NULL
     GROUP BY CV.SESSION_ID
@@ -156,4 +177,5 @@ WITH CALL_VIEW AS (
 )
 
 SELECT *
-FROM MAIN
+FROM MERGE
+ORDER BY 1

@@ -92,11 +92,11 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_DAMAGE AS (
-       /*
-        TODO: Split the total bucket by Origin...?
-        TODO: And how many of them also have an ERT Case.
-        TODO: Talk with Landon on how the Damage Case subcategories are reported.
-        */
+    /*
+     TODO: Split the total bucket by Origin...?
+     TODO: And how many of them also have an ERT Case.
+     TODO: Talk with Landon on how the Damage Case subcategories are reported.
+     */
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
@@ -180,10 +180,10 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_DEFAULT AS (
-       /*
-        TODO: Breakout by Foreclosure and Default, and I guess the D1,2,4,5, Deceased...
-        TODO: Use the standard breakpoints in the other reports... CXBR?
-        */
+    /*
+     TODO: Breakout by Foreclosure and Default, and I guess the D1,2,4,5, Deceased...
+     TODO: Use the standard breakpoints in the other reports... CXBR?
+     */
     SELECT PR.STATE_NAME
          , PR.PROJECT_ID
          , PR.PROJECT_NUMBER
@@ -304,40 +304,46 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASE_ION AS (
-    SELECT DATE_TRUNC('MM', TO_DATE(D.DT)) + DAY(CURRENT_DATE) - 1 AS MONTH
-         , YEAR(MONTH)                                             AS YEAR
+    SELECT D.DT
+         , YEAR(D.DT)                                                        AS YEAR
          , CO.STATE_NAME
          , CO.ORG_BUCKET
          , CO.CASE_BUCKET
-         , COUNT(CASE
-                     WHEN CREATED_DATE = D.DT
-                         THEN 1 END)                               AS CASE_INFLOW
-         , COUNT(CASE WHEN CLOSED_DATE = D.DT THEN 1 END)          AS CASE_OUTFLOW
-         , CASE_INFLOW - CASE_OUTFLOW                              AS CASE_NET
-         , COUNT(DISTINCT (CASE
-                               WHEN CREATED_DATE = D.DT
-                                   THEN CO.PROJECT_ID END))        AS DISTINCT_ACCOUNT_INFLOW
-         , COUNT(DISTINCT (CASE
-                               WHEN CLOSED_DATE = D.DT
-                                   THEN CO.PROJECT_ID END))        AS DISTINCT_ACCOUNT_OUTFLOW
-         , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW      AS DISTINCT_ACCOUNT_NET
+         , SUM(COUNT(CASE
+                         WHEN CREATED_DATE = D.DT
+                             THEN 1 END)) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS CASE_INFLOW
+         , SUM(COUNT(CASE
+                         WHEN CLOSED_DATE = D.DT
+                             THEN 1 END)) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS CASE_OUTFLOW
+         , CASE_INFLOW - CASE_OUTFLOW                                        AS CASE_NET
+         , SUM(COUNT(DISTINCT (CASE
+                                   WHEN CREATED_DATE = D.DT
+                                       THEN CO.PROJECT_ID END))) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS DISTINCT_ACCOUNT_INFLOW
+         , SUM(COUNT(DISTINCT (CASE
+                                   WHEN CLOSED_DATE = D.DT
+                                       THEN CO.PROJECT_ID END))) OVER
+                   (ORDER BY D.DT ROWS BETWEEN 30 PRECEDING AND 1 PRECEDING) AS DISTINCT_ACCOUNT_OUTFLOW
+         , DISTINCT_ACCOUNT_INFLOW - DISTINCT_ACCOUNT_OUTFLOW                AS DISTINCT_ACCOUNT_NET
     FROM CASES_OVERALL AS CO
        , RPT.T_DATES AS D
     WHERE D.DT BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
-    GROUP BY MONTH
+    GROUP BY D.DT
            , CO.STATE_NAME
            , CO.ORG_BUCKET
            , CO.CASE_BUCKET
     ORDER BY CO.STATE_NAME
            , CO.ORG_BUCKET
            , CO.CASE_BUCKET
-           , MONTH
+           , D.DT
 )
 
    , METRIC_MERGE AS (
-    SELECT ION.MONTH
+    SELECT ION.DT
          , ION.YEAR
          , ION.STATE_NAME
          , ION.ORG_BUCKET
@@ -353,20 +359,23 @@ WITH PROJECTS_RAW AS (
          , WIP.CASE_ACTIVE_INSTALLS
     FROM CASE_ION AS ION
              INNER JOIN MONTH_WIP_TABLE AS WIP
-                        ON WIP.MONTH = ION.MONTH AND
+                        ON WIP.MONTH = ION.DT AND
                            WIP.STATE_NAME = ION.STATE_NAME AND
                            WIP.CASE_BUCKET = ION.CASE_BUCKET AND
                            WIP.ORG_BUCKET = ION.ORG_BUCKET AND
                            WIP.YEAR = ION.YEAR
+    WHERE DAY(ION.DT) = DAY(CURRENT_DATE)
     ORDER BY ION.STATE_NAME
            , ION.CASE_BUCKET
-           , ION.MONTH
+           , ION.DT
 )
 
    , TEST_RESULTS AS (
-    SELECT DISTINCT CASE_BUCKET, ORG_BUCKET
+    SELECT DISTINCT *
     FROM METRIC_MERGE
-       WHERE STATE_NAME = 'NY'
+    WHERE STATE_NAME = 'CA'
+       AND ORG_BUCKET = 'ERT'
+       AND CASE_BUCKET = 'Legal'
 --     LIMIT 100
 )
 
