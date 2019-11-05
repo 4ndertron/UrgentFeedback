@@ -1,19 +1,19 @@
-SURVEY_TYPE,Bootleg Org,Org Bucket,
-320 - Post-Install Process,ACE,ACE,X
-330 - Customer Success Managers,ACE,Collections,
-520 - Customer Service,CX,CX,X
-500 - PTO,CX,Damage,X
-510 - Billing,CX,Default,
-550 - At-Fault Home Damage,DAMAGE,ERT,X
-530 - Executive Resolutions,ERT,SPC,X
-540 - Field Service,SPC,,
-210 - Pre-Install Process,,,
-250 - Home Upgrade,,,
-251 - Home Upgrade (Sales Rep),,,
-600 - Relational,,,
-100 - Sales Experience,,,
-200 - Site Survey Complete,,,
-300 - Install Complete,,,
-400 - FIN Complete,,,
-310 - Intro Call,,,
-560 - LeaseDimensions,,,
+SURVEY_TYPE,Temp Org Assignment,,Risk Report Org Bucket,Assigned to Survey Type
+320 - Post-Install Process,ACE,,ACE,TRUE
+330 - Customer Success Managers,ACE,,Collections,FALSE
+520 - Customer Service,CX,,CX,TRUE
+500 - PTO,CX,,Damage,TRUE
+510 - Billing,CX,,Default,FALSE
+550 - At-Fault Home Damage,Damage,,ERT,TRUE
+530 - Executive Resolutions,ERT,,SPC,TRUE
+540 - Field Service,SPC,,,
+210 - Pre-Install Process,,,,
+250 - Home Upgrade,,,,
+251 - Home Upgrade (Sales Rep),,,,
+600 - Relational,,,,
+100 - Sales Experience,,,,
+200 - Site Survey Complete,,,,
+300 - Install Complete,,,,
+400 - FIN Complete,,,,
+310 - Intro Call,,,,
+560 - LeaseDimensions,,,,
