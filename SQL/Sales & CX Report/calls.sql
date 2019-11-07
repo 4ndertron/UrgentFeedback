@@ -129,6 +129,7 @@ WITH CALL_VIEW AS (
          , COUNT(DISTINCT SESSION_ID)                         AS TOTAL_CALLS
          , NVL(SUM(TV_SALES_TALLY) + SUM(CCV_SALES_TALLY), 0) AS SALES_CALLS
          , SALES_CALLS / TOTAL_CALLS                          AS SALES_CALL_RATIO
+         , CURRENT_DATE                                       AS LAST_REFRESHED
     FROM RPT.T_DATES AS D
              INNER JOIN MERGE AS M
                         ON M.CV_DATE = D.DT
