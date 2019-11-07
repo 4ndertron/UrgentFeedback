@@ -20,6 +20,8 @@
  Ratio of sales calls.
  Breakdown of top three call types.
 
+ TODO: Make a geolocation map of the call volumes.
+
  */
 
 WITH CALL_VIEW AS (
