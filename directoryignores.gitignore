@@ -8,3 +8,5 @@
 # git rm --cached .idea/
 
 # Try to move this .gitignore file up one in the local directory, which is outside the scope of this  upload path.
+/SQL/New Customers/PTO Billing Email List - Nov.csv
+/SQL/New Customers/PTO Billing Email List - Oct.csv
