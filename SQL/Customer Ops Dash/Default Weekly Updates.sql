@@ -9,6 +9,7 @@ WITH DEFAULT_CASES AS (
          , ANY_VALUE(C.SOLAR_QUEUE)                        AS CASE_QUEUE
          , CASE
                WHEN CASE_QUEUE = 'Dispute/Evasion'
+                   AND ANY_VALUE(C.RECORD_TYPE) != 'Solar - Customer Default'
                    THEN 'Pre-Default'
                WHEN PTO_DATE1 IS NULL
                    THEN 'Pre-PTO'
@@ -23,6 +24,7 @@ WITH DEFAULT_CASES AS (
          , TO_DATE(ANY_VALUE(C.CREATED_DATE))              AS CREATED_DATE1
          , TO_DATE(ANY_VALUE(C.CLOSED_DATE))               AS CLOSED_DATE1
          , ANY_VALUE(C.RECORD_TYPE)                        AS RECORD_TYPE1
+         , ANY_VALUE(C.MANAGER_CALL)                       AS MANAGER_CALL
          , ANY_VALUE(P.SOLAR_BILLING_ACCOUNT_NUMBER)       AS SOLAR_BILLING_ACCOUNT_NUMBER1
          , CASE
                WHEN STATUS2 = 'Escalated' AND RECORD_TYPE1 = 'Solar - Customer Default' THEN 'Pending Legal'
@@ -95,6 +97,7 @@ WITH DEFAULT_CASES AS (
          , ANY_VALUE(STATUS2)                                                           AS STATUS1
          , ANY_VALUE(DEFAULT_CATEGORY)                                                  AS DEFAULT_CATEGORY
          , ANY_VALUE(PTO_DATE1)                                                         AS PTO_DATE
+         , ANY_VALUE(MANAGER_CALL)                                                      AS MANAGER_CALL
          , ANY_VALUE(AGE_FOR_CASE)                                                      AS AGE_FOR_CASE
          , ANY_VALUE(CREATED_DATE1)                                                     AS CREATED_DATE
          , ANY_VALUE(CLOSED_DATE1)                                                      AS CLOSED_DATE
@@ -278,6 +281,34 @@ WITH DEFAULT_CASES AS (
     GROUP BY WEEK
     ORDER BY WEEK
 )
+
+   , RAW_UPDATES AS (
+    SELECT U.*
+    FROM (
+             (SELECT CC.ID
+                   , CC.CREATEDATE  AS CREATED_DATE
+                   , CC.PARENTID    AS PARENT
+                   , E.EMPLOYEE_ID
+                   , 'Case Comment' AS UPDATE_TYPE
+              FROM RPT.V_SF_CASECOMMENT AS CC
+                       LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
+                                       ON E.SALESFORCE_ID = CC.CREATEDBYID)
+             UNION
+             (SELECT T.TASK_ID       AS ID
+                   , T.CREATED_DATE  AS CREATED_DATE
+                   , T.PROJECT_ID    AS PARENT
+                   , E.EMPLOYEE_ID
+                   , 'Task Creation' AS UPDATE_TYPE
+              FROM RPT.T_TASK AS T
+                       LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
+                                       ON E.SALESFORCE_ID = T.CREATED_BY_ID)
+         ) AS U
+             LEFT OUTER JOIN DEFAULT_AGENTS AS A
+                             ON A.EMPLOYEE_ID = U.EMPLOYEE_ID
+    WHERE A.EMPLOYEE_ID IS NOT NULL
+      AND U.CREATED_DATE >= A.TEAM_START_DATE
+      AND U.CREATED_DATE <= A.TEAM_END_DATE
+)
 /*
  End core tables
  */
@@ -304,11 +335,11 @@ WITH DEFAULT_CASES AS (
    , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(U.CREATED_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
-    FROM CASE_HISTORY_TABLE AS CHT
+    FROM RAW_UPDATES AS U
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -338,14 +369,20 @@ WITH DEFAULT_CASES AS (
                          THEN 1 END) AS POST_PTO_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL) AND
+                          STATUS1 = 'In Progress'
+                         AND MANAGER_CALL IS NOT NULL
+                         THEN 1 END) AS LETTERS_WIP
+         , COUNT(CASE
+                     WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
                           (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
                          THEN 1 END) AS CASE_TOTAL_WIP
     FROM RPT.T_DATES AS D
        , FULL_CASE AS FC
     WHERE D.DT BETWEEN
-              DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
-              DATE_TRUNC(w, CURRENT_DATE)
---       AND STATUS_BUCKET = 'Working with Customer'
+        DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
+        DATE_TRUNC(w, CURRENT_DATE)
+      AND FC.SUBJECT NOT ILIKE '%#COLL%'
     GROUP BY D.DT
     ORDER BY D.DT
 )
@@ -363,6 +400,7 @@ WITH DEFAULT_CASES AS (
          , CW.PRE_PTO_WIP
          , CW.POST_PTO_WIP
          , CW.CASE_TOTAL_WIP
+         , CW.LETTERS_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
@@ -501,6 +539,7 @@ WITH DEFAULT_CASES AS (
          , CASE_WEEK_WIP.PRE_DEFAULT_WIP        AS PRE_DEFAULT_WIP
          , CASE_WEEK_WIP.PRE_PTO_WIP            AS PRE_PTO_DEFAULT_WIP
          , CASE_WEEK_WIP.POST_PTO_WIP           AS POST_PTO_DEFAULT_WIP
+         , CASE_WEEK_WIP.LETTERS_WIP            AS LETTERs_WIP
          , ION.AVG_OPEN_AGE                     AS AGE_OF_TOTAL_WIP
          , UPDATES_WEEK.TOTAL_UPDATES
          , ION.CLOSED_WON_RATIO

@@ -157,7 +157,12 @@ WITH PROJECTS_RAW AS (
          , CASE
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN NOT IN ('Legal')
                    THEN 'ERT'
+               WHEN CA.CREATED_DATE IS NOT NULL
+                   AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+                   AND CA.ORIGIN IN ('Legal')
+                   THEN 'Legal'
                WHEN CA.CREATED_DATE IS NOT NULL
                    AND CA.EXECUTIVE_RESOLUTIONS_ACCEPTED IS NULL
                    THEN 'CX'

@@ -55,10 +55,10 @@ WITH ESCALATION_CASES AS (
     SELECT *
     FROM (
                  (SELECT * FROM ESCALATION_CASES)
-                 UNION
-                 (SELECT * FROM RELOCATION_CASES)
-                 UNION
-                 (SELECT * FROM SYSTEM_DAMAGE_CASES)
+--                  UNION
+--                  (SELECT * FROM RELOCATION_CASES)
+--                  UNION
+--                  (SELECT * FROM SYSTEM_DAMAGE_CASES)
          ) AS C
 )
 
@@ -311,6 +311,34 @@ WITH ESCALATION_CASES AS (
     GROUP BY WEEK
     ORDER BY WEEK
 )
+
+   , RAW_UPDATES AS (
+    SELECT U.*
+    FROM (
+             (SELECT CC.ID
+                   , CC.CREATEDATE  AS CREATED_DATE
+                   , CC.PARENTID    AS PARENT
+                   , E.EMPLOYEE_ID
+                   , 'Case Comment' AS UPDATE_TYPE
+              FROM RPT.V_SF_CASECOMMENT AS CC
+                       LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
+                                       ON E.SALESFORCE_ID = CC.CREATEDBYID)
+             UNION
+             (SELECT T.TASK_ID       AS ID
+                   , T.CREATED_DATE  AS CREATED_DATE
+                   , T.PROJECT_ID    AS PARENT
+                   , E.EMPLOYEE_ID
+                   , 'Task Creation' AS UPDATE_TYPE
+              FROM RPT.T_TASK AS T
+                       LEFT OUTER JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
+                                       ON E.SALESFORCE_ID = T.CREATED_BY_ID)
+         ) AS U
+             LEFT OUTER JOIN ER_AGENTS AS A
+                             ON A.EMPLOYEE_ID = U.EMPLOYEE_ID
+    WHERE A.EMPLOYEE_ID IS NOT NULL
+      AND U.CREATED_DATE >= A.TEAM_START_DATE
+      AND U.CREATED_DATE <= A.TEAM_END_DATE
+)
 /*
  End core tables
  */
@@ -322,13 +350,7 @@ WITH ESCALATION_CASES AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN DA.TEAM_START_DATE <= D.DT AND
-                          DA.TEAM_END_DATE > D.DT AND
-                          DA.POSITION_TITLE NOT ILIKE '%COMM%' AND
-                          DA.POSITION_TITLE NOT ILIKE '%ADMIN%' AND
-                          DA.POSITION_TITLE NOT ILIKE '%PROJECT%' AND
-                          DA.POSITION_TITLE NOT ILIKE 'II' AND
-                          DA.FULL_NAME NOT ILIKE '%BERG%' AND
-                          DA.FULL_NAME NOT ILIKE '%GIAC%'
+                          DA.TEAM_END_DATE > D.DT
                          THEN 1 END) AS ACTIVE_AGENTS
     FROM RPT.T_DATES AS D
        , ER_AGENTS AS DA
@@ -342,11 +364,11 @@ WITH ESCALATION_CASES AS (
    , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(U.CREATED_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
-    FROM CASE_HISTORY_TABLE AS CHT
+    FROM RAW_UPDATES AS U
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -493,7 +515,7 @@ WITH ESCALATION_CASES AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM ION
+    FROM RAW_UPDATES
 )
 
    , MAIN AS (

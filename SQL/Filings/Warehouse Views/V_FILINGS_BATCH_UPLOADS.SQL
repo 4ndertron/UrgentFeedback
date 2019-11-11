@@ -3,6 +3,7 @@ WITH ACCOUNT_LIST AS (
          , TO_DATE(A.CREATED_DATE)                                                  DAY_UPLOADED
     FROM RPT.T_ATTACHMENT AS A
     WHERE A.UPLOADED_BY_NAME ILIKE '%LD_FTP%'
+      AND A.DOCUMENT_TYPE = 'County Recordings'
 )
 
 SELECT *
