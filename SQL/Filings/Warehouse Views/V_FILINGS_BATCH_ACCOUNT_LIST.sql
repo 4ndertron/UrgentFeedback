@@ -42,8 +42,8 @@ from (
            AND (P.SALES_OFFICE != 'Homebuilder Corporate' OR
                 (P.SALES_OFFICE = 'Homebuilder Corporate' AND P.ESCROW IS NOT NULL))
          UNION
-         SELECT P.PROJECT_NAME
-              , S.SERVICE_NAME
+         SELECT S.SERVICE_NAME
+              , P.PROJECT_NAME
               , CT.FIRST_NAME                                                                      AS CUSTOMER_1_First
               , ''                                                                                 AS Customer_1_Middle
               ----------------------------------------------------------

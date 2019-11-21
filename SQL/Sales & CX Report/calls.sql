@@ -108,13 +108,13 @@ WITH CALL_VIEW AS (
          , ANY_VALUE(CCV.PRIMARY_REASON) AS CCV_PRIMARY_REASON
          , SUM(CCV.SALES_TALLY)          AS CCV_SALES_TALLY
     FROM CALL_VIEW AS CV
-             LEFT OUTER JOIN TASK_VIEW AS TV
+             LEFT OUTER JOIN TASK_VIEW AS TV -- Tie a call to a task that is created within 5 minutes of the call end
                              ON TV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
                                 TV.CREATED_DATE = CV.DATE AND
                                 TV.CREATED_TIME BETWEEN
                                     CV.CALL_START AND
                                     TIMEADD(mi, 5, CV.CALL_END)
-             LEFT OUTER JOIN CASE_COMMENT_VIEW AS CCV
+             LEFT OUTER JOIN CASE_COMMENT_VIEW AS CCV -- Tie a call to a case comment that is created within 5 minutes of the call end
                              ON CCV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
                                 CCV.CREATED_DATE = CV.DATE AND
                                 CCV.CREATED_TIME BETWEEN
@@ -141,7 +141,7 @@ WITH CALL_VIEW AS (
 
    , TEST_CTE AS (
     SELECT MAX(SALES_CALL_RATIO)    AS MAX_RATIO
-         , AVG(SALES_CALL_RATIO)    AS AVT_RATIO
+         , AVG(SALES_CALL_RATIO)    AS AVG_RATIO
          , MEDIAN(SALES_CALL_RATIO) AS MEDIAN_RATIO
     FROM MAIN
 )

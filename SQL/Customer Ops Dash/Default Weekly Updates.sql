@@ -11,6 +11,11 @@ WITH DEFAULT_CASES AS (
                WHEN CASE_QUEUE = 'Dispute/Evasion'
                    AND ANY_VALUE(C.RECORD_TYPE) != 'Solar - Customer Default'
                    THEN 'Pre-Default'
+               WHEN ANY_VALUE(C.SUBJECT) ILIKE '%#COLL%'
+                   THEN 'Collections'
+               WHEN ANY_VALUE(C.STATUS) = 'In Progress'
+                   AND ANY_VALUE(C.MANAGER_CALL) IS NOT NULL
+                   THEN 'Letters'
                WHEN PTO_DATE1 IS NULL
                    THEN 'Pre-PTO'
                WHEN PTO_DATE1 IS NOT NULL
@@ -370,8 +375,12 @@ WITH DEFAULT_CASES AS (
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
                           (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL) AND
-                          STATUS1 = 'In Progress'
-                         AND MANAGER_CALL IS NOT NULL
+                          DEFAULT_CATEGORY = 'Collections'
+                         THEN 1 END) AS COLLECTIONS_WIP
+         , COUNT(CASE
+                     WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL) AND
+                          DEFAULT_CATEGORY = 'Letters'
                          THEN 1 END) AS LETTERS_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
@@ -401,6 +410,7 @@ WITH DEFAULT_CASES AS (
          , CW.POST_PTO_WIP
          , CW.CASE_TOTAL_WIP
          , CW.LETTERS_WIP
+         , CW.COLLECTIONS_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
@@ -533,13 +543,16 @@ WITH DEFAULT_CASES AS (
     SELECT ION.WEEK
          , ION.AVG_CLOSED_AGE                   AS DAYS_TO_RESOLVE -- Age of cases closed in the week
          , COVERAGE.X_COVERAGE                  AS COVERAGE
+         , ION.TOTAL_CLOSED_WON
+         , ION.TOTAL_CLOSED
          , ION.TOTAL_CREATED - ION.TOTAL_CLOSED AS NET_CASE_FLOW
          , UPDATES_WEEK.AVG_AGENT_DAY_UPDATES   AS AVG_AGENT_CONTACTS
          , QA.AVG_QA                            AS QUALITY
          , CASE_WEEK_WIP.PRE_DEFAULT_WIP        AS PRE_DEFAULT_WIP
          , CASE_WEEK_WIP.PRE_PTO_WIP            AS PRE_PTO_DEFAULT_WIP
          , CASE_WEEK_WIP.POST_PTO_WIP           AS POST_PTO_DEFAULT_WIP
-         , CASE_WEEK_WIP.LETTERS_WIP            AS LETTERs_WIP
+         , CASE_WEEK_WIP.LETTERS_WIP            AS LETTERS_WIP
+         , CASE_WEEK_WIP.COLLECTIONS_WIP        AS COLLECTIONS_WIP
          , ION.AVG_OPEN_AGE                     AS AGE_OF_TOTAL_WIP
          , UPDATES_WEEK.TOTAL_UPDATES
          , ION.CLOSED_WON_RATIO
