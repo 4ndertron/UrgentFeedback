@@ -54,6 +54,7 @@ WITH CALL_VIEW AS (
          , TO_DATE(T.CREATED_DATE) AS CREATED_DATE -- WHEN
          , TO_TIME(T.CREATED_DATE) AS CREATED_TIME -- WHEN
          , T.SUBJECT
+         , P.SERVICE_STATE
          , CASE
                WHEN T.SUBJECT ILIKE '%SP.%'
                    THEN 1 END      AS SALES_TALLY
@@ -62,6 +63,8 @@ WITH CALL_VIEW AS (
                              ON E.SALESFORCE_ID = T.CREATED_BY_ID
              LEFT OUTER JOIN HR.T_EMPLOYEE AS HR
                              ON HR.EMPLOYEE_ID = E.EMPLOYEE_ID
+             LEFT OUTER JOIN RPT.T_PROJECT AS P
+                             ON P.PROJECT_ID = T.PROJECT_ID
     WHERE T.CREATED_DATE >= DATE_TRUNC('Y', CURRENT_DATE)
 )
 
@@ -74,6 +77,7 @@ WITH CALL_VIEW AS (
          , C.RECORD_TYPE
          , C.PRIMARY_REASON
          , C.SOLAR_QUEUE
+         , P.SERVICE_STATE
          , CASE
                WHEN C.PRIMARY_REASON ILIKE '%SALE%'
                    THEN 1 END     AS SALES_TALLY
@@ -86,27 +90,30 @@ WITH CALL_VIEW AS (
                              ON CC.PARENTID = C.CASE_ID
              LEFT OUTER JOIN RPT.T_PAYMENT AS PT
                              ON PT.CASE_ID = CC.PARENTID
+             LEFT OUTER JOIN RPT.T_PROJECT AS P
+                             ON C.PROJECT_ID = P.PROJECT_ID
     WHERE CC.CREATEDATE >= DATE_TRUNC('Y', CURRENT_DATE)
 )
 
    , MERGE AS (
     SELECT CV.SESSION_ID
-         , ANY_VALUE(CV.EMPLOYEE_ID)     AS CV_EMPLOYEE_ID
-         , ANY_VALUE(CV.DATE)            AS CV_DATE
-         , ANY_VALUE(CV.CALL_START)      AS CV_START
-         , ANY_VALUE(CV.CALL_END)        AS CV_END
+         , NVL(ANY_VALUE(TV.SERVICE_STATE), ANY_VALUE(CCV.SERVICE_STATE)) AS SERVICE_STATE
+         , ANY_VALUE(CV.EMPLOYEE_ID)                                      AS CV_EMPLOYEE_ID
+         , ANY_VALUE(CV.DATE)                                             AS CV_DATE
+         , ANY_VALUE(CV.CALL_START)                                       AS CV_START
+         , ANY_VALUE(CV.CALL_END)                                         AS CV_END
          , TV.TASK_ID
-         , ANY_VALUE(TV.EMPLOYEE_ID)     AS TV_EMPLOYEE_ID
-         , ANY_VALUE(TV.CREATED_DATE)    AS TV_DATE
-         , ANY_VALUE(TV.CREATED_TIME)    AS TV_TIME
-         , ANY_VALUE(TV.SUBJECT)         AS TV_SUBJECT
-         , SUM(TV.SALES_TALLY)           AS TV_SALES_TALLY
-         , CCV.ID                        AS CASE_COMMENT_ID
-         , ANY_VALUE(CCV.EMPLOYEE_ID)    AS CCV_EMPLOYEE_ID
-         , ANY_VALUE(CCV.CREATED_DATE)   AS CCV_DATE
-         , ANY_VALUE(CCV.CREATED_TIME)   AS CCV_TIME
-         , ANY_VALUE(CCV.PRIMARY_REASON) AS CCV_PRIMARY_REASON
-         , SUM(CCV.SALES_TALLY)          AS CCV_SALES_TALLY
+         , ANY_VALUE(TV.EMPLOYEE_ID)                                      AS TV_EMPLOYEE_ID
+         , ANY_VALUE(TV.CREATED_DATE)                                     AS TV_DATE
+         , ANY_VALUE(TV.CREATED_TIME)                                     AS TV_TIME
+         , ANY_VALUE(TV.SUBJECT)                                          AS TV_SUBJECT
+         , SUM(TV.SALES_TALLY)                                            AS TV_SALES_TALLY
+         , CCV.ID                                                         AS CASE_COMMENT_ID
+         , ANY_VALUE(CCV.EMPLOYEE_ID)                                     AS CCV_EMPLOYEE_ID
+         , ANY_VALUE(CCV.CREATED_DATE)                                    AS CCV_DATE
+         , ANY_VALUE(CCV.CREATED_TIME)                                    AS CCV_TIME
+         , ANY_VALUE(CCV.PRIMARY_REASON)                                  AS CCV_PRIMARY_REASON
+         , SUM(CCV.SALES_TALLY)                                           AS CCV_SALES_TALLY
     FROM CALL_VIEW AS CV
              LEFT OUTER JOIN TASK_VIEW AS TV -- Tie a call to a task that is created within 5 minutes of the call end
                              ON TV.EMPLOYEE_ID = CV.EMPLOYEE_ID AND
@@ -128,6 +135,7 @@ WITH CALL_VIEW AS (
 
    , MAIN AS (
     SELECT D.DT
+         , SERVICE_STATE
          , COUNT(DISTINCT SESSION_ID)                         AS TOTAL_CALLS
          , NVL(SUM(TV_SALES_TALLY) + SUM(CCV_SALES_TALLY), 0) AS SALES_CALLS
          , SALES_CALLS / TOTAL_CALLS                          AS SALES_CALL_RATIO
@@ -135,15 +143,17 @@ WITH CALL_VIEW AS (
     FROM RPT.T_DATES AS D
              INNER JOIN MERGE AS M
                         ON M.CV_DATE = D.DT
-    GROUP BY D.DT
-    ORDER BY D.DT DESC
+    GROUP BY D.DT, SERVICE_STATE
+    ORDER BY SERVICE_STATE, D.DT DESC
 )
 
    , TEST_CTE AS (
-    SELECT MAX(SALES_CALL_RATIO)    AS MAX_RATIO
-         , AVG(SALES_CALL_RATIO)    AS AVG_RATIO
-         , MEDIAN(SALES_CALL_RATIO) AS MEDIAN_RATIO
-    FROM MAIN
+    SELECT COUNT(DISTINCT SESSION_ID)      AS UNIQUE_SESSIONS
+         , COUNT(SESSION_ID)               AS SESSIONS
+         , COUNT(DISTINCT TASK_ID)         AS TASKS
+         , COUNT(DISTINCT CASE_COMMENT_ID) AS COMMENTS
+         , COUNT(SERVICE_STATE)            AS STATES
+    FROM MERGE
 )
 
 SELECT *
