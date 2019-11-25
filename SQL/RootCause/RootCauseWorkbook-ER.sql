@@ -80,18 +80,18 @@ WITH AGENTS AS (
          , DATE_TRUNC('D', C.CLOSED_DATE)                                                          AS DAY_CLOSED
          , DATE_TRUNC('W', C.CLOSED_DATE)                                                          AS WEEK_CLOSED
          , DATE_TRUNC('month', C.CLOSED_DATE)                                                      AS MONTH_CLOSED
-         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                  AS ERA
-         , DATE_TRUNC('D', ERA)                                                  AS ER_ACCEPTED_DAY
-         , DATE_TRUNC('W', ERA)                                                  AS ER_ACCEPTED_WEEK
-         , DATE_TRUNC('month', ERA)                                              AS ER_ACCEPTED_MONTH
+         , NVL(C.EXECUTIVE_RESOLUTIONS_ACCEPTED, CC.CREATEDATE)                                    AS ERA
+         , DATE_TRUNC('D', ERA)                                                                    AS ER_ACCEPTED_DAY
+         , DATE_TRUNC('W', ERA)                                                                    AS ER_ACCEPTED_WEEK
+         , DATE_TRUNC('month', ERA)                                                                AS ER_ACCEPTED_MONTH
          , CC.CREATEDATE
          , DATEDIFF(S,
                     CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
                         ORDER BY CC.CREATEDATE),
                         CURRENT_TIMESTAMP())) / (24 * 60 * 60)
-                                                                                 AS GAP
-         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE) AS COVERAGE
+                                                                                                   AS GAP
+         , ROW_NUMBER() OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE)                   AS COVERAGE
          , IFF(
             CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
             DATEDIFF(S,
@@ -103,11 +103,11 @@ WITH AGENTS AS (
                          CURRENT_TIMESTAMP())) / (24 * 60 * 60),
             NULL
         )
-                                                                                 AS LAST_30_DAY_GAP
+                                                                                                   AS LAST_30_DAY_GAP
          , IFF(CC.CREATEDATE >= DATEADD('D', -30, CURRENT_DATE()),
                1,
                NULL)
-                                                                                 AS LAST_30_DAY_COVERAGE_TALLY
+                                                                                                   AS LAST_30_DAY_COVERAGE_TALLY
          , CC.CREATEDBYID
          , CASE
                WHEN
@@ -116,7 +116,7 @@ WITH AGENTS AS (
                        c.CLOSED_DATE IS NULL
                    THEN
                    1
-        END                                                                      AS WIP_kpi
+        END                                                                                        AS WIP_kpi
          , CASE
                WHEN
                    CREATEDBYID = OWNER_ID
@@ -146,13 +146,13 @@ WITH AGENTS AS (
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 15
                    THEN
                    1
-        END                                                                      AS CLOSED_15_DAY_SLA
+        END                                                                                        AS CLOSED_15_DAY_SLA
          , CASE
                WHEN
                    C.CLOSED_DATE IS NOT NULL AND CASE_AGE <= 30
                    THEN
                    1
-        END                                                                      AS CLOSED_30_DAY_SLA
+        END                                                                                        AS CLOSED_30_DAY_SLA
     FROM RPT.T_CASE AS C
              LEFT OUTER JOIN
          RPT.V_SF_CASECOMMENT AS CC
@@ -164,6 +164,7 @@ WITH AGENTS AS (
         AND EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
         AND SUBJECT NOT ILIKE '[NPS]%'
         AND SUBJECT NOT ILIKE '%VIP%'
+        AND SUBJECT NOT ILIKE '%POSITIVE%'
         AND ORIGIN != 'NPS')
        OR S.SERVICE_NAME IN
           ('S-2594389S', 'S-2698033S', 'S-2747837S', 'S-2786055S', 'S-3342623S', 'S-3404713S', 'S-3456975S',

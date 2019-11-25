@@ -1,10 +1,17 @@
 WITH ACCOUNT_LIST AS (
     SELECT REGEXP_SUBSTR(A.ATTACHMENT_NAME, '\\d{4,}', 1, 1, 'ei') AS SERVICE_NUMBER
-         , TO_DATE(A.CREATED_DATE)                                                  DAY_UPLOADED
+         , TO_DATE(A.CREATED_DATE)                                    DAY_UPLOADED
+    FROM RPT.T_ATTACHMENT AS A
+    WHERE A.UPLOADED_BY_NAME ILIKE '%LD_FTP%'
+      AND A.DOCUMENT_TYPE = 'County Recordings'
+)
+
+   , NEW_VIEW AS (
+    SELECT *
     FROM RPT.T_ATTACHMENT AS A
     WHERE A.UPLOADED_BY_NAME ILIKE '%LD_FTP%'
       AND A.DOCUMENT_TYPE = 'County Recordings'
 )
 
 SELECT *
-FROM ACCOUNT_LIST
+FROM NEW_VIEW
