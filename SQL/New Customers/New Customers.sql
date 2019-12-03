@@ -1,4 +1,4 @@
-WITH LIST AS ( -- Raw data list
+WITH ORIGINAL_LIST AS ( -- Raw data list
     SELECT P.PROJECT_NAME
          , P.SERVICE_NUMBER
          , TO_DATE(P.PTO_AWARDED)                                    AS PTO_DATE
@@ -19,9 +19,7 @@ WITH LIST AS ( -- Raw data list
          , CURRENT_DATE                                              AS LAST_REFRESHED
     FROM RPT.T_DATES AS D
              INNER JOIN RPT.T_PROJECT AS P -- Salesforce Project Records
-                        ON D.DT BETWEEN
-                            TO_DATE(P.PTO_AWARDED) AND
-                            DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED))
+                        ON D.DT = TO_DATE(P.PTO_AWARDED)
              LEFT OUTER JOIN RPT.V_SF_ACCOUNT AS A -- Salesforce Account Records
                              ON A.ID = P.ACCOUNT_ID
              LEFT OUTER JOIN RPT.T_CONTACT AS CT -- Salesforce Contact Records
@@ -32,9 +30,6 @@ WITH LIST AS ( -- Raw data list
                                             , QUEUE_1
                               FROM D_POST_INSTALL.T_CJP_CDR_TEMP) AS CL -- CJP Call Sessions
                              ON CL.DATE = D.DT AND
-                                 --                                 CL.DATE BETWEEN
---                                     TO_DATE(P.PTO_AWARDED) AND
---                                     DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED)) AND
                                 CL.ANI = NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE)
     WHERE P.PTO_AWARDED IS NOT NULL
       AND D.DT BETWEEN
@@ -42,11 +37,46 @@ WITH LIST AS ( -- Raw data list
         CURRENT_DATE
 )
 
-   , TEST_RESULTS AS ( -- Query troubleshooting
-    SELECT DISTINCT QUEUE_TYPE
-    FROM LIST
-    ORDER BY 1
-)
 
 SELECT *
-FROM LIST
+FROM ORIGINAL_LIST
+
+/*
+ Of the customers who have
+ attributes for things that compare.
+ pre-campaign
+ post-campaign
+ relative to pto date.
+ how long and often after pto customers have called
+ stack and look side by side.
+ frequency 30% after 7 days
+ pto post frequently more and sooner,
+ and topics of calls pre and post campaign
+
+ turn the metrics into a lead instead of a lag
+
+ remove account center.
+
+ proactive adjustments for unforseen data anomolies.
+ sync up and follow-up next week.
+
+ Setup another 15-20 minute meeting to walk through the data and understand the data.
+ If there are changes to be made.
+
+ Take PTO date,
+ datediff between datediff from pto to datetrunc 'y',
+ avg duration to first call.
+
+ att of iff pto is before or after 10/1
+ to identify in and out of campaign customers
+
+ normalize everything to same start date
+ with and without on left axis
+ one will be campaign and one will not be.
+ Then check out behavior
+
+ normalize time.
+
+ take all over times, then align them to themselves
+
+ */
