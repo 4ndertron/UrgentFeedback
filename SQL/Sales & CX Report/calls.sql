@@ -44,8 +44,11 @@ WITH CALL_VIEW AS (
         FROM LD.T_ACCT_CONV) AS AC
                              ON AC.CONTACT_PHONE = C.ANI
     WHERE C.QUEUE_1 NOT ILIKE '%OUT%'
+      AND C.QUEUE_1 NOT ILIKE 'Q_3%'
+      AND (C.QUEUE_1 ILIKE '%CC%' OR C.QUEUE_1 ILIKE '%CS%')
     GROUP BY C.SESSION_ID
-    ORDER BY DATE DESC
+    ORDER BY DATE
+        DESC
 )
 
    , TASK_VIEW AS (
@@ -158,3 +161,10 @@ WITH CALL_VIEW AS (
 
 SELECT *
 FROM MAIN
+
+/*
+ Check with Caelen,
+ Joel,
+ Taylor
+ with any additional questions/examples.
+ */

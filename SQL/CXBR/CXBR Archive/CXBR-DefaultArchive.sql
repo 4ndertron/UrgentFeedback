@@ -1,172 +1,139 @@
-WITH DEFAULT_BUCKET AS (
+/*
+ Start core tables
+ */
+WITH DEFAULT_CASES AS (
     SELECT C.CASE_NUMBER
-         , C.CASE_ID
+         , ANY_VALUE(C.CASE_ID)                            AS CASE_ID
          , C.PROJECT_ID
-         , C.RECORD_TYPE
-         , C.STATUS
-         , C.DESCRIPTION
-         , C.SUBJECT
-         , C.SOLAR_QUEUE
-         , TO_DATE(C.CREATED_DATE)                                   AS BUCKET_START
-         , TO_DATE(C.CLOSED_DATE)                                    AS BUCKET_END
-         , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
-         , 'Default'                                                 AS TEAM
-    FROM RPT.T_CASE AS C
-    WHERE C.RECORD_TYPE = 'Solar - Customer Default'
-      AND C.SUBJECT NOT ILIKE '%D3%'
-)
-
-   , PRE_DEFAULT_BUCKET AS (
-    SELECT C.CASE_NUMBER
-         , C.CASE_ID
-         , C.PROJECT_ID
-         , C.RECORD_TYPE
-         , C.STATUS
-         , C.DESCRIPTION
-         , C.SUBJECT
-         , C.SOLAR_QUEUE
-         , TO_DATE(C.CREATED_DATE)                                   AS BUCKET_START
-         , TO_DATE(C.CLOSED_DATE)                                    AS BUCKET_END
-         , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
-         , 'Pre-Default'                                             AS TEAM
-    FROM RPT.T_CASE AS C
-    WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
-      AND C.SOLAR_QUEUE = 'Dispute/Evasion'
-)
-
-   , AUDIT_BUCKET AS (
-    SELECT Q.CASE_NUMBER
-         , Q.CASE_ID
-         , Q.PROJECT_ID
-         , Q.RECORD_TYPE
-         , Q.STATUS
-         , Q.DESCRIPTION
-         , Q.SUBJECT
-         , Q.SOLAR_QUEUE
-         , TO_DATE(Q.QUEUE_START)                                    AS BUCKET_START
+         , ANY_VALUE(C.SUBJECT)                            AS SUBJECT1
+         , ANY_VALUE(CAD.SYSTEM_SIZE)                      AS SYSTEM_SIZE
+         , ROUND(ANY_VALUE(CAD.SYSTEM_SIZE) * 1000 * 4, 2) AS SYSTEM_VALUE
+         , ANY_VALUE(C.STATUS)                             AS STATUS2
+         , TO_DATE(ANY_VALUE(C.CREATED_DATE))              AS CREATED_DATE1
+         , TO_DATE(ANY_VALUE(C.CLOSED_DATE))               AS CLOSED_DATE1
+         , ANY_VALUE(C.RECORD_TYPE)                        AS RECORD_TYPE1
+         , ANY_VALUE(S.SOLAR_BILLING_ACCOUNT_NUMBER)       AS SOLAR_BILLING_ACCOUNT_NUMBER1
          , CASE
-               WHEN Q.NEXT_START IS NOT NULL
-                   THEN TO_DATE(Q.QUEUE_START)
-               WHEN Q.CASE_CLOSED_DAY IS NOT NULL
-                   THEN TO_DATE(Q.CASE_CLOSED_DAY)
-               ELSE TO_DATE(Q.NEXT_START) END                        AS BUCKET_END
-         , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
-         , 'Audit'                                                   AS TEAM
-         , NULL                                                      AS GAP
-    FROM (
-             SELECT C.CASE_ID
-                  , C.PROJECT_ID
-                  , C.CASE_NUMBER
-                  , C.RECORD_TYPE
-                  , C.STATUS
-                  , C.DESCRIPTION
-                  , C.SUBJECT
-                  , C.SOLAR_QUEUE
-                  , TO_DATE(C.CLOSED_DATE)                                                               AS CASE_CLOSED_DAY
-                  , CH.FIELD                                                                             AS CASE_FIELD_CHANGE
-                  , CH.NEWVALUE                                                                          AS QUEUE_VALUE
-                  , LEAD(CH.NEWVALUE) OVER (PARTITION BY CH.CASEID, CH.FIELD ORDER BY CH.CREATEDDATE)    AS NEXT_VALUE
-                  , CH.CREATEDDATE                                                                       AS QUEUE_START
-                  , LEAD(CH.CREATEDDATE) OVER (PARTITION BY CH.CASEID, CH.FIELD ORDER BY CH.CREATEDDATE) AS NEXT_START
-             FROM RPT.V_SF_CASEHISTORY AS CH
-                      LEFT JOIN RPT.T_CASE AS C
-                                ON C.CASE_ID = CH.CASEID
-                      LEFT JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
-                                ON E.SALESFORCE_ID = CH.CREATEDBYID
-             WHERE C.RECORD_TYPE NOT IN ('Solar - Customer Default')
-               AND CH.FIELD = 'Solar_Queue__c'
-         ) AS Q
-    WHERE Q.QUEUE_VALUE = 'Dispute/Evasion'
+               WHEN STATUS2 = 'Escalated' AND RECORD_TYPE1 = 'Solar - Customer Default' THEN 'Pending Legal'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default'
+                   AND ANY_VALUE(C.DESCRIPTION) ILIKE '%MBW%'
+                   AND ANY_VALUE(C.DESCRIPTION) ILIKE '%COLLECTION%'
+                   THEN 'MBW'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D1%' THEN 'D1'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D2%' THEN 'D2'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D4%' THEN 'D4'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%D5%' THEN 'D5'
+               WHEN RECORD_TYPE1 = 'Solar - Customer Default' AND SUBJECT1 ILIKE '%CORP%' THEN 'CORP-Default'
+        END                                                AS DEFAULT_BUCKET
+    FROM RPT.T_CASE AS C
+             LEFT JOIN RPT.T_SERVICE AS S
+                       ON C.SERVICE_ID = S.SERVICE_ID
+             LEFT JOIN RPT.T_SYSTEM_DETAILS_SNAP AS CAD
+                       ON CAD.SERVICE_ID = C.SERVICE_ID
+             LEFT JOIN LD.T_DAILY_DATA_EXTRACT AS LDD
+                       ON LDD.BILLING_ACCOUNT = S.SOLAR_BILLING_ACCOUNT_NUMBER
+    WHERE (
+                  (C.RECORD_TYPE = 'Solar - Customer Default'
+                      AND C.SUBJECT NOT ILIKE '%D3%')
+                  OR
+                  (C.RECORD_TYPE IN
+                   ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
+                    'Solar Damage Resolutions', 'Solar - Customer Escalation', 'Solar - Troubleshooting')
+                      AND C.SOLAR_QUEUE = 'Dispute/Evasion')
+              )
+    GROUP BY C.PROJECT_ID
+           , C.CASE_NUMBER
+    ORDER BY C.PROJECT_ID
 )
 
-   , DEFAULT_HISTORY AS (
-    SELECT C.*
-         , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               C.BUCKET_START)                          AS PREVIOUS_COMMENT_DATE
-         , CC.CREATEDATE                                AS CURRENT_COMMENT_DATE
-         , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               NVL(C.BUCKET_END,
-                   CURRENT_DATE))                       AS NEXT_COMMENT_DATE
-         , USR.NAME                                     AS COMMENT_CREATE_BY
+   , CASE_HISTORY_TABLE AS (
+    SELECT CT.*
+         , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               CT.CREATED_DATE1)                            AS PREVIOUS_COMMENT_DATE
+         , CC.CREATEDATE                                    AS CURRENT_COMMENT_DATE
+         , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+               NVL(CT.CLOSED_DATE1,
+                   CURRENT_DATE))                           AS NEXT_COMMENT_DATE
+         , USR.NAME                                         AS COMMENT_CREATE_BY
          , HR.BUSINESS_TITLE
-         , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER
+         , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER
         ORDER BY CC.CREATEDATE),
-                           C.BUCKET_START),
+                           CT.CREATED_DATE1),
                     CC.CREATEDATE
                ) / (24 * 60 * 60)
-                                                        AS LAG_GAP
+                                                            AS LAG_GAP
          , DATEDIFF(s, CC.CREATEDATE,
-                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
-                        C.BUCKET_END)) / (24 * 60 * 60) AS LEAD_GAP
-    FROM (SELECT * FROM DEFAULT_BUCKET UNION SELECT * FROM PRE_DEFAULT_BUCKET) AS C
+                    NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CT.CASE_NUMBER ORDER BY CC.CREATEDATE),
+                        CT.CREATED_DATE1)) / (24 * 60 * 60) AS LEAD_GAP
+    FROM DEFAULT_CASES AS CT
              LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
-                             ON CC.PARENTID = C.CASE_ID
+                             ON CC.PARENTID = CT.CASE_ID
              LEFT JOIN RPT.V_SF_USER AS USR
                        ON USR.ID = CC.CREATEDBYID
              LEFT JOIN HR.T_EMPLOYEE AS HR
                        ON HR.EMPLOYEE_ID = USR.EMPLOYEE_ID__C
-    WHERE CC.CREATEDATE <= NVL(C.BUCKET_END, CURRENT_DATE)
+    WHERE CC.CREATEDATE <= NVL(CT.CLOSED_DATE1, CURRENT_DATE)
     ORDER BY CASE_NUMBER, CC.CREATEDATE
 )
 
    , FULL_CASE AS (
-    SELECT C.CASE_NUMBER
-         , ANY_VALUE(C.CASE_ID)      AS CASE_ID
-         , ANY_VALUE(C.PROJECT_ID)   AS PROJECT_ID
-         , ANY_VALUE(C.RECORD_TYPE)  AS RECORD_TYPE
-         , ANY_VALUE(C.STATUS)       AS STATUS
-         , ANY_VALUE(C.DESCRIPTION)  AS DESCRIPTION
-         , ANY_VALUE(C.SUBJECT)      AS SUBJECT
-         , ANY_VALUE(C.SOLAR_QUEUE)  AS SOLAR_QUEUE
-         , ANY_VALUE(C.BUCKET_START) AS BUCKET_START
-         , ANY_VALUE(C.BUCKET_END)   AS BUCKET_END
-         , ANY_VALUE(C.BUCKET_AGE)   AS BUCKET_AGE
-         , ANY_VALUE(C.TEAM)         AS TEAM
-         , AVG(LAG_GAP)              AS AVERAGE_GAP
-    FROM DEFAULT_HISTORY AS C
-    GROUP BY C.CASE_NUMBER
-)
-
-   , CXBR_DEFAULT AS (
-    SELECT Q.*
-         , ROUND(SYS.AS_BUILT_SYSTEM_SIZE * 1000 * 4, 2) AS SYSTEM_VALUE
-    FROM (
-                 (SELECT * FROM FULL_CASE)
-                 UNION
-                 (SELECT * FROM AUDIT_BUCKET)
-         ) AS Q
-             LEFT JOIN (SELECT DISTINCT PROJECT_ID, AS_BUILT_SYSTEM_SIZE FROM RPT.T_NV_PV_DSAB_CALCULATIONS) AS SYS
-                       ON SYS.PROJECT_ID = Q.PROJECT_ID
+    SELECT CASE_NUMBER
+         , ANY_VALUE(SUBJECT1)                                                          AS SUBJECT
+         , ANY_VALUE(SYSTEM_SIZE)                                                       AS SYSTEM_SIZE
+         , ANY_VALUE(SYSTEM_VALUE)                                                      AS SYSTEM_VALUE
+         , ANY_VALUE(STATUS2)                                                           AS STATUS1
+         , ANY_VALUE(CREATED_DATE1)                                                     AS CREATED_DATE
+         , ANY_VALUE(CLOSED_DATE1)                                                      AS CLOSED_DATE
+         , DATEDIFF(dd, TO_DATE(CREATED_DATE), NVL(TO_DATE(CLOSED_DATE), CURRENT_DATE)) AS CASE_AGE
+         , ANY_VALUE(RECORD_TYPE1)                                                      AS RECORD_TYPE1
+         , SOLAR_BILLING_ACCOUNT_NUMBER1
+         , ANY_VALUE(DEFAULT_BUCKET)                                                    AS DEFAULT_BUCKET1
+         , CASE
+               WHEN STATUS1 IN ('In Progress') AND DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal')
+                   THEN 'P4/P5/DRA Letters'
+               WHEN STATUS1 IN ('Pending Customer Action') AND
+                    DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal') AND
+                    ANY_VALUE(CASE_HISTORY_TABLE.RECORD_TYPE1) = 'Solar - Customer Default'
+                   THEN 'Working with Customer' END                                     AS STATUS_BUCKET
+         , AVG(LAG_GAP)                                                                 AS AVERAGE_GAP
+    FROM CASE_HISTORY_TABLE
+    GROUP BY SOLAR_BILLING_ACCOUNT_NUMBER1
+           , CASE_NUMBER
+    ORDER BY SOLAR_BILLING_ACCOUNT_NUMBER1
+           , CASE_NUMBER
 )
 
    , GAP_LIST AS (
     SELECT CHT.CASE_NUMBER
-         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)       AS PREVIOUS_COMMENT_DATE
-         , TO_DATE(CHT.CURRENT_COMMENT_DATE)        AS CURRENT_COMMENT_DATE
-         , TO_DATE(CHT.NEXT_COMMENT_DATE)           AS NEXT_COMMENT_DATE
+         , TO_DATE(CHT.PREVIOUS_COMMENT_DATE)           AS PREVIOUS_COMMENT_DATE
+         , TO_DATE(CHT.CURRENT_COMMENT_DATE)            AS CURRENT_COMMENT_DATE
+         , TO_DATE(CHT.NEXT_COMMENT_DATE)               AS NEXT_COMMENT_DATE
          , DATEDIFF(dd,
                     TO_DATE(CHT.CURRENT_COMMENT_DATE),
-                    TO_DATE(CHT.NEXT_COMMENT_DATE)) AS LEAD_GAP
-         , ANY_VALUE(CHT.COMMENT_CREATE_BY)         AS COMMENT_CREATED_BY_NAME
-         , ANY_VALUE(CHT.BUSINESS_TITLE)            AS BUSINESS_TITLE
-         , MAX(CHT.LAG_GAP)                         AS MAIN_GAP
-         , ANY_VALUE(CHT.BUCKET_START)              AS BUCKET_START
-         , ANY_VALUE(CHT.BUCKET_END)                AS BUCKET_END
-         , ANY_VALUE(CHT.STATUS)                    AS STATUS
-         , ANY_VALUE(CHT.RECORD_TYPE)               AS RECORD_TYPE
-         , ANY_VALUE(CHT.CASE_ID)                   AS CASE_ID
-         , ANY_VALUE(CHT.PROJECT_ID)                AS PROJECT_ID
-         , ANY_VALUE(CHT.SUBJECT)                   AS SUBJECT
+                    TO_DATE(CHT.NEXT_COMMENT_DATE))     AS LEAD_GAP
+         , ANY_VALUE(CHT.COMMENT_CREATE_BY)             AS COMMENT_CREATED_BY_NAME
+         , ANY_VALUE(CHT.BUSINESS_TITLE)                AS BUSINESS_TITLE
+         , MAX(CHT.LAG_GAP)                             AS MAIN_GAP
+         , ANY_VALUE(CHT.CREATED_DATE1)                 AS CREATED_DATE
+         , ANY_VALUE(CHT.CLOSED_DATE1)                  AS CLOSED_DATE
+         , ANY_VALUE(CHT.STATUS2)                       AS STATUS
+         , ANY_VALUE(CHT.RECORD_TYPE1)                  AS RECORD_TYPE
+         , ANY_VALUE(CHT.SOLAR_BILLING_ACCOUNT_NUMBER1) AS BILLING_ACCOUNTS
+         , ANY_VALUE(CHT.CASE_ID)                       AS CASE_ID
+         , ANY_VALUE(CHT.PROJECT_ID)                    AS PROJECT_ID
+         , ANY_VALUE(CHT.SUBJECT1)                      AS SUBJECT
+         , ANY_VALUE(CHT.SYSTEM_SIZE)                   AS SYSTEM_SIZE
+         , ANY_VALUE(CHT.SYSTEM_VALUE)                  AS SYSTEM_VALUE
          , D.DT
          , ROW_NUMBER()
             OVER (PARTITION BY CHT.CASE_NUMBER
                 , TO_DATE(CHT.CURRENT_COMMENT_DATE)
-                ORDER BY D.DT)                      AS ACTIVE_COMMENT_AGE
-    FROM DEFAULT_HISTORY AS CHT
+                ORDER BY D.DT)                          AS ACTIVE_COMMENT_AGE
+    FROM CASE_HISTORY_TABLE AS CHT
              INNER JOIN RPT.T_DATES AS D
                         ON D.DT BETWEEN CHT.CURRENT_COMMENT_DATE AND CHT.NEXT_COMMENT_DATE
-    WHERE (CHT.DESCRIPTION NOT ILIKE ('%MBW%')
-        OR CHT.DESCRIPTION NOT ILIKE ('%COLLECTION%'))
+    WHERE CHT.STATUS2 IN ('Pending Customer Action')
+      AND CHT.DEFAULT_BUCKET NOT IN ('MBW', 'Pending Legal')
     GROUP BY CASE_NUMBER,
              CURRENT_COMMENT_DATE,
              PREVIOUS_COMMENT_DATE,
@@ -231,7 +198,7 @@ WITH DEFAULT_BUCKET AS (
          ) AS ENTIRE_HISTORY
     WHERE DIRECTOR_ORG
       AND TEAM_END_DATE1 >= TEAM_START_DATE
-      AND (ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%PERC%' OR ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%VALERIA MENDOZA%')
+      AND ENTIRE_HISTORY.SUPERVISOR_NAME_1 ILIKE '%PERC%'
     GROUP BY EMPLOYEE_ID, DIRECTOR_ORG
 )
 
@@ -297,8 +264,14 @@ WITH DEFAULT_BUCKET AS (
     GROUP BY MONTH1
     ORDER BY MONTH1
 )
+/*
+ End core tables
+ */
 
-   , DEFAULT_AGENT_DAY_WIP AS ( -- No divided by 0 error
+/*
+ Start day wip tables
+ */
+   , DEFAULT_AGENT_DAY_WIP AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN DA.TEAM_START_DATE <= D.DT AND
@@ -314,14 +287,14 @@ WITH DEFAULT_BUCKET AS (
     ORDER BY D.DT
 )
 
-   , UPDATES_DAY AS ( -- no divided by 0 error
+   , UPDATES_DAY AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
          , DW.ACTIVE_AGENTS
-    FROM DEFAULT_HISTORY AS CHT
+    FROM CASE_HISTORY_TABLE AS CHT
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -332,19 +305,19 @@ WITH DEFAULT_BUCKET AS (
     ORDER BY D.DT
 )
 
-   , CASE_DAY_WIP AS ( -- no divided by 0 error
+   , CASE_DAY_WIP AS (
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
-                          (TRUE /* Replace with "Status Bucket = "Working with Customer" */) AND
-                          (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL)
+                     WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          STATUS_BUCKET = 'Working with Customer' AND
+                          (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
                          THEN 1 END) AS CASE_ACTIVE_WIP
          , COUNT(CASE
-                     WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
-                          (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL)
-                         THEN 1 END) AS BUCKET_TOTAL_WIP
+                     WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
+                         THEN 1 END) AS CASE_TOTAL_WIP
     FROM RPT.T_DATES AS D
-       , CXBR_DEFAULT AS FC
+       , FULL_CASE AS FC
     WHERE D.DT BETWEEN
               DATE_TRUNC('Y', DATEADD('Y', -1, CURRENT_DATE)) AND
               CURRENT_DATE
@@ -352,12 +325,18 @@ WITH DEFAULT_BUCKET AS (
     GROUP BY D.DT
     ORDER BY D.DT
 )
+/*
+ End day wip tables
+ */
 
-   , CASE_MONTH_WIP AS ( -- no divided by 0 error
+/*
+ Start month wip tables
+ */
+   , CASE_MONTH_WIP AS (
     SELECT CW.DT
-         , ROUND(CW.BUCKET_TOTAL_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
---          , CW.CASE_ACTIVE_WIP
-         , CW.BUCKET_TOTAL_WIP
+         , ROUND(CW.CASE_TOTAL_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
+         , CW.CASE_ACTIVE_WIP
+         , CW.CASE_TOTAL_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
@@ -365,7 +344,7 @@ WITH DEFAULT_BUCKET AS (
       AND DW.DT = CW.DT
 )
 
-   , GAP_MONTH_TABLE AS ( -- no divided by 0 error
+   , GAP_MONTH_TABLE AS (
     SELECT IFF(LAST_DAY(D.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(D.DT)) AS MONTH
          , AVG(CASE
                    WHEN GL.DT = MONTH
@@ -382,7 +361,7 @@ WITH DEFAULT_BUCKET AS (
     ORDER BY MONTH
 )
 
-   , UPDATES_MONTH AS ( -- no divided by 0 error
+   , UPDATES_MONTH AS (
     SELECT IFF(LAST_DAY(U.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(U.DT)) AS MONTH
          , SUM(U.UPDATES)                                                   AS TOTAL_UPDATES
          , SUM(U.WORKDAY)                                                   AS WORKDAYS
@@ -392,56 +371,55 @@ WITH DEFAULT_BUCKET AS (
     GROUP BY MONTH
 )
 
-   , ION AS ( -- Division by zero confirmed
+   , ION AS (
     SELECT IFF(LAST_DAY(D.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY((D.DT))) AS MONTH1
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_END) = D.DT
-                               THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CLOSED -- no error influence
+                           WHEN TO_DATE(CLOSED_DATE) = D.DT
+                               THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CLOSED
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_END) = D.DT
-                               THEN 1 END), 2)                                AS TOTAL_CLOSED -- error influence
+                           WHEN TO_DATE(CLOSED_DATE) = D.DT
+                               THEN 1 END), 2)                                AS TOTAL_CLOSED
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_END) = D.DT
-                               AND STATUS = 'Closed - Saved'
+                           WHEN TO_DATE(CLOSED_DATE) = D.DT
+                               AND STATUS1 = 'Closed - Saved'
                                THEN 1 END), 2)                                AS TOTAL_CLOSED_WON
-         , ROUND(TOTAL_CLOSED_WON / TOTAL_CLOSED, 4)                          AS CLOSED_WON_RATIO -- error influence
+         , ROUND(TOTAL_CLOSED_WON / TOTAL_CLOSED, 4)                          AS CLOSED_WON_RATIO
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_START) = D.DT
+                           WHEN TO_DATE(CREATED_DATE) = D.DT
                                THEN 1 END) / DW.ACTIVE_AGENTS, 2)             AS AVERAGE_CREATED
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_START) = D.DT
+                           WHEN TO_DATE(CREATED_DATE) = D.DT
                                THEN 1 END), 2)                                AS TOTAL_CREATED
          , ROUND(COUNT(CASE
-                           WHEN TO_DATE(BUCKET_START) = D.DT AND STATUS = 'Closed - Saved'
+                           WHEN TO_DATE(CLOSED_DATE) = D.DT AND STATUS1 = 'Closed - Saved'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
                  2)                                                           AS AVERAGE_CLOSED_WON_CASES
          , ROUND(SUM(CASE
-                         WHEN TO_DATE(BUCKET_END) = D.DT AND STATUS = 'Closed - Saved'
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT AND STATUS1 = 'Closed - Saved'
                              THEN SYSTEM_VALUE END) / DW.ACTIVE_AGENTS, 2)    AS AVERAGE_AMOUNT_SAVED
          , ROUND(SUM(CASE
-                         WHEN TO_DATE(BUCKET_END) = D.DT AND STATUS = 'Closed - Saved'
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT AND STATUS1 = 'Closed - Saved'
                              THEN SYSTEM_VALUE END), 2)                       AS TOTAL_AMOUNT_SAVED
          , ROUND(AVG(CASE
-                         WHEN TO_DATE(BUCKET_START) <= D.DT AND
-                              (TO_DATE(BUCKET_END) > D.DT OR
-                               BUCKET_END IS NULL)
-                             AND (DESCRIPTION NOT ILIKE ('%MBW%')
-                                 OR DESCRIPTION NOT ILIKE ('%COLLECTION%'))
-                             AND STATUS NOT ILIKE '%ESCALATED%'
-                             THEN DATEDIFF(dd, TO_DATE(FC.BUCKET_START), D.DT)
+                         WHEN TO_DATE(CREATED_DATE) <= D.DT AND
+                              (TO_DATE(CLOSED_DATE) > D.DT OR
+                               CLOSED_DATE IS NULL)
+                             AND DEFAULT_BUCKET1 NOT IN ('MBW', 'Pending Legal')
+                             AND STATUS1 NOT ILIKE '%ESCALATED%'
+                             THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
         END), 2)                                                              AS AVG_OPEN_AGE
          , MAX(CASE
-                   WHEN TO_DATE(BUCKET_START) <= D.DT AND
-                        (TO_DATE(BUCKET_END) > D.DT OR
-                         BUCKET_END IS NULL)
-                       AND STATUS NOT ILIKE '%DISPUTE%'
-                       THEN DATEDIFF(dd, TO_DATE(FC.BUCKET_START), D.DT)
+                   WHEN TO_DATE(CREATED_DATE) <= D.DT AND
+                        (TO_DATE(CLOSED_DATE) > D.DT OR
+                         CLOSED_DATE IS NULL)
+                       AND STATUS1 NOT ILIKE '%DISPUTE%'
+                       THEN DATEDIFF(dd, TO_DATE(FC.CREATED_DATE), D.DT)
         END)                                                                  AS MAX_MONTH_AGE
          , ROUND(AVG(CASE
-                         WHEN TO_DATE(BUCKET_END) = D.DT
-                             THEN BUCKET_AGE END), 2)                         AS AVG_CLOSED_AGE
+                         WHEN TO_DATE(CLOSED_DATE) = D.DT
+                             THEN CASE_AGE END), 2)                           AS AVG_CLOSED_AGE
          , DW.ACTIVE_AGENTS
-    FROM CXBR_DEFAULT AS FC
+    FROM FULL_CASE AS FC
        , RPT.T_DATES AS D
        , DEFAULT_AGENT_DAY_WIP AS DW
     WHERE D.DT BETWEEN
@@ -455,18 +433,21 @@ WITH DEFAULT_BUCKET AS (
    , COVERAGE AS (
     SELECT MONTH
          , U.TOTAL_UPDATES
-         , C.BUCKET_TOTAL_WIP
-         , ROUND(U.TOTAL_UPDATES / C.BUCKET_TOTAL_WIP, 2) AS X_COVERAGE
+         , C.CASE_TOTAL_WIP
+         , ROUND(U.TOTAL_UPDATES / C.CASE_TOTAL_WIP, 2) AS X_COVERAGE
     FROM UPDATES_MONTH AS U
        , CASE_MONTH_WIP AS C
     WHERE C.DT = U.MONTH
 )
+/*
+ End month wip tables
+ */
 
    , FIND_CASE_BY_GAP AS (
     SELECT CASE_NUMBER
          , MAX(GL.ACTIVE_COMMENT_AGE) AS MAX_GAP
-         , ANY_VALUE(GL.BUCKET_START) AS CREATED_DATE
-         , ANY_VALUE(GL.BUCKET_END)   AS CLOSED_DATE
+         , ANY_VALUE(GL.CREATED_DATE) AS CREATED_DATE
+         , ANY_VALUE(GL.CLOSED_DATE)  AS CLOSED_DATE
     FROM GAP_LIST AS GL
     WHERE GL.DT = current_date
     GROUP BY CASE_NUMBER
@@ -475,14 +456,20 @@ WITH DEFAULT_BUCKET AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM CXBR_DEFAULT
+    FROM COVERAGE
+    ORDER BY MONTH
 )
 
    , MAIN AS (
+    /*
+     Last run duration:
+     7 s 783 ms
+     ( •̀ ω •́ )y
+     */
     SELECT ION.MONTH1
          , ION.TOTAL_CREATED             AS "In"         -- Metric 1
          , ION.TOTAL_CLOSED              AS "Out"        -- Metric 1
-         , CASE_MONTH_WIP.BUCKET_TOTAL_WIP AS WIP          -- Metric 2
+         , CASE_MONTH_WIP.CASE_TOTAL_WIP AS WIP          -- Metric 2
          , COVERAGE.TOTAL_UPDATES        AS "Updates"    -- Information
          , COVERAGE.X_COVERAGE           AS "X Coverage" -- Metric 3
          , ION.CLOSED_WON_RATIO          AS WL           -- Metric 4

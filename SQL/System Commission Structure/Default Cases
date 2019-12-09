@@ -1,0 +1,16 @@
+SELECT C.PROJECT_ID
+     , C.CASE_NUMBER
+     , C.CREATED_BY
+     , C.CREATED_DATE
+     , C.CLOSED_DATE
+     , C.PRIMARY_REASON
+     , C.STATUS
+     , C.RECORD_TYPE
+     , C.OWNER
+     , C.SUBJECT
+     , '<a href="https://vivintsolar.lightning.force.com/lightning/r/Case/' || C.CASE_ID ||
+       '/view" target="_blank">' || C.CASE_NUMBER || '</a>' AS SALESFORCE_CASE
+     , CURRENT_DATE                                         AS LAST_REFRESHED
+FROM RPT.T_CASE AS C
+WHERE C.SUBJECT NOT ILIKE '%D3%'
+  AND C.RECORD_TYPE = 'Solar - Customer Default'

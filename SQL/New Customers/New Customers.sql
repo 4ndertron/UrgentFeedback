@@ -1,22 +1,27 @@
 WITH ORIGINAL_LIST AS ( -- Raw data list
     SELECT P.PROJECT_NAME
          , P.SERVICE_NUMBER
-         , TO_DATE(P.PTO_AWARDED)                                    AS PTO_DATE
-         , DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED))                   AS FIRST_BILLING_PERIOD_END
+         , TO_DATE(P.PTO_AWARDED)                                                      AS PTO_DATE
+         , DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED))                                     AS FIRST_BILLING_PERIOD_END
          , D.DT
-         , CL.SESSION_ID                                             AS CALL_ID
-         , CL.DATE                                                   AS CALL_DATE
+         , CL.SESSION_ID                                                               AS CALL_ID
+         , COUNT(CL.SESSION_ID) OVER (PARTITION BY P.PROJECT_NAME)                     AS CUSTOMER_CALLS
+         , CL.DATE                                                                     AS CALL_DATE
+         , DATEDIFF(dd, PTO_DATE, CALL_DATE)                                           AS PTO_TO_CALL_GAP
+         , DATEDIFF(dd,
+                    LAG(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE),
+                    CL.DATE)                                                           AS PREVIOUS_CALL_GAP
+         , DATEDIFF(dd,
+                    CL.DATE,
+                    LEAD(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE)) AS NEXT_CALL_GAP
          , CL.QUEUE_1
          , IFF(REGEXP_LIKE(CL.QUEUE_1, 'Q_\\d+', 'i'),
                'Personal',
-               REGEXP_SUBSTR(CL.QUEUE_1, '([^Q\\_]+)_', 1, 1, 'ie')) AS QUEUE_TYPE
-         , IFF(D.DT BETWEEN
-                   P.PTO_AWARDED AND
-                   FIRST_BILLING_PERIOD_END, 1, 0)                   AS ACTIVE_TALLY
+               REGEXP_SUBSTR(CL.QUEUE_1, '([^Q\\_]+)_', 1, 1, 'ie'))                   AS QUEUE_TYPE
          , CT.EMAIL
          , CT.FULL_NAME
          , P.SERVICE_STATE
-         , CURRENT_DATE                                              AS LAST_REFRESHED
+         , CURRENT_DATE                                                                AS LAST_REFRESHED
     FROM RPT.T_DATES AS D
              INNER JOIN RPT.T_PROJECT AS P -- Salesforce Project Records
                         ON D.DT = TO_DATE(P.PTO_AWARDED)
@@ -29,17 +34,18 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
                                             , DATE
                                             , QUEUE_1
                               FROM D_POST_INSTALL.T_CJP_CDR_TEMP) AS CL -- CJP Call Sessions
-                             ON CL.DATE = D.DT AND
+                             ON CL.DATE BETWEEN P.PTO_AWARDED AND DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED)) AND
                                 CL.ANI = NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE)
     WHERE P.PTO_AWARDED IS NOT NULL
       AND D.DT BETWEEN
-        DATE_TRUNC('Y', CURRENT_DATE) AND
+        '2019-04-01' AND
         CURRENT_DATE
 )
 
 
 SELECT *
 FROM ORIGINAL_LIST
+ORDER BY PROJECT_NAME, CALL_DATE
 
 /*
  Of the customers who have

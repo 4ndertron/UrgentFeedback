@@ -8,11 +8,6 @@
  .001
 
 
- Back to May, if not January.
-
- TODO: Add ERT Tier II Agents (4?) and just their cases.
-
-
 
  */
 
@@ -129,7 +124,7 @@ WITH CASE_TABLE AS (
 /*
  Adjust Filings Query
  Adam
-Business Review - Report Card
+ Business Review - Report Card
  */
 
 SELECT *
