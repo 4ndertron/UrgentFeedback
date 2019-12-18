@@ -1,10 +1,7 @@
-CREATE OR REPLACE VIEW D_POST_INSTALL.V_CX_CASE_CUBE AS
-(
--- Create the view
 WITH VERTICAL_CASES AS (
-    SELECT D.DT
-         , C.CASE_NUMBER
+    SELECT C.CASE_NUMBER
          , C.CASE_ID
+         , D.DT
          , IFF(CH.NEWVALUE = 'Dispute/Evasion', CH.CREATEDDATE, NULL)  AS AUDIT
          , IFF(CH.NEWVALUE = 'Foreclosure', CH.CREATEDDATE, NULL)      AS FORECLOSURE
          , IFF(CH.NEWVALUE = 'Deceased', CH.CREATEDDATE, NULL)         AS DECEASED
@@ -40,45 +37,44 @@ WITH VERTICAL_CASES AS (
          , C.SOLAR_QUEUE
          , C.PRIMARY_REASON
          , C.ORIGIN
-         , C.STATUS
+         , IFF(EC.CLOSED_WON ILIKE 'YES', 'Closed - Saved', C.STATUS)  AS STATUS
          , CH.FIELD                                                    AS FIELD_CHANGED
          , E.FULL_NAME                                                 AS FIELD_CHANGED_BY
          , E.EMPLOYEE_ID                                               AS FIELD_CHANGED_BY_EMPLOYEE_ID
          , CH.CREATEDDATE                                              AS FIELD_CHANGE_DATE
          , CH.OLDVALUE                                                 AS OLD_FIELD_VALUE
          , CH.NEWVALUE                                                 AS NEW_FIELD_VALUE
---          , CC.CREATEDATE                                               AS COMMENT_CREATED_DATE
---          , NVL(LEAD(CC.CREATEDATE) OVER
---         (PARTITION BY C.CASE_NUMBER ORDER BY CC.CREATEDATE),
---                NVL(C.CLOSED_DATE,
---                    CURRENT_DATE))                                      AS NEXT_COMMENT_DATE
---          , CC.ID                                                       AS COMMENT_ID
          , LEAD(CH.NEWVALUE) OVER
         (PARTITION BY C.CASE_NUMBER, CH.FIELD ORDER BY CH.CREATEDDATE) AS NEXT_FIELD_VALUE
          , LEAD(CH.CREATEDDATE) OVER
         (PARTITION BY C.CASE_NUMBER, CH.FIELD ORDER BY CH.CREATEDDATE) AS NEXT_FIELD_DATE
          , DATEDIFF(s, C.CREATED_DATE, CH.CREATEDDATE)                 AS FIELD_CHANGE_STAGE_SECONDS
-    FROM RPT.T_DATES AS D
-             LEFT JOIN RPT.T_CASE AS C
-                       ON DATE_TRUNC(dd, C.CLOSED_DATE) = D.DT OR C.CLOSED_DATE IS NULL
-        --              LEFT JOIN RPT.V_SF_CASECOMMENT AS CC
---                        ON CC.PARENTID = C.CASE_ID
+         , COUNT(C.CASE_ID) OVER (PARTITION BY C.CASE_ID)              AS TOTAL_UPDATES
+
+    FROM RPT.T_CASE AS C
              LEFT JOIN RPT.V_SF_CASEHISTORY AS CH
                        ON CH.CASEID = C.CASE_ID
              LEFT JOIN D_POST_INSTALL.T_EMPLOYEE_MASTER AS E
                        ON E.SALESFORCE_ID = CH.CREATEDBYID
-    WHERE D.DT BETWEEN
-        DATEADD(dd, -30, CURRENT_DATE) AND
-        CURRENT_DATE
-      AND C.RECORD_TYPE IN ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
+             INNER JOIN RPT.T_DATES AS D
+                        ON D.DT = DATE_TRUNC(dd, C.CREATED_DATE)
+             LEFT JOIN RPT.T_PROJECT AS P
+                       ON P.PROJECT_ID = C.PROJECT_ID
+             LEFT JOIN D_POST_INSTALL.T_ERT_CLOSED_WON_CASES AS EC
+                       ON EC.SERVICE_NAME = P.SERVICE_NAME
+    WHERE C.RECORD_TYPE IN ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
                             'Solar Damage Resolutions', 'Solar - Customer Escalation', 'Solar - Troubleshooting')
-    ORDER BY CASE_NUMBER DESC, CH.CREATEDDATE
+      AND D.DT BETWEEN
+        DATEADD(mm, -12, DATE_TRUNC(mm, CURRENT_DATE)) AND
+        CURRENT_DATE
+    ORDER BY CASE_NUMBER
+        DESC, CH.CREATEDDATE
 )
 
    , HORIZONTAL_CASES AS (
     SELECT VC.CASE_NUMBER
          , VC.CASE_ID
-         , VC.DT
+         , VC.DT -- Add "Open Cases" per day per agent..... But this is a case record.
          , ANY_VALUE(VC.EXECUTIVE_RESOLUTIONS_ACCEPTED)                              AS EXECUTIVE_RESOLUTIONS_ACCEPTED
          , ANY_VALUE(VC.PRIORITY)                                                    AS PRIORITY
          , ANY_VALUE(VC.RECORD_TYPE)                                                 AS RECORD_TYPE
@@ -125,6 +121,9 @@ WITH VERTICAL_CASES AS (
          , DATEDIFF(sec, ANY_VALUE(VC.CREATED_DATE), COLLECTIONS)                    AS COLLECTIONS_STAGE
          , DATEDIFF(sec, ANY_VALUE(VC.CREATED_DATE),
                     MAX(VC.RETURNED_FROM_THIRD_PARTY))                               AS RETURNED_FROM_THIRD_PARTY_STAGE
+         , DATEDIFF(sec,
+                    ANY_VALUE(VC.CREATED_DATE),
+                    NVL(ANY_VALUE(VC.CLOSED_DATE), CURRENT_TIMESTAMP))               AS CASE_AGE_SECONDS
     FROM VERTICAL_CASES AS VC
     WHERE VC.FIELD_CHANGED IN ('Solar_Queue__c', 'Status', 'Solar_Queue__c', 'Primary_Reason__c',
                                'Solar_Primary_Reason__c', 'Solar_Secondary_Reason__c', 'Solar_Tertiary_Reason__c',
@@ -137,6 +136,3 @@ WITH VERTICAL_CASES AS (
 SELECT *
 FROM HORIZONTAL_CASES
 ORDER BY CASE_NUMBER DESC
-    );
-
-GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_CASE_CUBE TO GENERAL_REPORTING_R -- Share the view

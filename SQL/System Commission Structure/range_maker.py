@@ -6,11 +6,11 @@ def main():
     for i in dr:
         print(i)
 
-    num = .0001
+    num = .001
     dr.append(num)
 
-    while num <= 1:
-        num += .0001
+    while num <= .05:
+        num += .001
         dr.append(num)
 
     for i in dr:

@@ -4,6 +4,7 @@ WITH REPORT AS (
          , ANY_VALUE(C.FIRST_NAME)           AS FIRST_NAME
          , ANY_VALUE(C.LAST_NAME)            AS LAST_NAME
          , ANY_VALUE(C.EMAIL)                AS EMAIL
+         , ANY_VALUE(E."Subscriber Key")     AS SUBSCRIBER_KEY
          , P.SERVICE_NUMBER
          , CURRENT_DATE                      AS LAST_REFRESHED
     FROM RPT.T_PROJECT AS P
@@ -11,6 +12,8 @@ WITH REPORT AS (
                              ON O.ACCOUNT_ID = P.ACCOUNT_ID
              LEFT OUTER JOIN RPT.T_CONTACT AS C
                              ON C.ACCOUNT_ID = P.ACCOUNT_ID
+             LEFT OUTER JOIN D_POST_INSTALL.T_PTO_TO_BILLING_EMAILS AS E
+                             ON E."Service Number" = P.SERVICE_NUMBER
     WHERE P.PTO_AWARDED IS NOT NULL
       AND PTO_AWARDED BETWEEN
         DATE_TRUNC('Y', CURRENT_DATE) AND
@@ -32,5 +35,10 @@ WITH REPORT AS (
     ORDER BY MONTH DESC
 )
 
+   , EMAILS AS (
+    SELECT DISTINCT E."Service Number"
+    FROM D_POST_INSTALL.T_PTO_TO_BILLING_EMAILS AS E
+)
+
 SELECT *
-FROM TREND
+FROM EMAILS

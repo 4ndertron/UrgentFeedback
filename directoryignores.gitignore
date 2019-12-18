@@ -14,3 +14,5 @@
 *.xml
 *.csv
 /SQL/CX Performance Metrics/Team Case Metrics builder.xlsx
+/SQL/New Customers/Opens/
+/SQL/New Customers/Clicks/

@@ -1,16 +1,47 @@
-SELECT C.PROJECT_ID
-     , C.CASE_NUMBER
-     , C.CREATED_BY
-     , C.CREATED_DATE
-     , C.CLOSED_DATE
-     , C.PRIMARY_REASON
-     , C.STATUS
-     , C.RECORD_TYPE
-     , C.OWNER
-     , C.SUBJECT
-     , '<a href="https://vivintsolar.lightning.force.com/lightning/r/Case/' || C.CASE_ID ||
-       '/view" target="_blank">' || C.CASE_NUMBER || '</a>' AS SALESFORCE_CASE
-     , CURRENT_DATE                                         AS LAST_REFRESHED
-FROM RPT.T_CASE AS C
-WHERE C.SUBJECT NOT ILIKE '%D3%'
-  AND C.RECORD_TYPE = 'Solar - Customer Default'
+WITH RECURSIVE MAIN AS (
+    SELECT C.PROJECT_ID
+         , SYS.MONTHLY_PV6_SCHEDULE
+         , .001                                                 AS PERCENT
+         , 1                                                    AS INDEX
+         , SYS.MONTHLY_PV6_SCHEDULE * PERCENT                   AS CASE_VALUE
+         , C.CASE_NUMBER
+         , C.CREATED_BY
+         , C.CREATED_DATE
+         , C.CLOSED_DATE
+         , C.PRIMARY_REASON
+         , C.STATUS
+         , C.RECORD_TYPE
+         , C.OWNER
+         , C.SUBJECT
+         , '<a href="https://vivintsolar.lightning.force.com/lightning/r/Case/' || C.CASE_ID ||
+           '/view" target="_blank">' || C.CASE_NUMBER || '</a>' AS SALESFORCE_CASE
+         , CURRENT_DATE                                         AS LAST_REFRESHED
+    FROM RPT.T_CASE AS C
+             LEFT JOIN RPT.T_NV_PV_DSAB_CALCULATIONS AS SYS
+                       ON SYS.PROJECT_ID = C.PROJECT_ID AND
+                          SYS.PRODUCTION_PERIOD = LAST_DAY(C.CLOSED_DATE)
+    WHERE C.SUBJECT NOT ILIKE '%D3%'
+      AND C.RECORD_TYPE = 'Solar - Customer Default'
+    UNION ALL
+    SELECT M.PROJECT_ID
+         , M.MONTHLY_PV6_SCHEDULE
+         , M.PERCENT + .001                 AS PERCENT
+         , M.INDEX + 1                      AS INDEX
+         , M.MONTHLY_PV6_SCHEDULE * PERCENT AS CASE_VALUE
+         , M.CASE_NUMBER
+         , M.CREATED_BY
+         , M.CREATED_DATE
+         , M.CLOSED_DATE
+         , M.PRIMARY_REASON
+         , M.STATUS
+         , M.RECORD_TYPE
+         , M.OWNER
+         , M.SUBJECT
+         , M.SALESFORCE_CASE
+         , M.LAST_REFRESHED
+    FROM MAIN AS M
+    WHERE PERCENT < .05
+)
+
+SELECT *
+FROM MAIN

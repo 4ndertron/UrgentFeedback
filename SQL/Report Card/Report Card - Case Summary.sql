@@ -218,7 +218,22 @@ WITH PROJECTS_RAW AS (
 )
 
    , CASES_OVERALL AS (
-    SELECT *
+    SELECT C.*
+         , CASE
+               WHEN C.ORG_BUCKET = 'Legal'
+                   THEN 1
+               WHEN C.ORG_BUCKET = 'ERT'
+                   THEN 2
+               WHEN C.ORG_BUCKET = 'Damage'
+                   THEN 3
+               WHEN C.ORG_BUCKET = 'CX'
+                   THEN 4
+               WHEN C.ORG_BUCKET = 'Default'
+                   THEN 5
+               WHEN C.ORG_BUCKET = 'Collections'
+                   THEN 6
+               ELSE 7
+        END AS ORG_BUCKET_INDEX
     FROM (
              SELECT *
              FROM CASES_SERVICE
@@ -237,7 +252,7 @@ WITH PROJECTS_RAW AS (
              UNION ALL
              SELECT *
              FROM CASES_DEFAULT
-         )
+         ) AS C
 )
 
    , CASE_DAY_WIP AS (
@@ -380,14 +395,12 @@ WITH PROJECTS_RAW AS (
 )
 
    , TEST_RESULTS AS (
-    SELECT DT
-         , SUM(CASE_INFLOW) AS INFLOW
-    FROM CASE_ION
-    WHERE CASE_BUCKET = 'BBB'
-    GROUP BY DT
-    ORDER BY DT DESC
+    SELECT DISTINCT C.SERVICE_STATE
+                  , C.ORG_BUCKET
+                  , C.ORG_BUCKET_INDEX
+    FROM CASES_OVERALL AS C
 )
 
 SELECT *
-FROM METRIC_MERGE
+FROM TEST_RESULTS
 ;
