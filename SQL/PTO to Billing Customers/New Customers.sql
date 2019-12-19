@@ -92,6 +92,7 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
 
 SELECT *
 FROM MAIN
+WHERE PTO_TO_CALL_GAP IS NULL
 
 /*
  Of the customers who have
