@@ -34,7 +34,7 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
                                             , DATE
                                             , QUEUE_1
                               FROM D_POST_INSTALL.T_CJP_CDR_TEMP) AS CL -- CJP Call Sessions
-                             ON CL.DATE BETWEEN P.PTO_AWARDED AND DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED)) AND
+                             ON CL.DATE BETWEEN P.PTO_AWARDED AND DATEADD(dd, 180, TO_DATE(P.PTO_AWARDED)) AND
                                 CL.ANI = NVL(CLEAN_MOBILE_PHONE, CLEAN_PHONE)
     WHERE P.PTO_AWARDED IS NOT NULL
       AND D.DT BETWEEN
