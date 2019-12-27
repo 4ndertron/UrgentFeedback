@@ -4,10 +4,12 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
          , TO_DATE(P.PTO_AWARDED)                                                      AS PTO_DATE
          , DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED))                                     AS FIRST_BILLING_PERIOD_END
          , D.DT
+         , B.START_BILLING_DATE
+         , DATEADD(dd, 8, B.START_BILLING_DATE)                                        AS FIRST_INVOICE_DATE
          , CL.SESSION_ID                                                               AS CALL_ID
          , COUNT(CL.SESSION_ID) OVER (PARTITION BY P.PROJECT_NAME)                     AS CUSTOMER_CALLS
          , CL.DATE                                                                     AS CALL_DATE
-         , DATEDIFF(dd, PTO_DATE, CALL_DATE)                                           AS PTO_TO_CALL_GAP
+         , DATEDIFF(dd, FIRST_BILLING_PERIOD_END, CALL_DATE)                           AS BILLING_TO_CALL_GAP
          , DATEDIFF(dd,
                     LAG(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE),
                     CL.DATE)                                                           AS PREVIOUS_CALL_GAP
@@ -25,6 +27,10 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
     FROM RPT.T_DATES AS D
              INNER JOIN RPT.T_PROJECT AS P -- Salesforce Project Records
                         ON D.DT = TO_DATE(P.PTO_AWARDED)
+             LEFT JOIN (SELECT DISTINCT PROJECT_ID
+                                      , START_BILLING_DATE
+                        FROM RPT.T_NV_PV_DSAB_ACCOUNT_DETAILS) AS B
+                       ON B.PROJECT_ID = P.PROJECT_ID
              LEFT OUTER JOIN RPT.V_SF_ACCOUNT AS A -- Salesforce Account Records
                              ON A.ID = P.ACCOUNT_ID
              LEFT OUTER JOIN RPT.T_CONTACT AS CT -- Salesforce Contact Records
@@ -75,24 +81,25 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
          , EO.FIRST_OPEN
          , EO.LAST_OPEN
          , EO.TOTAL_OPENS
-         , DATEDIFF(dd, OL.PTO_DATE, EO.FIRST_OPEN)  AS FIRST_OPEN_GAP
+         , DATEDIFF(dd, OL.FIRST_BILLING_PERIOD_END, EO.FIRST_OPEN)  AS FIRST_OPEN_GAP
          , EC.FIRST_CLICK
          , EC.LAST_CLICK
          , EC.TOTAL_CLICKS
-         , DATEDIFF(dd, OL.PTO_DATE, EC.FIRST_CLICK) AS FIRST_CLICK_GAP
+         , DATEDIFF(dd, OL.FIRST_BILLING_PERIOD_END, EC.FIRST_CLICK) AS FIRST_CLICK_GAP
+         , DATEDIFF(dd, EO.FIRST_OPEN, OL.CALL_DATE)                 AS EMAIL_OPEN_TO_CALL_GAP
+         , DATEDIFF(dd, EC.FIRST_CLICK, OL.CALL_DATE)                AS LINK_CLICK_TO_CALL_GAP
     FROM ORIGINAL_LIST AS OL
              LEFT JOIN EO
                        ON EO.EMAIL_ADDRESS = OL.EMAIL AND
-                          EO.FIRST_OPEN >= OL.PTO_DATE
+                          EO.FIRST_OPEN >= OL.FIRST_BILLING_PERIOD_END
              LEFT JOIN EC
                        ON EC.EMAIL_ADDRESS = OL.EMAIL AND
-                          EC.FIRST_CLICK >= OL.PTO_DATE
+                          EC.FIRST_CLICK >= OL.FIRST_BILLING_PERIOD_END
     ORDER BY PROJECT_NAME, CALL_DATE
 )
 
 SELECT *
 FROM MAIN
-WHERE PTO_TO_CALL_GAP IS NULL
 
 /*
  Of the customers who have
@@ -131,5 +138,10 @@ WHERE PTO_TO_CALL_GAP IS NULL
  normalize time.
 
  take all over times, then align them to themselves
+
+
+ todo: Move focus to billing date. The objective is to observe customer behavior in their first billing week.
+    email is sent on 1, 3, 5 th of every month.
+    Billing Day in LD Table.
 
  */
