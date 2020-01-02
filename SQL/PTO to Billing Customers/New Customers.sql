@@ -2,14 +2,18 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
     SELECT P.PROJECT_NAME
          , P.SERVICE_NUMBER
          , TO_DATE(P.PTO_AWARDED)                                                      AS PTO_DATE
-         , DATEADD(dd, 30, TO_DATE(P.PTO_AWARDED))                                     AS FIRST_BILLING_PERIOD_END
          , D.DT
          , B.START_BILLING_DATE
          , DATEADD(dd, 8, B.START_BILLING_DATE)                                        AS FIRST_INVOICE_DATE
          , CL.SESSION_ID                                                               AS CALL_ID
          , COUNT(CL.SESSION_ID) OVER (PARTITION BY P.PROJECT_NAME)                     AS CUSTOMER_CALLS
          , CL.DATE                                                                     AS CALL_DATE
-         , DATEDIFF(dd, FIRST_BILLING_PERIOD_END, CALL_DATE)                           AS BILLING_TO_CALL_GAP
+         , DATEDIFF(dd, B.START_BILLING_DATE, CALL_DATE)                               AS BILLING_TO_CALL_GAP
+         , TO_DATE('2019-10-01')                                                       AS CAMPAIGN_START
+         , DATEADD(dd, DATEDIFF(dd, CURRENT_DATE, CAMPAIGN_START), CAMPAIGN_START)     AS MIRROR_DATE
+         , IFF(DATE_TRUNC(MM, DATEADD(MM, 1, TO_DATE(P.PTO_AWARDED))) < CAMPAIGN_START,
+               NULL,
+               DATE_TRUNC(MM, DATEADD(MM, 1, TO_DATE(P.PTO_AWARDED))))                 AS CAMPAIGN_EMAIL_RECEIVED
          , DATEDIFF(dd,
                     LAG(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE),
                     CL.DATE)                                                           AS PREVIOUS_CALL_GAP
@@ -81,20 +85,18 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
          , EO.FIRST_OPEN
          , EO.LAST_OPEN
          , EO.TOTAL_OPENS
-         , DATEDIFF(dd, OL.FIRST_BILLING_PERIOD_END, EO.FIRST_OPEN)  AS FIRST_OPEN_GAP
+         , DATEDIFF(dd, OL.CAMPAIGN_EMAIL_RECEIVED, EO.FIRST_OPEN)  AS FIRST_OPEN_GAP
          , EC.FIRST_CLICK
          , EC.LAST_CLICK
          , EC.TOTAL_CLICKS
-         , DATEDIFF(dd, OL.FIRST_BILLING_PERIOD_END, EC.FIRST_CLICK) AS FIRST_CLICK_GAP
-         , DATEDIFF(dd, EO.FIRST_OPEN, OL.CALL_DATE)                 AS EMAIL_OPEN_TO_CALL_GAP
-         , DATEDIFF(dd, EC.FIRST_CLICK, OL.CALL_DATE)                AS LINK_CLICK_TO_CALL_GAP
+         , DATEDIFF(dd, OL.CAMPAIGN_EMAIL_RECEIVED, EC.FIRST_CLICK) AS FIRST_CLICK_GAP
+         , DATEDIFF(dd, EO.FIRST_OPEN, OL.CALL_DATE)                AS EMAIL_OPEN_TO_CALL_GAP
+         , DATEDIFF(dd, EC.FIRST_CLICK, OL.CALL_DATE)               AS LINK_CLICK_TO_CALL_GAP
     FROM ORIGINAL_LIST AS OL
              LEFT JOIN EO
-                       ON EO.EMAIL_ADDRESS = OL.EMAIL AND
-                          EO.FIRST_OPEN >= OL.FIRST_BILLING_PERIOD_END
+                       ON EO.EMAIL_ADDRESS = OL.EMAIL
              LEFT JOIN EC
-                       ON EC.EMAIL_ADDRESS = OL.EMAIL AND
-                          EC.FIRST_CLICK >= OL.FIRST_BILLING_PERIOD_END
+                       ON EC.EMAIL_ADDRESS = OL.EMAIL
     ORDER BY PROJECT_NAME, CALL_DATE
 )
 

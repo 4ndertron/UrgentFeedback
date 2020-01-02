@@ -82,6 +82,7 @@ WITH FIELD_HISTORY AS (
                     NVL(NEXT_FIELD_DATE,
                         C.CLOSED_DATE)
         )                                                             AS LEAD_FIELD_GAP
+         , DATEDIFF(sec, C.CREATED_DATE, NVL(C.CLOSED_DATE, CURRENT_DATE)) AS CASE_AGE_SECONDS
     FROM (
                  (SELECT * FROM FIELD_HISTORY)
                  UNION
@@ -109,4 +110,4 @@ ORDER BY CASE_NUMBER DESC
        , FIELD_CHANGE_DATE
     );
 
-GRANT SELECT ON VIEW D_POST_INSTALL.V_CX_CASE_CUBE TO GENERAL_REPORTING_R -- Share the view
+GRANT SELECT ON VIEW D_POST_INSTALL.T_TEMP_CALABRIO_CONTACT_EVALS TO GENERAL_REPORTING_R -- Share the view

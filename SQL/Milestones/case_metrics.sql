@@ -1,0 +1,53 @@
+WITH
+    /*
+     Begin Landon's CTEs
+     */
+    DATES AS
+        (
+            SELECT DT
+            FROM RPT.V_DATES
+            WHERE DT >= DATEADD(D, -120, CURRENT_DATE)
+              AND DT < CURRENT_DATE
+        )
+
+   , EMPLOYEES_PREP1_BASIC AS
+    (
+        SELECT EMPLOYEE_ID
+             , MIN(START_DATE) AS TEAM_START_DATE
+             , MAX(END_DATE)   AS TEAM_END_DATE
+        FROM D_POST_INSTALL.V_CX_EMPLOYEES
+        GROUP BY EMPLOYEE_ID
+    )
+
+   , EMPLOYEES AS
+    (
+        SELECT EM.EMPLOYEE_ID
+             -- ADJUST START AND END DATE TO CONSIDER TARGET DATE RANGE
+             , EM.TEAM_START_DATE
+             , EM.TEAM_END_DATE
+             , MA.CJP_ID
+             , MA.CALABRIO_ID
+             , MA.SALESFORCE_ID
+        FROM EMPLOYEES_PREP1_BASIC AS EM
+                 LEFT OUTER JOIN
+             D_POST_INSTALL.T_EMPLOYEE_MASTER AS MA
+             ON
+                 EM.EMPLOYEE_ID = MA.EMPLOYEE_ID
+        WHERE EM.TEAM_END_DATE >= (SELECT MIN(DT) FROM DATES)
+    )
+
+   , CASE_METRICS AS (
+    SELECT D.DT
+         , C.OWNER_EMPLOYEE_ID
+         , COUNT(CASE WHEN DATE_TRUNC(dd, C.CASE_CLOSED_DATE) = D.DT THEN 1 END) AS CLOSED_CASES
+         , AVG(DISTINCT CASE_AGE_SECONDS)                                        AS AVG_SECONDS
+    FROM RPT.T_DATES AS D
+             LEFT JOIN D_POST_INSTALL.T_CX_CASE_CUBE AS C
+                       ON DATE_TRUNC(dd, C.CASE_CLOSED_DATE) = D.DT
+    WHERE D.DT BETWEEN DATEADD(MM, -4, DATE_TRUNC(MM, CURRENT_DATE)) AND CURRENT_DATE
+    GROUP BY D.DT, C.OWNER_EMPLOYEE_ID
+    ORDER BY C.OWNER_EMPLOYEE_ID, D.DT
+)
+
+SELECT *
+FROM CASE_METRICS

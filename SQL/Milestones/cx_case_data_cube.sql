@@ -38,21 +38,21 @@ WITH FIELD_HISTORY AS (
     SELECT C.CASE_NUMBER
          , C.CASE_ID
          , '<a href="https://vivintsolar.lightning.force.com/lightning/r/Case/' || C.CASE_ID ||
-           '/view" target="_blank">' || C.CASE_NUMBER || '</a>'       AS SALESFORCE_CASE_LINK
+           '/view" target="_blank">' || C.CASE_NUMBER || '</a>'            AS SALESFORCE_CASE_LINK
          , P.SERVICE_STATE
          , P.SERVICE_COUNTY
          , P.SERVICE_CITY
          , C.RECORD_TYPE
-         , IFF(EC.CLOSED_WON ILIKE 'YES', 'Closed - Saved', C.STATUS) AS STATUS
-         , C.CREATED_DATE                                             AS CASE_CREATED_DATE
+         , IFF(EC.CLOSED_WON ILIKE 'YES', 'Closed - Saved', C.STATUS)      AS STATUS
+         , C.CREATED_DATE                                                  AS CASE_CREATED_DATE
          , CASE
                WHEN H.FIELD = 'Case_Comment'
                    AND H.OLDVALUE IS NULL
                    THEN DATEDIFF(sec,
                                  C.CREATED_DATE,
                                  H.CREATED_DATE)
-        END                                                           AS CASE_CREATED_TO_COMMENT_GAP
-         , C.CLOSED_DATE                                              AS CASE_CLOSED_DATE
+        END                                                                AS CASE_CREATED_TO_COMMENT_GAP
+         , C.CLOSED_DATE                                                   AS CASE_CLOSED_DATE
          , C.OWNER
          , C.OWNER_EMPLOYEE_ID
          , C.HOME_VISIT_ONE
@@ -64,29 +64,32 @@ WITH FIELD_HISTORY AS (
          , C.SOLAR_QUEUE
          , C.PRIMARY_REASON
          , C.ORIGIN
-         , H.FIELD                                                    AS FIELD_CHANGED
-         , E.FULL_NAME                                                AS FIELD_CHANGED_BY
-         , E.EMPLOYEE_ID                                              AS FIELD_CHANGED_BY_EMPLOYEE_ID
-         , H.CREATED_DATE                                             AS FIELD_CHANGE_DATE
-         , H.OLDVALUE                                                 AS OLD_FIELD_VALUE
+         , H.FIELD                                                         AS FIELD_CHANGED
+         , E.FULL_NAME                                                     AS FIELD_CHANGED_BY
+         , E.EMPLOYEE_ID                                                   AS FIELD_CHANGED_BY_EMPLOYEE_ID
+         , H.CREATED_DATE                                                  AS FIELD_CHANGE_DATE
+         , H.OLDVALUE                                                      AS OLD_FIELD_VALUE
          , LAG(H.CREATED_DATE) OVER
-        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE) AS OLD_FIELD_DATE
-         , H.NEWVALUE                                                 AS NEW_FIELD_VALUE
+        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE)      AS OLD_FIELD_DATE
+         , H.NEWVALUE                                                      AS NEW_FIELD_VALUE
          , LEAD(H.NEWVALUE) OVER
-        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE) AS NEXT_FIELD_VALUE
+        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE)      AS NEXT_FIELD_VALUE
          , LEAD(H.CREATED_DATE) OVER
-        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE) AS NEXT_FIELD_DATE
+        (PARTITION BY C.CASE_NUMBER, H.FIELD ORDER BY H.CREATED_DATE)      AS NEXT_FIELD_DATE
          , DATEDIFF(sec,
                     NVL(OLD_FIELD_DATE,
                         C.CREATED_DATE),
                     H.CREATED_DATE
-        )                                                             AS LAG_FIELD_GAP
+        )                                                                  AS LAG_FIELD_GAP
          , DATEDIFF(sec,
                     H.CREATED_DATE,
                     NVL(NEXT_FIELD_DATE,
                         NVL(C.CLOSED_DATE,
                             CURRENT_DATE))
-        )                                                             AS LEAD_FIELD_GAP
+        )                                                                  AS LEAD_FIELD_GAP
+         , DATEDIFF(sec, C.CREATED_DATE, NVL(C.CLOSED_DATE, CURRENT_DATE)) AS CASE_AGE_SECONDS
+         , IFF(C.CLOSED_DATE IS NOT NULL, COUNT(DISTINCT C.CASE_NUMBER) OVER
+        (PARTITION BY C.RECORD_TYPE, OWNER), NULL)                         AS CLOSED_CASES
     FROM (
                  (SELECT * FROM FIELD_HISTORY)
                  UNION
