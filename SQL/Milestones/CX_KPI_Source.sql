@@ -184,9 +184,9 @@ WITH
    , call_back AS
     (
         SELECT cb.employee_id
-             , TO_DATE(cb.call_start)        AS dt
-             , SUM(IFF(has_call_back, 1, 0)) AS call_back_calls
-             , COUNT(has_call_back)          AS handled_calls
+             , DATEADD(d, 7, TO_DATE(cb.call_start)) AS dt
+             , SUM(IFF(has_call_back, 1, 0))         AS call_back_calls
+             , COUNT(has_call_back)                  AS handled_calls
         FROM call_back_prep3_call_backs AS cb
         GROUP BY cb.employee_id
                , TO_DATE(cb.call_start)
@@ -853,10 +853,10 @@ SELECT employee_id
      , SUM(hld_hold_seconds) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 29 PRECEDING AND CURRENT ROW)
     / NULLIF(SUM(handled_calls) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 29 PRECEDING AND CURRENT ROW),
              0)                                                                                            AS hld_30r
-     , avg(case_age_seconds) OVER
+     , SUM(case_age_seconds) OVER
     (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 29 PRECEDING AND CURRENT ROW)                       AS aca_30r
      , sum(closed_cases) OVER
-    (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 29 PRECEDING AND CURRENT ROW)                       AS cc_30r
+    (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 29 PRECEDING AND CURRENT ROW)                       AS tcc_30r
      -- Scores over rolling 90 days
      , SUM(qa_score) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)
     / NULLIF(SUM(qa_evaluations) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW),
@@ -892,13 +892,13 @@ SELECT employee_id
      , SUM(hld_hold_seconds) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)
     / NULLIF(SUM(handled_calls) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW),
              0)                                                                                            AS hld_90r
-     , avg(case_age_seconds) OVER
-    (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)                       AS aca_90r
+     , SUM(case_age_seconds) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)
+    / NULLIF(sum(closed_cases) OVER (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW),
+             0)                                                                                            AS aca_90r
      , sum(closed_cases) OVER
-    (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)                       AS cc_90r
+    (PARTITION BY employee_id ORDER BY dt ROWS BETWEEN 89 PRECEDING AND CURRENT ROW)                       AS tcc_90r
 FROM combined_scores
 ORDER BY employee_id
-       , dt
-;
+       , dt;
 
 

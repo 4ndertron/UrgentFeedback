@@ -442,38 +442,30 @@ WITH DEFAULT_BUCKET AS ( -- GROUP BY CLEAR -- TIMESTAMP CLEAR
 
    , CASE_DAY_WIP AS (
     SELECT D.DT
-        /*
-         TODO: Calibrate these Case Buckets to the new ones
-         */
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL) AND
                           FC.CASE_BUCKET = 'Pre-PTO'
-                         -- TODO: Fix case_bucket = expression
                          THEN 1 END) AS PRE_PTO_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL) AND
                           FC.CASE_BUCKET = 'Pre-Default'
-                         -- TODO: Fix case_bucket = expression
                          THEN 1 END) AS PRE_DEFAULT_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL) AND
                           FC.CASE_BUCKET = 'Post-PTO'
-                         -- TODO: Fix case_bucket = expression
                          THEN 1 END) AS POST_PTO_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL) AND
                           FC.CASE_BUCKET = 'Collections'
-                         -- TODO: Fix case_bucket = expression
                          THEN 1 END) AS COLLECTIONS_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL) AND
                           FC.CASE_BUCKET = 'Letters'
-                         -- TODO: Fix case_bucket = expression
                          THEN 1 END) AS LETTERS_WIP
          , COUNT(CASE
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
@@ -548,7 +540,7 @@ WITH DEFAULT_BUCKET AS ( -- GROUP BY CLEAR -- TIMESTAMP CLEAR
                                THEN 1 END), 2)                             AS TOTAL_CLOSED
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(BUCKET_END) = D.DT AND
-                                 FC.PROCESS_BUCKET = 'Default'
+                                FC.PROCESS_BUCKET = 'Default'
                                THEN 1 END), 2)                             AS DEFAULT_TOTAL_CLOSED
          , ROUND(COUNT(CASE
                            WHEN TO_DATE(BUCKET_END) = D.DT

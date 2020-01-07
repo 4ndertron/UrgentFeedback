@@ -9,7 +9,9 @@ WITH ESCALATION_CASES AS (
          , C.STATUS
          , C.CUSTOMER_TEMPERATURE
          , TO_DATE(C.CREATED_DATE) AS CASE_CREATED_DATE
+         , C.CREATED_DATE          AS CASE_CREATED_DATETIME
          , TO_DATE(C.CLOSED_DATE)  AS CASE_CLOSED_DATE
+         , C.CLOSED_DATE           AS CASE_CLOSED_DATETIME
          , C.RECORD_TYPE
     FROM RPT.T_CASE AS C
     WHERE C.RECORD_TYPE = 'Solar - Customer Escalation'
@@ -65,22 +67,25 @@ WITH ESCALATION_CASES AS (
    , CASE_HISTORY_TABLE AS (
     SELECT CO.*
          , NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               CO.CASE_CREATED_DATE)                            AS PREVIOUS_COMMENT_DATE
-         , CC.CREATEDATE                                        AS CURRENT_COMMENT_DATE
+               CO.CASE_CREATED_DATETIME)                            AS PREVIOUS_COMMENT_DATE
+         , CC.CREATEDATE                                            AS CURRENT_COMMENT_DATE
          , NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-               NVL(CO.CASE_CLOSED_DATE,
-                   CURRENT_DATE))                               AS NEXT_COMMENT_DATE
-         , USR.NAME                                             AS COMMENT_CREATE_BY
+               NVL(CO.CASE_CLOSED_DATETIME,
+                   CURRENT_TIMESTAMP))                              AS NEXT_COMMENT_DATE
+         , USR.NAME                                                 AS COMMENT_CREATE_BY
          , HR.BUSINESS_TITLE
          , DATEDIFF(s, NVL(LAG(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER
         ORDER BY CC.CREATEDATE),
-                           CO.CASE_CREATED_DATE),
+                           CO.CASE_CREATED_DATETIME),
                     CC.CREATEDATE
                ) / (24 * 60 * 60)
-                                                                AS LAG_GAP
+                                                                    AS LAG_GAP
          , DATEDIFF(s, CC.CREATEDATE,
                     NVL(LEAD(CC.CREATEDATE) OVER (PARTITION BY CO.CASE_NUMBER ORDER BY CC.CREATEDATE),
-                        CO.CASE_CREATED_DATE)) / (24 * 60 * 60) AS LEAD_GAP
+                        CO.CASE_CREATED_DATETIME)) / (24 * 60 * 60) AS LEAD_GAP
+         , IFF(PREVIOUS_COMMENT_DATE = CO.CASE_CREATED_DATETIME,
+               DATEDIFF(s, CO.CASE_CREATED_DATETIME, CC.CREATEDATE),
+               NULL) / (24 * 60 * 60)                               AS INTIAL_RESPONSE
     FROM CASES_OVERALL AS CO
              LEFT OUTER JOIN RPT.V_SF_CASECOMMENT AS CC
                              ON CC.PARENTID = CO.CASE_ID
@@ -88,7 +93,7 @@ WITH ESCALATION_CASES AS (
                        ON USR.ID = CC.CREATEDBYID
              LEFT JOIN HR.T_EMPLOYEE AS HR
                        ON HR.EMPLOYEE_ID = USR.EMPLOYEE_ID__C
-    WHERE CC.CREATEDATE <= NVL(CO.CASE_CLOSED_DATE, CURRENT_DATE)
+    WHERE CC.CREATEDATE <= NVL(CO.CASE_CLOSED_DATE, CURRENT_TIMESTAMP)
     ORDER BY CASE_NUMBER, CC.CREATEDATE
 )
 
@@ -105,6 +110,7 @@ WITH ESCALATION_CASES AS (
          , DATEDIFF(dd, TO_DATE(ANY_VALUE(CASE_CREATED_DATE)),
                     NVL(TO_DATE(ANY_VALUE(CASE_CLOSED_DATE)), CURRENT_DATE)) AS CASE_AGE
          , AVG(LAG_GAP)                                                      AS AVERAGE_GAP
+         , ANY_VALUE(INTIAL_RESPONSE)                                        AS INITIAL_RESPONSE
     FROM CASE_HISTORY_TABLE AS CHT
              LEFT OUTER JOIN RPT.T_SYSTEM_DETAILS_SNAP AS CAD
                              ON CAD.PROJECT_ID = CHT.PROJECT_ID
@@ -487,6 +493,9 @@ WITH ESCALATION_CASES AS (
                            WHEN TO_DATE(CLOSED_DATE) = D.DT AND CUSTOMER_TEMPERATURE != 'Escalated'
                                THEN 1 END) / DW.ACTIVE_AGENTS,
                  2)                                               AS AVERAGE_CLOSED_WON_CASES
+         , ROUND(AVG(CASE
+                         WHEN TO_DATE(CREATED_DATE) = D.DT
+                             THEN INITIAL_RESPONSE END), 2)       AS INITIAL_RESPONSE
          , DW.ACTIVE_AGENTS
     FROM FULL_CASE AS FC
        , RPT.T_DATES AS D
@@ -515,7 +524,8 @@ WITH ESCALATION_CASES AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM RAW_UPDATES
+    FROM FULL_CASE
+    WHERE DATE_TRUNC(w, CREATED_DATE) = DATE_TRUNC(w, DATEADD(dd, -7, CURRENT_DATE))
 )
 
    , MAIN AS (
@@ -527,6 +537,7 @@ WITH ESCALATION_CASES AS (
          , QA.AVG_QA                            AS QUALITY
          , CASE_WEEK_WIP.CASE_ACTIVE_WIP        AS WIP
          , ION.AVG_OPEN_AGE                     AS AGE_OF_WIP
+         , ION.INITIAL_RESPONSE
          , UPDATES_MONTH.TOTAL_UPDATES
          , CASE_WEEK_WIP.ACTIVE_AGENTS
     FROM ION

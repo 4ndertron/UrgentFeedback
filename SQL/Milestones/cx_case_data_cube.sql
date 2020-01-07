@@ -92,7 +92,7 @@ WITH FIELD_HISTORY AS (
         (PARTITION BY C.RECORD_TYPE, OWNER), NULL)                         AS CLOSED_CASES
     FROM (
                  (SELECT * FROM FIELD_HISTORY)
-                 UNION
+                 UNION ALL
                  (SELECT * FROM COMMENT_HISTORY)
          ) H -- Histories
              LEFT JOIN RPT.T_CASE AS C
@@ -105,7 +105,7 @@ WITH FIELD_HISTORY AS (
                        ON EC.SERVICE_NAME = P.SERVICE_NAME
     WHERE C.RECORD_TYPE IN ('Solar - Customer Default', 'Solar - Billing', 'Solar - Panel Removal', 'Solar - Service',
                             'Solar Damage Resolutions', 'Solar - Customer Escalation', 'Solar - Troubleshooting')
-      AND (C.CLOSED_DATE >= DATEADD(mm, -3, CURRENT_DATE) OR C.CLOSED_DATE IS NULL)
+      AND NVL(C.CLOSED_DATE, CURRENT_DATE) >= DATEADD(mm, -4, CURRENT_DATE)
     ORDER BY C.CASE_NUMBER DESC
            , H.CREATED_DATE
 )

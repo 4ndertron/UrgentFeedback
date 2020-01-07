@@ -301,6 +301,19 @@ WITH DEFAULT_BUCKET AS (
     ORDER BY MONTH1
 )
 
+   , RAW_UPDATES AS (
+    SELECT DH.CASE_NUMBER
+         , DH.PROCESS_BUCKET
+         , DH.CURRENT_COMMENT_DATE AS DAY_UPDATED
+    FROM DEFAULT_HISTORY AS DH
+--     UNION
+--     SELECT AB.CASE_NUMBER
+--          , AB.PROCESS_BUCKET
+--          , AB.BUCKET_END AS DAY_UPDATED
+--     FROM AUDIT_BUCKET AS AB
+--     WHERE AB.BUCKET_END IS NOT NULL
+)
+
    , DEFAULT_AGENT_DAY_WIP AS ( -- No divided by 0 error
     SELECT D.DT
          , COUNT(CASE
@@ -320,18 +333,15 @@ WITH DEFAULT_BUCKET AS (
    , UPDATES_DAY AS ( -- no divided by 0 error
     SELECT D.DT
          , COUNT(CASE
-                     WHEN TO_DATE(CHT.CURRENT_COMMENT_DATE) = D.DT
+                     WHEN TO_DATE(U.DAY_UPDATED) = D.DT
                          THEN 1 END)                  AS UPDATES
          , IFF(DAYNAME(D.DT) IN ('Sat', 'Sun'), 0, 1) AS WORKDAY
-         , DW.ACTIVE_AGENTS
-    FROM DEFAULT_HISTORY AS CHT
-       , RPT.T_DATES AS D
-       , DEFAULT_AGENT_DAY_WIP AS DW
+    FROM RPT.T_DATES AS D
+       , RAW_UPDATES AS U
     WHERE D.DT BETWEEN
-        DATE_TRUNC(Y, DATEADD(Y, -2, CURRENT_DATE)) AND
-        CURRENT_DATE
-      AND DW.DT = D.DT
-    GROUP BY D.DT, DW.ACTIVE_AGENTS
+              DATE_TRUNC(Y, DATEADD(Y, -2, CURRENT_DATE)) AND
+              CURRENT_DATE
+    GROUP BY D.DT
     ORDER BY D.DT
 )
 
@@ -346,6 +356,11 @@ WITH DEFAULT_BUCKET AS (
                      WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
                           (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL)
                          THEN 1 END) AS BUCKET_TOTAL_WIP
+         , COUNT(CASE
+                     WHEN TO_DATE(FC.BUCKET_START) <= D.DT AND
+                          FC.TEAM NOT ILIKE '%AUDIT%' AND
+                          (TO_DATE(FC.BUCKET_END) >= D.DT OR FC.BUCKET_END IS NULL)
+                         THEN 1 END) AS COVERAGE_WIP
     FROM RPT.T_DATES AS D
        , CXBR_DEFAULT AS FC
     WHERE D.DT BETWEEN
@@ -359,8 +374,8 @@ WITH DEFAULT_BUCKET AS (
    , CASE_MONTH_WIP AS ( -- no divided by 0 error
     SELECT CW.DT
          , ROUND(CW.BUCKET_TOTAL_WIP / DW.ACTIVE_AGENTS, 2) AS AVERAGE_AGENT_WIP
---          , CW.CASE_ACTIVE_WIP
          , CW.BUCKET_TOTAL_WIP
+         , CW.COVERAGE_WIP
          , DW.ACTIVE_AGENTS
     FROM CASE_DAY_WIP CW
        , DEFAULT_AGENT_DAY_WIP AS DW
@@ -389,8 +404,6 @@ WITH DEFAULT_BUCKET AS (
     SELECT IFF(LAST_DAY(U.DT) > CURRENT_DATE, CURRENT_DATE, LAST_DAY(U.DT)) AS MONTH
          , SUM(U.UPDATES)                                                   AS TOTAL_UPDATES
          , SUM(U.WORKDAY)                                                   AS WORKDAYS
-         , ROUND(TOTAL_UPDATES / WORKDAYS, 2)                               AS AVG_DAY_UPDATES
-         , ROUND(AVG_DAY_UPDATES / MIN(U.ACTIVE_AGENTS), 2)                 AS AVG_AGENT_DAY_UPDATES
     FROM UPDATES_DAY AS U
     GROUP BY MONTH
 )
@@ -462,8 +475,8 @@ WITH DEFAULT_BUCKET AS (
    , COVERAGE AS (
     SELECT MONTH
          , U.TOTAL_UPDATES
-         , C.BUCKET_TOTAL_WIP
-         , ROUND(U.TOTAL_UPDATES / C.BUCKET_TOTAL_WIP, 2) AS X_COVERAGE
+         , C.COVERAGE_WIP
+         , ROUND(U.TOTAL_UPDATES / C.COVERAGE_WIP, 2) AS X_COVERAGE
     FROM UPDATES_MONTH AS U
        , CASE_MONTH_WIP AS C
     WHERE C.DT = U.MONTH
@@ -482,7 +495,8 @@ WITH DEFAULT_BUCKET AS (
 
    , TEST_RESULTS AS (
     SELECT *
-    FROM CXBR_DEFAULT
+    FROM RAW_UPDATES
+    ORDER BY 3 DESC
 )
 
    , MAIN AS (

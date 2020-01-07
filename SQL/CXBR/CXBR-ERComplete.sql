@@ -55,10 +55,10 @@ WITH ESCALATION_CASES AS (
     SELECT *
     FROM (
                  (SELECT * FROM ESCALATION_CASES)
-                 UNION
-                 (SELECT * FROM RELOCATION_CASES)
-                 UNION
-                 (SELECT * FROM SYSTEM_DAMAGE_CASES)
+--                  UNION
+--                  (SELECT * FROM RELOCATION_CASES)
+--                  UNION
+--                  (SELECT * FROM SYSTEM_DAMAGE_CASES)
          ) AS C
 )
 
@@ -357,6 +357,7 @@ WITH ESCALATION_CASES AS (
     SELECT D.DT
          , COUNT(CASE
                      WHEN TO_DATE(FC.CREATED_DATE) <= D.DT AND
+                          FC.STATUS NOT ILIKE '%DISPUTE%' AND
                           (TO_DATE(FC.CLOSED_DATE) >= D.DT OR FC.CLOSED_DATE IS NULL)
                          THEN 1 END) AS CASE_ACTIVE_WIP
     FROM RPT.T_DATES AS D
@@ -502,7 +503,7 @@ WITH ESCALATION_CASES AS (
     WHERE CASE_MONTH_WIP.DT = ION.MONTH1
       AND GAP_MONTH_TABLE.MONTH = ION.MONTH1
       AND UPDATES_MONTH.MONTH = ION.MONTH1
-    AND ION.MONTH1 != CURRENT_DATE
+      AND ION.MONTH1 != CURRENT_DATE
     ORDER BY ION.MONTH1
 )
 

@@ -1,40 +1,36 @@
 WITH ORIGINAL_LIST AS ( -- Raw data list
     SELECT P.PROJECT_NAME
          , P.SERVICE_NUMBER
-         , TO_DATE(P.PTO_AWARDED)                                                      AS PTO_DATE
+         , TO_DATE(P.PTO_AWARDED)                                                              AS PTO_DATE
          , D.DT
-         , B.START_BILLING_DATE
-         , DATEADD(dd, 8, B.START_BILLING_DATE)                                        AS FIRST_INVOICE_DATE
-         , CL.SESSION_ID                                                               AS CALL_ID
-         , COUNT(CL.SESSION_ID) OVER (PARTITION BY P.PROJECT_NAME)                     AS CUSTOMER_CALLS
-         , CL.DATE                                                                     AS CALL_DATE
-         , DATEDIFF(dd, B.START_BILLING_DATE, CALL_DATE)                               AS BILLING_TO_CALL_GAP
-         , TO_DATE('2019-10-01')                                                       AS CAMPAIGN_START
-         , DATEADD(dd, DATEDIFF(dd, CURRENT_DATE, CAMPAIGN_START), CAMPAIGN_START)     AS MIRROR_DATE
+         , DATEADD(dd, 7, LAST_DAY(DATE_TRUNC(dd, P.PTO_AWARDED)))                             AS FIRST_INVOICE_DATE
+         , DATEDIFF(dd, FIRST_INVOICE_DATE, CL.DATE)                                           AS INVOICE_TO_CALL_GAP
+         , TO_DATE('2019-09-01')                                                               AS CAMPAIGN_START
+         , TO_DATE('2019-10-01')                                                               AS FIRST_CAMPAIGN_EMAIL
+         , DATEADD(dd, DATEDIFF(dd, CURRENT_DATE, FIRST_CAMPAIGN_EMAIL), FIRST_CAMPAIGN_EMAIL) AS CAMPAIGN_MIRROR_DATE
          , IFF(DATE_TRUNC(MM, DATEADD(MM, 1, TO_DATE(P.PTO_AWARDED))) < CAMPAIGN_START,
                NULL,
-               DATE_TRUNC(MM, DATEADD(MM, 1, TO_DATE(P.PTO_AWARDED))))                 AS CAMPAIGN_EMAIL_RECEIVED
+               DATE_TRUNC(MM, DATEADD(MM, 1, TO_DATE(P.PTO_AWARDED))))                         AS CAMPAIGN_EMAIL_RECEIVED
+         , CL.SESSION_ID                                                                       AS CALL_ID
+         , COUNT(CL.SESSION_ID) OVER (PARTITION BY P.PROJECT_NAME)                             AS CUSTOMER_CALLS
+         , CL.DATE                                                                             AS CALL_DATE
          , DATEDIFF(dd,
                     LAG(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE),
-                    CL.DATE)                                                           AS PREVIOUS_CALL_GAP
+                    CL.DATE)                                                                   AS PREVIOUS_CALL_GAP
          , DATEDIFF(dd,
                     CL.DATE,
-                    LEAD(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE)) AS NEXT_CALL_GAP
+                    LEAD(CL.DATE) OVER (PARTITION BY P.PROJECT_NAME ORDER BY CL.DATE))         AS NEXT_CALL_GAP
          , CL.QUEUE_1
          , IFF(REGEXP_LIKE(CL.QUEUE_1, 'Q_\\d+', 'i'),
                'Personal',
-               REGEXP_SUBSTR(CL.QUEUE_1, '([^Q\\_]+)_', 1, 1, 'ie'))                   AS QUEUE_TYPE
+               REGEXP_SUBSTR(CL.QUEUE_1, '([^Q\\_]+)_', 1, 1, 'ie'))                           AS QUEUE_TYPE
          , CT.EMAIL
          , CT.FULL_NAME
          , P.SERVICE_STATE
-         , CURRENT_DATE                                                                AS LAST_REFRESHED
+         , CURRENT_DATE                                                                        AS LAST_REFRESHED
     FROM RPT.T_DATES AS D
              INNER JOIN RPT.T_PROJECT AS P -- Salesforce Project Records
                         ON D.DT = TO_DATE(P.PTO_AWARDED)
-             LEFT JOIN (SELECT DISTINCT PROJECT_ID
-                                      , START_BILLING_DATE
-                        FROM RPT.T_NV_PV_DSAB_ACCOUNT_DETAILS) AS B
-                       ON B.PROJECT_ID = P.PROJECT_ID
              LEFT OUTER JOIN RPT.V_SF_ACCOUNT AS A -- Salesforce Account Records
                              ON A.ID = P.ACCOUNT_ID
              LEFT OUTER JOIN RPT.T_CONTACT AS CT -- Salesforce Contact Records
@@ -90,14 +86,27 @@ WITH ORIGINAL_LIST AS ( -- Raw data list
          , EC.LAST_CLICK
          , EC.TOTAL_CLICKS
          , DATEDIFF(dd, OL.CAMPAIGN_EMAIL_RECEIVED, EC.FIRST_CLICK) AS FIRST_CLICK_GAP
-         , DATEDIFF(dd, EO.FIRST_OPEN, OL.CALL_DATE)                AS EMAIL_OPEN_TO_CALL_GAP
-         , DATEDIFF(dd, EC.FIRST_CLICK, OL.CALL_DATE)               AS LINK_CLICK_TO_CALL_GAP
+         , CASE
+               WHEN OL.PTO_DATE < CAMPAIGN_MIRROR_DATE
+                   THEN 'NA'
+               WHEN OL.PTO_DATE >= CAMPAIGN_START
+                   AND NVL(OL.CALL_DATE, CURRENT_TIMESTAMP) > EO.FIRST_OPEN
+                   THEN 'Open Campaign'
+               WHEN OL.PTO_DATE >= CAMPAIGN_START
+                   THEN 'Not Open Campaign'
+               ELSE 'Pre Campaign' END                              AS CAMPAIGN_BUCKET
     FROM ORIGINAL_LIST AS OL
              LEFT JOIN EO
                        ON EO.EMAIL_ADDRESS = OL.EMAIL
              LEFT JOIN EC
                        ON EC.EMAIL_ADDRESS = OL.EMAIL
     ORDER BY PROJECT_NAME, CALL_DATE
+)
+
+   , TEST_RESULTS AS (
+    SELECT *
+    FROM MAIN
+    WHERE PROJECT_NAME = 'SP-4287984'
 )
 
 SELECT *
@@ -142,8 +151,5 @@ FROM MAIN
  take all over times, then align them to themselves
 
 
- todo: Move focus to billing date. The objective is to observe customer behavior in their first billing week.
-    email is sent on 1, 3, 5 th of every month.
-    Billing Day in LD Table.
 
  */
