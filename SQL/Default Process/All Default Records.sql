@@ -11,6 +11,9 @@ WITH DEFAULT_BUCKET AS (
          , C.P_5_LETTER
          , IFF(P.PTO_AWARDED IS NOT NULL, 'Post-PTO', 'Pre-PTO')     AS PTO_INDEX
          , P.SERVICE_NAME
+         , P.SERVICE_STATE
+         , P.SERVICE_COUNTY
+         , P.SERVICE_CITY
          , C.DRA
          , C.PRIORITY
          , C.HOME_VISIT_ONE
@@ -43,6 +46,9 @@ WITH DEFAULT_BUCKET AS (
          , C.P_5_LETTER
          , IFF(P.PTO_AWARDED IS NOT NULL, 'Post-PTO', 'Pre-PTO')     AS PTO_INDEX
          , P.SERVICE_NAME
+         , P.SERVICE_STATE
+         , P.SERVICE_COUNTY
+         , P.SERVICE_CITY
          , C.DRA
          , C.PRIORITY
          , C.HOME_VISIT_ONE
@@ -75,6 +81,9 @@ WITH DEFAULT_BUCKET AS (
          , C.P_5_LETTER
          , IFF(P.PTO_AWARDED IS NOT NULL, 'Post-PTO', 'Pre-PTO')     AS PTO_INDEX
          , P.SERVICE_NAME
+         , P.SERVICE_STATE
+         , P.SERVICE_COUNTY
+         , P.SERVICE_CITY
          , C.DRA
          , C.PRIORITY
          , C.HOME_VISIT_ONE
