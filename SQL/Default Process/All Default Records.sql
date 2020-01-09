@@ -22,6 +22,7 @@ WITH DEFAULT_BUCKET AS (
          , TO_DATE(C.CLOSED_DATE)                                    AS BUCKET_END
          , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
          , 'Default'                                                 AS PROCESS_BUCKET
+         , 1                                                         as Bucket_Priority
     FROM RPT.T_CASE AS C
              LEFT JOIN RPT.T_PROJECT AS P
                        ON P.PROJECT_ID = C.PROJECT_ID
@@ -53,6 +54,7 @@ WITH DEFAULT_BUCKET AS (
          , TO_DATE(C.CLOSED_DATE)                                    AS BUCKET_END
          , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
          , 'Pre-Default'                                             AS PROCESS_BUCKET
+         , 2                                                         as Bucket_Priority
     FROM RPT.T_CASE AS C
              LEFT JOIN RPT.T_PROJECT AS P
                        ON P.PROJECT_ID = C.PROJECT_ID
@@ -89,6 +91,7 @@ WITH DEFAULT_BUCKET AS (
                ELSE TO_DATE(C.NEXT_START) END                        AS BUCKET_END
          , DATEDIFF(dd, BUCKET_START, NVL(BUCKET_END, CURRENT_DATE)) AS BUCKET_AGE
          , 'Audit'                                                   AS PROCESS_BUCKET
+         , 3                                                         as Bucket_Priority
     FROM (
              SELECT C.CASE_ID
                   , C.PROJECT_ID
@@ -123,9 +126,18 @@ WITH DEFAULT_BUCKET AS (
 )
 
    , MAIN AS (
+    /*
+     88 Misfits
+     ----------
+
+     */
     SELECT C.*
          , CASE
         -- NON-WIP
+
+               WHEN C.SUBJECT ILIKE '%BANKRUP%'
+                   AND C.PROCESS_BUCKET = 'Pre-Default'
+                   THEN 'Bankruptcy'
                WHEN C.BUCKET_END IS NOT NULL
                    THEN 'Complete'
                WHEN C.STATUS ILIKE '%LEGAL%'
@@ -137,37 +149,35 @@ WITH DEFAULT_BUCKET AS (
                WHEN C.STATUS ILIKE '%ESCALATED%'
                    AND C.PROCESS_BUCKET = 'Default'
                    THEN 'Legal'
-               WHEN C.SUBJECT ILIKE '%BANKRUP%'
-                   AND C.PROCESS_BUCKET = 'Pre-Default'
-                   THEN 'Bankruptcy'
+
         -- WIP
                WHEN C.DRA IS NOT NULL
                    AND C.PROCESS_BUCKET = 'Default'
+                   AND C.STATUS ILIKE '%PROGRESS%'
                    THEN 'DRA'
                WHEN C.P_5_LETTER IS NOT NULL
                    AND C.PROCESS_BUCKET = 'Default'
+                   AND C.STATUS ILIKE '%PROGRESS%'
                    THEN 'P5 Letter'
                WHEN C.P_4_LETTER IS NOT NULL
                    AND C.PROCESS_BUCKET = 'Default'
+                   AND C.STATUS ILIKE '%PROGRESS%'
                    THEN 'P4 Letter'
                WHEN (C.HOME_VISIT_ONE IS NOT NULL OR C.STATUS = 'In Progress')
                    AND C.PROCESS_BUCKET = 'Default'
+                   AND C.STATUS ILIKE '%PROGRESS%'
                    THEN 'Home Visit/Letter'
                WHEN C.STATUS ILIKE '%PENDING%ACTION%'
                    AND C.PROCESS_BUCKET = 'Default'
                    THEN 'Default - Active'
-               WHEN C.PRIMARY_REASON = 'Customer Deceased'
---                    AND C.PROCESS_BUCKET = 'Default'
-                   THEN 'Deceased'
-               WHEN C.PRIMARY_REASON = 'Foreclosure'
---                    AND C.PROCESS_BUCKET = 'Default'
-                   THEN 'Foreclosure'
                WHEN C.PRIORITY IN ('1', '2')
                    AND C.PROCESS_BUCKET = 'Pre-Default'
                    THEN 'Pre-Default Refusals'
                WHEN C.PRIORITY IN ('3')
                    AND C.PROCESS_BUCKET = 'Pre-Default'
                    THEN 'Pre-Default E/A'
+               WHEN C.PROCESS_BUCKET = 'Pre-Default'
+                   THEN 'Pre-Default'
                WHEN C.PROCESS_BUCKET = 'Audit'
                    THEN 'Audit'
                ELSE 'Audit'
@@ -175,9 +185,9 @@ WITH DEFAULT_BUCKET AS (
          , CURRENT_DATE AS LAST_REFRESHED
     FROM (
                  (SELECT * FROM DEFAULT_BUCKET)
-                 UNION
+                 UNION All
                  (SELECT * FROM PRE_DEFAULT_BUCKET)
-                 UNION
+                 UNION ALL
                  (SELECT * FROM AUDIT_BUCKET)
          ) AS C
 )
@@ -192,6 +202,4 @@ WITH DEFAULT_BUCKET AS (
 
 SELECT *
 FROM MAIN
-WHERE CASE_BUCKET = 'Complete'
-LIMIT 1
-;
+    qualify Row_Number() over (partition by CASE_NUMBER order by Bucket_Priority asc ) = 1
