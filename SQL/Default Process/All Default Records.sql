@@ -142,13 +142,13 @@ WITH DEFAULT_BUCKET AS (
      */
     SELECT C.*
          , CASE
-        -- NON-WIP
 
+        -- NON-WIP
+               WHEN C.BUCKET_END IS NOT NULL
+                   THEN 'Complete'
                WHEN C.SUBJECT ILIKE '%BANKRUP%'
                    AND C.PROCESS_BUCKET = 'Pre-Default'
                    THEN 'Bankruptcy'
-               WHEN C.BUCKET_END IS NOT NULL
-                   THEN 'Complete'
                WHEN C.STATUS ILIKE '%LEGAL%'
                    AND C.SUBJECT NOT ILIKE '%BANKR%'
                    THEN 'Pending Legal Action'
@@ -159,7 +159,7 @@ WITH DEFAULT_BUCKET AS (
                    AND C.PROCESS_BUCKET = 'Default'
                    THEN 'Legal'
 
-        -- WIP
+        -- LETTERS
                WHEN C.DRA IS NOT NULL
                    AND C.PROCESS_BUCKET = 'Default'
                    AND C.STATUS ILIKE '%PROGRESS%'
@@ -176,20 +176,21 @@ WITH DEFAULT_BUCKET AS (
                    AND C.PROCESS_BUCKET = 'Default'
                    AND C.STATUS ILIKE '%PROGRESS%'
                    THEN 'Home Visit/Letter'
+
+        -- AGENTS
                WHEN C.STATUS ILIKE '%PENDING%ACTION%'
                    AND C.PROCESS_BUCKET = 'Default'
                    THEN 'Default - Active'
-               WHEN C.PRIORITY IN ('1', '2')
+               WHEN C.PRIORITY IN ('1', '2', '3')
                    AND C.PROCESS_BUCKET = 'Pre-Default'
-                   THEN 'Pre-Default Refusals'
-               WHEN C.PRIORITY IN ('3')
-                   AND C.PROCESS_BUCKET = 'Pre-Default'
-                   THEN 'Pre-Default E/A'
+                   THEN 'Pre-Default'
                WHEN C.PROCESS_BUCKET = 'Pre-Default'
                    THEN 'Pre-Default'
                WHEN C.PROCESS_BUCKET = 'Audit'
+                   AND C.RECORD_TYPE NOT ILIKE '%PANEL%'
+                   AND C.RECORD_TYPE NOT ILIKE '%ESCALATION%'
                    THEN 'Audit'
-               ELSE 'Audit'
+               ELSE 'Lost'
         END             AS CASE_BUCKET
          , CURRENT_DATE AS LAST_REFRESHED
     FROM (
@@ -211,4 +212,4 @@ WITH DEFAULT_BUCKET AS (
 
 SELECT *
 FROM MAIN
-    qualify Row_Number() over (partition by CASE_NUMBER order by Bucket_Priority asc ) = 1
+    qualify Row_Number() over (partition by CASE_NUMBER order by Bucket_Priority) = 1

@@ -1,0 +1,14 @@
+Case(
+([Case Bucket]@ID="Audit"), 1,
+([Case Bucket]@ID="Pre-Default"), 2,
+([Case Bucket]@ID="Default - Active"), 3,
+([Case Bucket]@ID="Home Visit/Letter"), 4,
+([Case Bucket]@ID="P4 Letter"), 5,
+([Case Bucket]@ID="P5 Letter"), 6,
+([Case Bucket]@ID="DRA"), 7,
+([Case Bucket]@ID="Legal"), 8,
+([Case Bucket]@ID="Third-party"), 9,
+([Case Bucket]@ID="Pending Legal Action"), 10,
+([Case Bucket]@ID="Bankruptcy"), 11,
+([Case Bucket]@ID="Complete"), 12,
+0)
