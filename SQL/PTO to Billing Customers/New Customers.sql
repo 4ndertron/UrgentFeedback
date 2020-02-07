@@ -1,4 +1,7 @@
 WITH ORIGINAL_LIST AS ( -- Raw data list
+    /*
+     todo: Upload the new open and click .csv files to their respective tables.
+     */
     SELECT P.PROJECT_NAME
          , P.SERVICE_NUMBER
          , TO_DATE(P.PTO_AWARDED)                                                              AS PTO_DATE
