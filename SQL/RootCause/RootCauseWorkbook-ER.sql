@@ -57,11 +57,10 @@ WITH AGENTS AS (
          , C.STATUS
          , C.PROJECT_ID                                                                            AS PID
          , CASE
-               WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
-               WHEN C.ORIGIN IN ('BBB', 'Legal') THEN 'Legal/BBB'
-               WHEN C.ORIGIN IN ('Online Review') THEN 'Online Review'
-               WHEN C.ORIGIN IN ('Social Media') THEN 'Social Media'
-               ELSE 'Internal'
+               WHEN C.SUBJECT ILIKE '%BBB%' THEN 'Regulator'
+               WHEN C.SUBJECT ILIKE '%SLB%' THEN 'Regulator'
+               WHEN C.SUBJECT ILIKE '%AG%' THEN 'Regulator'
+               ELSE 'Other'
         END                                                                                        AS PRIORITY_BUCKET
          , CASE
                WHEN C.ORIGIN IN ('Executive', 'News Media') THEN 'Executive/News Media'
@@ -161,11 +160,11 @@ WITH AGENTS AS (
          RPT.T_SERVICE AS S
          ON S.SERVICE_ID = C.SERVICE_ID
     WHERE RECORD_TYPE = 'Solar - Customer Escalation'
-        AND EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
-        AND SUBJECT NOT ILIKE '[NPS]%'
-        AND SUBJECT NOT ILIKE '%VIP%'
-        AND SUBJECT NOT ILIKE '%POSITIVE%'
-        AND ORIGIN != 'NPS'
+      AND EXECUTIVE_RESOLUTIONS_ACCEPTED IS NOT NULL
+      AND SUBJECT NOT ILIKE '[NPS]%'
+      AND SUBJECT NOT ILIKE '%VIP%'
+      AND SUBJECT NOT ILIKE '%POSITIVE%'
+      AND ORIGIN != 'NPS'
 )
 
    , T2 AS (
